@@ -1,5 +1,19 @@
-# 数据流的操作
+﻿# 数据流的操作
 
+## Spark 4.x 流处理建议
+
+本章保留了基于 DStream 的讲解以帮助理解微批模型，但在 Spark 4.x 实际项目中应优先使用 Structured Streaming（`readStream`/`writeStream`）。
+
+如果你是新项目：
+
+（1）优先使用 DataFrame/Dataset + Structured Streaming。
+
+（2）优先使用事件时间、水位线和状态管理 API。
+
+（3）将 Kafka 作为主流输入源，并使用 checkpoint 目录保证恢复能力。
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 在当今互连的设备和服务的世界中，我们一天也要花费数小时来检查各种社交媒体上的最新消息，电商平台上的产品优惠信息，或者查看最新新闻或体育更新，这几乎是很难的
 最喜欢的队。无论是要完成手头的工作，还是浏览信息或发送电子邮件，我们都依赖于智能设备和互联网。目前来说，应用程序和服务的数量和种类只会随着时间的推移而增长，这种现象成为了一种趋势。结果智能终端设备无处不在，并且一直在生成大量数据，这种现象也被广泛称为物联网，它不断地改变了数据处理的动力。每当我们以某种形式使用智能手机上的任何服务或应用程序时，实时数据处理就会起作用。而且这种实时数据处理能力在很大程度上取决于应用程序的质量和价值，因此很多互联网公司将重点放在如何应对数据的实用性和及时性等方面的复杂挑战。
 
@@ -64,7 +78,7 @@
 恰好一次范例如何删除重复项？这里有两种技术可以起作用：幂等更新和事务更新。幂等更新涉及基于生成的某些唯一ID保存结果，因此如果存在重复，则生成的唯一ID
 已经存在于结果中（例如数据库），以便消费者可以删除副本而无需更新结果。因为并非总是可能而且方便地生成唯一ID，所以这很复杂，而且这还需要在消费者上进行额外的处理。另一点是数据库可以针对结果和偏移量进行分离。事务更新将结果保存在具有事务开始和事务提交阶段的批处理中，以便在发生提交时我们知道事件已成功处理，因此当收到重复事件时，可以删除它们而不更新结果。这种技术比幂等更新要复杂得多，因为现在我们需要一些事务性数据存储。另一点是数据库针对结果和偏移量必须一致。
 
-Spark Streaming在Spark 2.x中还实现了结构化流传输并且支持恰好一次范例，我们将在本章后面介绍结构化流。
+从 Spark 3.x 开始，Structured Streaming 成为流处理主线；在 Spark 4.x 中建议优先使用 Structured Streaming。
 
 ## 理解时间
 
@@ -87,6 +101,8 @@ Spark Streaming在Spark 2.x中还实现了结构化流传输并且支持恰好�
 时间戳的重要性在于可以考虑使用数据生成的时间来分析，例如晨跑时使用可穿戴设备，回到家时将设备中的数据同步到手机，查看一下刚才穿过公园时的心率和速度等详细信息，在将数据上传到某些云服务器时，这些数据是具有时间戳的。时间戳为数据提供了时间的上下文，根据事件发生时记录的时间戳进行分析才更有意义。因此，基于时间戳的日志构成了当今正在分析数据流的很大一部分，因此这些时间戳有助于弄清楚特定时间在给定系统上发生了什么。当将数据从创建数据的各种系统或设备传输到处理该数据的群集，通常会出现令人难以捉摸的情况，这是因为跨系统之间的传输操作易于发生不同形式的故障，例如延迟、重新排序或丢失。通常，用户希望框架具有容错机制为这种可能发生的故障提供技术解决，而且不牺牲系统的响应能力。为了实现这种愿景，基于事件时间的流处理系统需要解决两个原则问题：其一是可以清楚标记正确和重新排序的结果，另外时可以产生中间预期结果。这两个原则构成了事件时间处理的基础。在Spark中，此功能仅由结构化流提供，离散流缺乏对事件时间处理的内置支持。
 
 ## 离散化流
+
+> 兼容性说明：本节基于 DStream（Spark Streaming）讲解微批原理与历史 API，适用于维护存量系统；新项目建议直接使用 Structured Streaming。
 
 Spark
 Streaming是Spark核心的扩展组件之一，可扩展地实现实时数据流的高吞吐量、容错处理。数据可以从诸如Kafka、Flume、Kinesis或TCP套接字的许多来源中获取，并且可以使用由高级功能表达的复杂算法进行处理。处理后的数据可以推送到文件系统、数据库和实时仪表板，也可以将Spark的[机器学习](https://translate.googleusercontent.com/translate_c?act=url&depth=1&hl=en&ie=UTF8&prev=_t&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/ml-guide.html&usg=ALkJrhh_KZdVK7_hO8ZigAts2yULDkjc9g)和图处理算法应用于数据流。
@@ -179,7 +195,7 @@ root@48feaa001420:\~\# { while :; do echo "Hello Apache Spark"; sleep
 使用Docker exec 命令进入到容器中打开另一终端界面，运行Spark应用程序：
 
 root@48feaa001420:\~\# spark-submit --class NetworkWordCount
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999
 
 20/03/26 08:28:39 WARN NativeCodeLoader: Unable to load native-hadoop
@@ -213,6 +229,64 @@ Time: 1585211340000 ms
 
 就这样，第一个终端窗口负责发送数据（代码 4‑2），第二个终端窗口负责接收处理数据（代码 4‑3）。
 
+### 迁移对照：DStream 到 Structured Streaming
+
+为了便于从存量DStream迁移到Spark 4.x主线API，下面给出与“词频统计”对应的Structured Streaming写法。该示例使用Kafka作为输入源，并显式设置watermark与checkpoint目录。
+
+```scala
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
+
+val spark = SparkSession.builder()
+  .appName("StructuredWordCountKafka")
+  .getOrCreate()
+
+import spark.implicits._
+
+val lines = spark.readStream
+  .format("kafka")
+  .option("kafka.bootstrap.servers", "localhost:9092")
+  .option("subscribe", "words")
+  .option("startingOffsets", "latest")
+  .load()
+  .selectExpr("CAST(value AS STRING) as line", "timestamp")
+
+val words = lines
+  .select(
+    col("timestamp"),
+    explode(split(col("line"), "\\\\s+")).as("word")
+  )
+  .filter(length(col("word")) > 0)
+
+// 使用事件时间窗口 + watermark，避免状态无限增长
+val counts = words
+  .withWatermark("timestamp", "10 minutes")
+  .groupBy(
+    window(col("timestamp"), "1 minute", "30 seconds"),
+    col("word")
+  )
+  .count()
+
+val query = counts.writeStream
+  .outputMode("append")
+  .format("console")
+  .option("truncate", "false")
+  .option("checkpointLocation", "/tmp/spark-checkpoints/structured-wordcount")
+  .start()
+
+query.awaitTermination()
+```
+
+对应关系可总结为：
+
+（1）`StreamingContext + DStream` -> `SparkSession + DataFrame/Dataset`
+
+（2）`reduceByKeyAndWindow` 等窗口聚合 -> `groupBy(window(...))`
+
+（3）`ssc.checkpoint(...)` -> `writeStream.option("checkpointLocation", ...)`
+
+（4）微批时间间隔 -> `trigger(...)`（按需设置）
+
 ### StreamingContext
 
 StreamingContext是流传输的主要入口点，本质上负责流传输应用程序，包括检查点，转换和对RDD的DStreams的操作。StreamingContext是所有数据流功能切入点，提供了访问方法可以创建来自各种输入源的离散流。StreamingContext可以从现有SparkContext
@@ -241,7 +315,7 @@ val ssc = new StreamingContext(conf, Seconds(1))
 
 代码 4‑4
 
-appName参数是应用程序在集群监控界面上显示的名称。master可以是Spark、Mesos或YARN集群URL，或者以本地模式运行的特殊字符串local
+appName参数是应用程序在集群监控界面上显示的名称。master可以是Spark、Kubernetes或YARN集群URL，或者以本地模式运行的特殊字符串local
 \[\*\]。实际上，当在集群上运行时，不需要在应用程序中硬编码master，而是使用spark-submit启动应用程序并设置master参数。但是，对于本地测试和单元测试，可以通过local\[\*\]来运行Spark
 Streaming（检测本地系统中的核心数）。请注意，这在内部创建一个SparkContext（所有Spark功能的起始点），可以通过ssc.sparkContext进行访问。批处理间隔必须根据应用程序的延迟要求和可用的集群资源进行设置。
 
@@ -652,7 +726,7 @@ ssc.awaitTermination()
 命令进入到容器中打开另一终端界面，运行Spark应用程序，然后观察运行结果：
 
 spark-submit --class TransformFilterWord
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999
 
 ### 连接操作
@@ -962,7 +1036,7 @@ Some(newCount)
 命令进入到容器中打开另一终端界面，运行Spark应用程序，然后观察运行结果：
 
 spark-submit --class StatefulNetworkWordCount
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999
 
 代码 4‑17
@@ -1204,7 +1278,7 @@ root@48feaa001420:\~\# { while :; do echo "Hello Apache Spark"; sleep
 命令中的spark是第一章介绍的Docker容器名称，然后打开虚拟环境的另一个终端，我们可以通过使用：
 
 spark-submit --class StructuredNetworkWordCount
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999
 
 代码 4‑21
@@ -1328,7 +1402,7 @@ readStream()方法将创建一个DataStreamReader实例，该实例负责管理�
 加载数据流的过程是惰性的，当前我们只是得到了数据流的表示形式，是一个流式DataFrame实例。我们可以在其上应用的一系列转换，以实现特定业务逻辑。在数据流实现之前，创建流DataFrame不会导致实际消耗或处理任何数据。
 
 从Spark
-v2.4.0开始，支持的流数据源包括：JSON、ORC，Parquet、CSV、text、textFile。这些都是基于文件的流数据源，基本功能是监视文件系统中的路径并使用原子方式在其中存放文件，然后将检测到的新文件由指定的格式化程序解析，另外还包括套接字、Kafka以及Rate数据源。Rate数据源可以作为测试数据源，以每秒指定的行数生成数据，每个输出行包含一个时间戳和一个值，其中时间戳是包含消息分发时间的Timestamp类型，而值是包含消息计数的Long类型，从第一行的0开始，此源旨在进行测试和基准测试。
+在Spark 4.x中，常见流数据源包括：JSON、ORC、Parquet、CSV、text、textFile（文件源），以及socket、Kafka和Rate数据源。Rate数据源常用于压测与功能验证，它会按指定速率生成带时间戳与递增值的测试数据。
 
 调用load()方法的结果是产生流式DataFrame，可以使用Dataset或DataFrame
 API表示要应用于数据流中业务逻辑，以实现我们的特定用例。这里需要回顾一下结构化数据中的内容，DataFrame是Dataset
@@ -1430,8 +1504,7 @@ val query = stream.writeStream
 
 代码 4‑28
 
-format()方法使我们可以通过提供内置接收器的名称或自定义接收器的完全限定名称来指定输出接收器。从Spark
-v2.4.0开始，以下流接收器可用：
+format()方法使我们可以通过提供内置接收器的名称或自定义接收器的完全限定名称来指定输出接收器。在Spark 4.x中，常见流接收器如下：
 
   - 控制台接收器
 
@@ -1533,7 +1606,7 @@ root@48feaa001420:\~\# { while :; do echo "Hello Apache Spark"; sleep
 然后打开虚拟环境的另一个终端运行下面的代码：
 
 spark-submit --class StructuredNetworkWordCountWindowed
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999 10 5
 
 代码 4‑31
@@ -1624,7 +1697,7 @@ window($"timestamp", windowDuration, slideDuration), $"word"
 测试这个代码，我们可以在虚拟实验环境中运行下面的代码，然后查看运行结果：
 
 spark-submit --class StructuredNetworkWordCountWindowedWaterMark
-/data/application/simple-streaming/target/scala-2.11/simple-streaming\_2.11-0.1.jar
+/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
 localhost 9999 10 5
 
 代码 4‑34
@@ -2126,7 +2199,7 @@ newAPIHadoopRDD()的输出是键值对RDD，PairRDDFunctions.saveAsHadoopDataset
 步骤1：启动流媒体应用
 
 spark-submit --class HBaseSensorStream
-/data/application/sensor-streaming/target/scala-2.11/sensor-streaming-assembly-0.1.jar
+/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
 代码 4‑42
 
@@ -2184,7 +2257,7 @@ value=\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00
 （1）计算一列的统计信息
 
 root@48feaa001420:\~\# spark-submit --class HBaseReadWrite
-/data/application/sensor-streaming/target/scala-2.11/sensor-streaming-assembly-0.1.jar
+/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
 20/04/06 13:35:19 WARN NativeCodeLoader: Unable to load native-hadoop
 library for your platform... using builtin-java classes where applicable
@@ -2201,7 +2274,7 @@ library for your platform... using builtin-java classes where applicable
 （2）计算整列的统计信息
 
 root@48feaa001420:\~\# spark-submit --class HBaseReadRowWriteStats
-/data/application/sensor-streaming/target/scala-2.11/sensor-streaming-assembly-0.1.jar
+/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
 20/04/06 13:37:56 WARN NativeCodeLoader: Unable to load native-hadoop
 library for your platform... using builtin-java classes where applicable
@@ -2362,7 +2435,7 @@ Streaming还提供诸如reduce()和count()等运算符，这些运算符返回�
 现在，让我们看一看代码运行步骤和输出结果。
 
 root@48feaa001420:\~\# spark-submit --class SensorStreamSQL
-/data/application/sensor-streaming/target/scala-2.11/sensor-streaming-assembly-0.1.jar
+/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
 20/04/06 14:35:26 WARN NativeCodeLoader: Unable to load native-hadoop
 library for your platform... using builtin-java classes where applicable
@@ -2457,7 +2530,7 @@ res2.show
 4‑47中，通过res可以回答第一个问题，通过res2的结果回答了什么是最大、最小和平均的psi，使用相同的窗口操作在每个传感器RDD上收集psi数据。现在，让我们看一看代码运行步骤和输出结果。
 
 root@48feaa001420:\~\# spark-submit --class SensorStreamWindow
-/data/application/sensor-streaming/target/scala-2.11/sensor-streaming-assembly-0.1.jar
+/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
 20/04/06 14:35:29 WARN NativeCodeLoader: Unable to load native-hadoop
 library for your platform... using builtin-java classes where applicable
@@ -2556,3 +2629,7 @@ only showing top 1 row
 
 在本章中，学习了流式处理程序的基础知识；学习了怎样在Spark
 Streaming中操作离散化流和结构化流，还了解了Spark数据流的输入源类型以及各种数据流操作。
+
+
+
+

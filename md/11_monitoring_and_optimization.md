@@ -1,5 +1,8 @@
-# 监视和优化
+﻿# 监视和优化
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 要获取关于Spark应用程序行为的信息，可以查看集群管理器日志和Spark
 Web应用程序界面。这两种方法提供补充信息。日志使可以在应用程序的生命周期中查看细粒度事件。Web界面提供了Spark应用程序行为和细粒度指标的各个方面的广泛概述。要访问正在运行的Spark应用程序的Web界面，可以在Web浏览器中打开http://spark\_driver\_host:4040。如果多个应用程序在同一主机上运行，则Web应用程序将绑定到以4040开始的连续端口，如4041、4402等，Web应用程序仅在应用程序期间可用。
 
@@ -677,12 +680,12 @@ http://\<driver\>:4040，其列出了“Environment”选项卡中的Spark属性
 
 #### 环境变量
 
-某些Spark设置可以通过环境变量进行配置，这些环境变量是从安装Spark目录（或Windows环境上的conf/spark-env.cmd）的脚本conf/spark-env.sh中读取的。在Standalone和Mesos模式下，该文件可以为机器提供特定信息，例如主机名。在运行本地Spark应用程序或提交脚本时，它也是来源。请注意，在安装Spark的认情况下，conf/spark-env.sh不存在，但是可以复制conf/spark-env.sh.template以创建它，确保脚本是可执行文件。以下变量可以在spark-env.sh中设置：
+某些Spark设置可以通过环境变量进行配置，这些环境变量是从安装Spark目录（或Windows环境上的conf/spark-env.cmd）的脚本conf/spark-env.sh中读取的。在Standalone和Kubernetes模式下，该文件可以为机器提供特定信息，例如主机名。在运行本地Spark应用程序或提交脚本时，它也是来源。请注意，在默认安装情况下，conf/spark-env.sh不存在，但是可以复制conf/spark-env.sh.template以创建它，确保脚本是可执行文件。以下变量可以在spark-env.sh中设置：
 
 | 环境变量                    | 含义                                                                                       |
 | ----------------------- | ---------------------------------------------------------------------------------------- |
 | JAVA\_HOME              | Java的安装位置，如果它不在默认路径。                                                                     |
-| PYSPARK\_PYTHON         | Python二进制可执行文件，用于PySpark在驱动程序和工作节点中，默认python2.7可用，否则python，如果已设置spark.pyspark.python属性优先 |
+| PYSPARK\_PYTHON         | Python二进制可执行文件，用于PySpark在驱动程序和工作节点中，建议显式设置为python3（如python3.10+），如果已设置spark.pyspark.python属性则以其为准 |
 | PYSPARK\_DRIVER\_PYTHON | Python二进制可执行文件，用于PySpark在驱动程序和工作节点中，默认为PYSPARK\_PYTHON，如果已设置spark.pyspark.python属性优先     |
 | SPARKR\_DRIVER\_R       | R二进制可执行文件，用于SparkR shell（默认为R），如果已设置spark.r.shell.command属性则优先                           |
 | SPARK\_LOCAL\_IP        | 要绑定计算机的IP地址。                                                                             |
@@ -1207,11 +1210,11 @@ Shell可以看到缓存数据集的大小。通过默认，Spark将使用MEMORY\
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | MEMORY\_ONLY                          | 将RDD作为反序列化的Java对象存储在JAVA虚拟机中。如果RDD不适合内存，则某些分区将不会被缓存，并会在每次需要时重新计算。这是默认级别。                                                              |
 | MEMORY\_AND\_DISK                     | 将RDD作为反序列化的Java对象存储在JAVA虚拟机中。如果RDD不适合内存，请存储不适合磁盘的分区，并在需要时从中读取它们。                                                                      |
-| MEMORY\_ONLY\_SER                     | 将RDD存储为序列化的 Java对象（每个分区一个字节的数组）。与反序列化的对象相比，这通常更节省空间，特别是在使用 [快速序列化器时](https://spark.apache.org/docs/2.2.0/tuning.html)，但需要更多的CPU密集型读取。 |
+| MEMORY\_ONLY\_SER                     | 将RDD存储为序列化的 Java对象（每个分区一个字节的数组）。与反序列化的对象相比，这通常更节省空间，特别是在使用 [快速序列化器时](https://spark.apache.org/docs/4.1.1/tuning.html)，但需要更多的CPU密集型读取。 |
 | MEMORY\_AND\_DISK\_SER                | 与MEMORY\_ONLY\_SER类似，但将不适合内存的分区溢出到磁盘上，而不是每次需要时重新计算它们。                                                                                 |
 | DISK\_ONLY                            | 将RDD分区仅存储在磁盘上。                                                                                                                        |
 | MEMORY\_ONLY\_2，MEMORY\_AND\_DISK\_2等 | 与上面的级别相同，但复制两个群集节点上的每个分区。                                                                                                             |
-| OFF\_HEAP（实验）                         | 与MEMORY\_ONLY\_SER类似，但将数据存储在[堆内存储器中](https://spark.apache.org/docs/2.2.0/configuration.html#memory-management)。这需要启用堆堆内存。             |
+| OFF\_HEAP（实验）                         | 与MEMORY\_ONLY\_SER类似，但将数据存储在[堆内存储器中](https://spark.apache.org/docs/4.1.1/configuration.html#memory-management)。这需要启用堆堆内存。             |
 
 表格 4‑2存储级别
 
@@ -1497,8 +1500,8 @@ UI，还可以找到那些在读取、计算和写入上花费太多时间的任
 可以通过调整用于RDD存储、Shuffle和用户程序的内存区域来调整内存使用情况。在RDD上使用cache或persist方法。在RDD上使用cache将RDD分区存储在内存缓冲区中。persist有各种选项，有关RDD的持久性选项，请参阅Apache
 Spark文档。默认情况下，persist()与cache()或persist(MEMORY\_ONLY)功能是相同的。如果没有足够的空间来缓存新的RDD分区，那么旧的分区将被删除并在需要时进行重新计算。最好使用persist(MEMORY\_AND\_DISK)，这将在磁盘上存储数据，并在需要时将其加载到内存中，这减少了昂贵的计算。使用MEMORY\_ONLY\_SER选项将减少垃圾回收。缓存序列化对象可能比缓存原始对象慢，但是它确实减少了垃圾收集的时间。
 
-Spark日志子系统基于log4j，记录级别或日志输出可以自定义。log4j的配置属性的一个例子在Spark安装目录conf中提供，可以被复制并适当地进行编辑的。Spark日志文件的位置取决于部署模式。在Spark独立模式下，日志文件位于每个Worker的Spark部署目录中。在Mesos中，日志文件是在Mesos
-slave的工作目录中，从Mesos master界面访问。要访问YARN中的日志，请使用YARN日志收集工具。
+Spark日志子系统基于log4j，记录级别或日志输出可以自定义。log4j的配置属性的一个例子在Spark安装目录conf中提供，可以被复制并适当地进行编辑的。Spark日志文件的位置取决于部署模式。在Spark独立模式下，日志文件位于每个Worker的Spark部署目录中。在Kubernetes中，日志通常通过kubectl logs或集中式日志系统采集，
+而在YARN中可通过YARN日志收集工具访问。
 
 如果可能的话，避免Shuffle大量数据。在使用聚合操作的情况下，尽量使用aggregateByKey。对于大量数据，使用groupByKey的结果会产生大量的Shuffle操作。如果可能的话使用reduceByKey，还可以使用combineByKey或
 foldByKey。collect动作试图将在RDD中每一个元素传送到驱动程序上。如果有一个非常大的RDD，这可能会导致驱动程序崩溃。countByKey、countByValue和collectAsMap也会出现同样的问题。过滤掉尽可能多的数据集。如果有很多空闲的任务，则需要减少分区。如果没有使用群集中的所有插槽，则重新分区。
@@ -1509,3 +1512,6 @@ foldByKey。collect动作试图将在RDD中每一个元素传送到驱动程序�
 
 Spark性能调整是调整设置以记录系统使用内存、内核和实例的过程。这个过程保证Spark具有最佳性能并防止Spark中的资源瓶颈。在本章中，提供有关如何调整Apache
 Spark作业的相关信息，性能调优介绍、Spark序列化库（如Java序列化和Kryo序列化）、Spark内存调优，还学习了Spark数据结构调优，Spark数据区域性和垃圾收集调优。
+
+
+

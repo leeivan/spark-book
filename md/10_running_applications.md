@@ -1,5 +1,8 @@
-# Spark应用程序
+﻿# Spark应用程序
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 Apache Spark被广泛认为是MapReduce在Apache
 Hadoop集群上进行通用数据处理的后继者。与MapReduce应用程序一样，每个Spark应用程序都是一个自包含的计算，它运行用户提供的代码来计算结果。与MapReduce作业一样，Spark应用程序可以使用多个主机的资源。但是，Spark比MapReduce有很多优点。
 
@@ -7,30 +10,13 @@ Hadoop集群上进行通用数据处理的后继者。与MapReduce应用程序�
 
 ## SparkContext与SparkSession
 
-如果在Spark 2.0之前的版本，如果要使用Spark SQL的功能必须创建SQLContext。应用程序中创建SQLContext方法：
+在Spark 4.x中，应用程序应优先以SparkSession作为统一入口。SparkSession封装了创建与访问SQL、DataFrame/Dataset、Structured Streaming所需的核心上下文，能够显著简化工程代码结构。
 
-//set up the spark configuration and create contexts
-
-val sparkConf = new
-SparkConf().setAppName("SparkSessionZipsExample").setMaster("local")
-
-// your handle to SparkContext to access other context like SQLContext
-
-val sc = new SparkContext(sparkConf).set("spark.some.config.option",
-"some-value")
-
-val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-
-代码 4.1
-
-而在Spark
-2.0中，通过SparkSession可以实现相同的效果，而不会显式创建SparkConf、SparkContext或SQLContext，因为它们被封装在SparkSession中。使用构建器设计模式，它会实例化SparkSession对象（如果尚不存在的话）以及相关的基础上下文。实际上，SparkSession成为Spark
-SQL的入口点，在使用强制类型的DataSet（或可变类型的基于Row的DataFrame）数据抽象开发Spark
-SQL应用程序时，必须创建SparkSession对象。
+历史上（Spark 2.0之前）常见SQLContext/HiveContext写法仅用于理解演进，不再建议作为新项目模板。
 
   - 注意
 
-SparkSession已将SQLContext和HiveContext合并到Spark 2.0中的一个对象中。
+SparkSession已将SQLContext和HiveContext在Spark 2.0之后统一为单一入口对象。
 
 可以使用SparkSession.builder方法创建SparkSession的实例。
 
@@ -74,11 +60,11 @@ Welcome to
 
 \_\\ \\/ \_ \\/ \_ \`/ \_\_/ '\_/
 
-/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 2.2.0
+/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 4.1.1
 
 /\_/
 
-Using Scala version 2.11.8 (OpenJDK 64-Bit Server VM, Java 1.8.0\_131)
+Using Scala version 2.13.16 (OpenJDK 64-Bit Server VM, Java 17)
 
 Type in expressions to have them evaluated.
 
@@ -104,13 +90,10 @@ Manager](media/10_running_applications/media/image1.png)
 图例 4‑1SparkContext 与Driver和Cluster Manager的关系
 
 如图所示（图例
-4‑1），SparkContext是一个访问所有Spark功能的渠道；每个JVM只有一个SparkContext存在。Spark驱动程序（Driver
-Program）使用SparkContext连接到集群管理器（Cluster
-Manager）进行通信，提交Spark作业并知道要与之通信的资源管理器（YARN，Mesos或Standalone）。SparkContext允许配置Spark配置参数。通过SparkContext，驱动程序可以访问其他上下文，如SQLContext、HiveContext和StreamingContext来进行Spark编程。
+4‑1），SparkContext是底层执行上下文；每个JVM通常只有一个SparkContext。Spark驱动程序（Driver
+Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并提交作业。业务层代码建议通过SparkSession访问能力，在需要底层控制时再使用`spark.sparkContext`。
 
-但是，从Spark
-2.0版本开始，SparkSession可以通过单一统一的入口点访问前面提到的所有Spark功能，并且除了使访问DataFrame和Dataset
-API更简单外，还包含底层的上下文以操纵数据。总而言之，以前通过SparkContext，SQLContext或HiveContext在早期版本的Spark中提供的所有功能现在均可通过SparkSession获得。从本质上讲，SparkSession是一个统一的入口点，用于Spark处理数据，最大限度地减少要记住或构建的概念数量，因此更可能犯的错误更少，并且代码可能不那么混乱，如下是SparkSession的类和实例方法
+在Spark 4.x中，SparkSession已经是统一入口点：既可处理DataFrame/Dataset与SQL，也可衔接流处理与底层执行上下文。这样可以减少上下文对象切换带来的复杂度，降低出错概率。下面继续介绍SparkSession的类和实例方法。
 
   - builder(): Builder
 
@@ -129,7 +112,7 @@ val builder = SparkSession.builder
 
 scala\> spark.version
 
-res4: String = 2.2.0
+res4: String = 4.1.1
 
 代码 4.6
 
@@ -388,9 +371,9 @@ name := "Simple Project"
 
 version := "1.0"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.13.16"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 代码 4.2
 
@@ -509,11 +492,11 @@ name := "BuildingSBT"
 
 version := "1.0"
 
-scalaVersion := "2.11.11"
+scalaVersion := "2.13.16"
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "4.1.1"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
@@ -611,16 +594,16 @@ Ivy从Maven2存储库下载依赖关系。可以在build.sbt文件中定义的�
 % artifactID % revision ，对于使用Maven的开发人员来说，这可能是熟悉的。在示例中，有3个依赖关系：Commons
 CSV、Spark Core和Spark SQL：
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "4.1.1"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
 代码 4.14
 
 如果使用groupID %% artifactID % revision，而不是groupID % artifactID %
-revision（区别是groupID后的双百分号），SBT将项目的Scala版本添加到artifactID，即spark-core\_2.11.11，这只是一种明确Scala版本的捷径方式。只能在Java中使用的依赖库应始终用单个百分比操作符（%）编写。如果不知道依赖库的groupID或artifactID，则可能会在该依赖项的网站或Maven
+revision（区别是groupID后的双百分号），SBT将项目的Scala版本添加到artifactID，即spark-core\_2.13，这只是一种明确Scala版本的捷径方式。只能在Java中使用的依赖库应始终用单个百分比操作符（%）编写。如果不知道依赖库的groupID或artifactID，则可能会在该依赖项的网站或Maven
 Central Repository中找到它们，用SBT构建的示例源代码。
 
 cd /root/spark-app/building-sbt
@@ -649,7 +632,7 @@ $SPARK\_HOME/bin/spark-submit \\
 
 \--packages org.apache.commons:commons-csv:1.2 \\
 
-target/scala-2.11/buildingsbt\_2.11-1.0.jar
+target/scala-2.13/buildingsbt\_2.13-1.0.jar
 
 命令 4.5
 
@@ -657,9 +640,9 @@ target/scala-2.11/buildingsbt\_2.11-1.0.jar
 
 （1）更新build.sbt文件以删除Commons CSV依赖关系。
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "4.1.1"
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0"
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 //libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
@@ -689,7 +672,7 @@ $SPARK\_HOME/bin/spark-submit \\
 
 \--jars lib/commons-csv-1.2.jar \\
 
-target/scala-2.11/buildingsbt\_2.11-1.0.jar
+target/scala-2.13/buildingsbt\_2.13-1.0.jar
 
 命令 4.8提交scala程序
 
@@ -707,10 +690,10 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.4")
 更新build.sbt文件将所提供的Spark依赖关系标记为provided。这防止依赖关系被包含在装配jar中。如果需要，还可以恢复Commons
 CSV依赖关系，尽管lib/目录中的本地副本仍将在编译时自动获取。
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0" %
+libraryDependencies += "org.apache.spark" %% "spark-core" % "4.1.1" %
 provided
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0" %
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1" %
 provided
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
@@ -729,7 +712,7 @@ sbt assembly
 
 cd /root/spark-app/building-sbt
 
-less target/scala-2.11/BuildingSBT-assembly-1.0.jar | grep commons
+less target/scala-2.13/BuildingSBT-assembly-1.0.jar | grep commons
 
 \-rw---- 1.0 fat 0 b- stor 16-Mar-20 13:31 org/apache/commons/
 
@@ -798,7 +781,7 @@ $SPARK\_HOME/bin/spark-submit \\
 
 \--class com.pinecone.SBuildingSBT \\
 
-target/scala-2.11/BuildingSBT-assembly-1.0.jar
+target/scala-2.13/BuildingSBT-assembly-1.0.jar
 
 命令 4.11提交scala程序
 
@@ -868,7 +851,7 @@ sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop�
 
 \--executor-memory 20G \\
 
-\--total-executor-cores 100 \\
+\--conf spark.executor.instances=10 \\
 
 /path/to/examples.jar \\
 
@@ -885,11 +868,11 @@ supervise
 
 \--deploy-mode cluster \\
 
-\--supervise \\
+\
 
 \--executor-memory 20G \\
 
-\--total-executor-cores 100 \\
+\--conf spark.executor.instances=10 \\
 
 /path/to/examples.jar \\
 
@@ -925,27 +908,57 @@ examples/src/main/python/pi.py \\
 
 1000
 
-\# Run on a Mesos cluster in cluster deploy mode with supervise
+\# Run on a Kubernetes cluster in cluster deploy mode
 
 ./bin/spark-submit \\
 
 \--class org.apache.spark.examples.SparkPi \\
 
-\--master mesos://207.184.161.138:7077 \\
+\--master k8s://https://207.184.161.138:6443 \\
 
 \--deploy-mode cluster \\
 
-\--supervise \\
-
 \--executor-memory 20G \\
 
-\--total-executor-cores 100 \\
+\--conf spark.executor.instances=10 \\
 
-http://path/to/examples.jar \\
+local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \\
 
 1000
 
 命令 4.19
+
+### Spark 4.1.1 Structured Streaming 提交模板（Kafka + Kubernetes）
+
+下面给出一个可直接改值运行的最小模板，适用于Spark 4.1.1在Kubernetes上的结构化流任务提交：
+
+```bash
+./bin/spark-submit \
+  --name structured-kafka-job \
+  --class com.example.StructuredKafkaJob \
+  --master k8s://https://<k8s-apiserver>:6443 \
+  --deploy-mode cluster \
+  --conf spark.kubernetes.namespace=<namespace> \
+  --conf spark.kubernetes.authenticate.driver.serviceAccountName=<sa-name> \
+  --conf spark.kubernetes.container.image=<registry>/spark:4.1.1 \
+  --conf spark.executor.instances=3 \
+  --conf spark.executor.cores=2 \
+  --conf spark.executor.memory=4g \
+  --conf spark.sql.shuffle.partitions=200 \
+  --conf spark.sql.streaming.checkpointLocation=s3a://<bucket>/checkpoints/structured-kafka-job \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1 \
+  local:///opt/spark/app/structured-kafka-job_2.13-1.0.0.jar
+```
+
+常用参数说明：
+
+（1）`--packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1`：Kafka源所需依赖。
+
+（2）`spark.sql.streaming.checkpointLocation`：结构化流恢复与容错关键目录，建议放在对象存储或HDFS上。
+
+（3）`spark.kubernetes.container.image`：需包含应用运行所需JDK/Python及系统依赖。
+
+（4）如果任务为PySpark，可将主程序jar替换为`.py`文件，并按需增加`--py-files`。
 
 表格 4.1给出了传递给Spark的master URL是以下格式之一：
 
@@ -958,7 +971,7 @@ http://path/to/examples.jar \\
 | local\[\*,F\]                   | 在本地运行Spark，其工作线程与机器上的逻辑内核一样多和F个maxFailures。                                                                                                    |
 | spark://HOST:PORT               | 连接到给定的Spark独立集群主控，端口必须是主服务器配置使用的端口，默认情况下为7077。                                                                                                 |
 | spark://HOST1:PORT1,HOST2:PORT2 | 使用Zookeeper连接到带有备用主机的给定Spark独立集群。该列表必须具有使用Zookeeper设置的高可用性群集中的所有主机，端口必须是主服务器配置使用的端口，默认情况下为7077。                                                |
-| mesos://HOST:PORT               | 连接到给定的Mesos集群，端口必须是配置使用的端口，默认值为5050，或者对于使用ZooKeeper的Mesos集群，使用mesos://zk://。要使用--deploy-mode cluster提交，应将HOST：PORT配置为连接到MesosClusterDispatcher |
+| k8s://https://HOST:PORT          | 连接到给定的 Kubernetes API Server，常见端口为 6443。通常配合 --deploy-mode cluster 与 spark.kubernetes.* 配置提交。 |
 | yarn                            | 根据--deploy-mode的值，以client或cluster模式连接到YARN群集，将基于HADOOP\_CONF\_DIR或YARN\_CONF\_DIR变量找到集群位置。                                                     |
 
 表格 4.2Spark的master URL格式
@@ -1055,17 +1068,17 @@ Spark shell是一个Spark应用程序和驱动程序，创建一个可用作为s
 
 集群管理器（Cluster
 Manager）是一个外部服务负责获取Spark集群上的资源并将其分配给Spark的作业（Job）。有3种不同类型的集群管理器，Spark应用程序可以利用其进行各种物理资源的分配和释放，例如Spark作业的内存、CPU内存等。Hadoop
-YARN、Apache Mesos或Standalone集群管理器可以在内部或云端启动一个Spark应用程序来运行。
+YARN、Kubernetes或Standalone集群管理器可以在内部或云端启动一个Spark应用程序来运行。
 
 为任何Spark应用选择集群管理器取决于应用程序的目标，因为所有集群管理器都提供不同的调度功能集。要开始使用Spark时，Standalone集群管理器是开发新的Spark应用程序时最容易使用的集群管理器。目前支持的三个集群管理器包括：
 
 （1）Standalone：Spark包含的简单集群管理器，可以轻松设置集群。
 
-（2）Apache Mesos：也可以运行Hadoop MapReduce和服务应用程序的通用集群管理器。
+（2）Kubernetes：容器化集群管理平台，适合云原生部署。
 
 （3）Hadoop YARN：Hadoop 2中的资源管理器。
 
-（4）Kubernetes：除了上述之外，还有Kubernetes的实验支持。Kubernetes是提供以容器为中心的基础设施的开源平台。Kubernetes的支持正在apache-spark-on-k8s
+（4）Kubernetes：Spark 4.x 中 Kubernetes 已是主流部署选项之一。Kubernetes 是提供以容器为中心基础设施的开源平台，相关文档可参考官方
 Github组织中积极开发。有关文档，参阅该项目的README。
 
 #### Standalone
@@ -1237,7 +1250,7 @@ ApplicationMaster 来表示已提交的应用程序。通过使用一个资源�
 确保HADOOP\_CONF\_DIR或YARN\_CONF\_DIR指向包含Hadoop集群的（客户端）配置文件的目录。这些配置用于写入HDFS并连接到YARN
 ResourceManager。此目录中包含的配置将分发到YARN群集，以便应用程序使用的所有容器都使用相同的配置。如果配置引用了不受YARN管理的Java系统属性或环境变量，那么也应该在Spark应用程序的配置（驱动程序，执行程序和AM在客户端模式下运行时）中进行设置。
 
-有两种可用于在YARN上启动Spark应用程序的部署模式。在cluster模式下，Spark驱动程序在由集群上的YARN管理的应用程序主进程中运行，客户端可以在启动应用程序后离开。在client模式下，驱动程序在客户端进程中运行，应用程序主程序仅用于从YARN请求资源。不同于Spark独立和Mesos模式，其中master地址在--master参数中指定，在YARN模式下，ResourceManager的地址从Hadoop配置中提取。因此，--
+有两种可用于在YARN上启动Spark应用程序的部署模式。在cluster模式下，Spark驱动程序在由集群上的YARN管理的应用程序主进程中运行，客户端可以在启动应用程序后离开。在client模式下，驱动程序在客户端进程中运行，应用程序主程序仅用于从YARN请求资源。不同于Spark独立和Kubernetes模式，其中master地址在--master参数中指定，在YARN模式下，ResourceManager的地址从Hadoop配置中提取。因此，--
 --master参数是yarn。要在cluster模式下启动Spark应用程序：
 
 $ ./bin/spark-submit --class path.to.your.Class --master yarn
@@ -1291,114 +1304,42 @@ app\_arg1 app\_arg2
 
 命令 4.28
 
-#### Mesos
+#### Kubernetes
 
-Mesos是Apache下的开源分布式资源管理框架，被称为是分布式系统的内核。Mesos最初是由加州大学伯克利分校的AMPLab开发的，后在Twitter得到广泛使用。Apache
-Mesos是一个通用的集群管理器，起源于 Google 的数据中心资源管理系统Borg。
+在 Spark 4.x 中，生产环境推荐优先使用 Standalone、YARN 或 Kubernetes。Mesos 相关集成在新版本已不再作为主流选项，本节统一使用 Kubernetes 作为容器化部署范式。
 
-Spark 2.2.0设计用于Mesos
-1.0.0或更高版本，不需要任何特殊的Mesos补丁，如果已经运行了Mesos集群，则可以跳过Mesos的安装步骤，安装针对Spark的Mesos与其他框架使用的Mesos没有什么不同，可以从源或使用预构建软件包安装Mesos。要使用Spark中的Mesos，需要Spark二进制包在Mesos可访问的位置上，并将Spark驱动程序配置连接到Mesos，或者也可以将Spark安装在所有Mesos从节点中的相同位置，并将spark.mesos.executor.home（默认为SPARK\_HOME）配置为指向该位置。Spark软件包可以通过任何Hadoop可访问的地址进行托管，包括通过HTTP服务方式提供访问，要在HDFS上托管，可以使用Hadoop
-fs put命令：
+Kubernetes 模式下，`spark-submit` 通过 `k8s://` 连接 API Server，驱动与执行器以 Pod 形式运行。最小提交流程如下：
 
-hadoop fs -put spark-2.2.0.tar.gz /path/to/spark-2.2.0.tar.gz
+```bash
+./bin/spark-submit \
+  --master k8s://https://<k8s-apiserver>:6443 \
+  --deploy-mode cluster \
+  --name spark-pi \
+  --class org.apache.spark.examples.SparkPi \
+  --conf spark.executor.instances=3 \
+  --conf spark.kubernetes.container.image=<your-spark-image> \
+  local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar 1000
+```
 
-命令 4.29
+建议补充以下生产级配置：
 
-如果使用的是Spark的自定义编译版本，则需要使用Spark源目录tarball/checkout中包含的dev/make-distribution.sh脚本创建一个包，其过程包括：
+（1）命名空间与服务账号：`spark.kubernetes.namespace`、`spark.kubernetes.authenticate.driver.serviceAccountName`。
 
-（1）使用这里的说明下载并构建Spark
+（2）镜像与依赖：固定镜像版本，避免 `latest`；Python 任务通过 `--py-files` 或镜像内置依赖。
 
-（2）使用./dev/make-distribution.sh --tgz创建二进制包。
+（3）资源与弹性：设置 `spark.executor.memory`、`spark.executor.cores`，并结合动态分配能力。
 
-（3）将档案上传到http、s3或hdfs
+（4）可观测性：通过 Spark UI、Kubernetes Events 与日志系统统一排障。
 
-Mesos的主节点的格式为mesos://host:5050，这是为single-master集群；或者mesos://zk://host1:2181,host2:2181,host3:2181/mesos，这是为multi-master群集，使用ZooKeeper。
+（5）存储与数据访问：对象存储或 HDFS 凭据通过 Secret/ConfigMap 注入，避免明文配置。
 
-在客户端模式下，Spark
-Mesos框架直接在客户端机器上启动，并等待驱动程序输出，驱动程序需要在spark-env.sh进行一些配置才能与Mesos正常交互，在spark-env.sh设置一些环境变量：
-
-（1）export MESOS\_NATIVE\_JAVA\_LIBRARY=\<path to libmesos.so\>。
-
-此路径通常为\<prefix\>/lib/libmesos.so ，默认情况下前缀为/usr/local 。
-
-（2）export SPARK\_EXECUTOR\_URI=\<URL of spark-2.2.0.tar.gz uploaded
-above\> 。
-
-spark.executor.uri设置为\<URL of spark-2.2.0.tar.gz\> 。
-
-现在，当对集群启动Spark应用程序时，在创建SparkContext时传递一个mesos:// URL地址，例如：
-
-val conf = new SparkConf()
-
-.setMaster("mesos://HOST:5050")
-
-.setAppName("My app")
-
-.set("spark.executor.uri", "\<path to spark-2.2.0.tar.gz uploaded
-above\>")
-
-val sc = new SparkContext(conf)
-
-代码 4.61
-
-运行交互界面时，spark.executor.uri参数从SPARK\_EXECUTOR\_URI继承，因此不需要作为系统属性冗余地传入。
-
-./bin/spark-shell --master mesos://host:5050
-
-命令 4.30
-
-Spark on Mesos还支持cluster模式，驱动程序在群集中启动，客户端可以从Mesos Web
-UI中找到驱动程序的结果。要使用cluster模式，必须通过sbin/start-mesos-dispatcher.sh脚本启动群集中的sbin/start-mesos-dispatcher.sh，传入Mesos主节点地址，例如mesos：//
-host：5050，这将在主机上启动MesosClusterDispatcher守护程序，如果喜欢使用Marathon运行MesosClusterDispatcher
-，则需要在前台运行MesosClusterDispatcher，例如
-
-bin/spark-class org.apache.spark.deploy.mesos.MesosClusterDispatcher
-
-命令 4.31
-
-MesosClusterDispatcher还支持将恢复状态写入Zookeeper。这将使MesosClusterDispatcher能够在重新启动时恢复所有已提交并正在运行的容器，为了启用此恢复模式，我们可以通过spark-env中的SPARK\_DAEMON\_JAVA\_OPTS配置spark.deploy.recoveryMode以及spark.deploy.zookeeper.\*。我们还可以通过在spark-env中设置环境变量SPARK\_DAEMON\_CLASSPATH来指定MesosClusterDispatcher在类路径中所需的任何其他jar。
-
-对于client，可以通过运行spark-submit并将主节点地址指定到MesosClusterDispatcher的URL，例如mesos://dispatcher:7077，向Mesos集群提交作业，可以在Spark群集Web
-UI上查看驱动程序状态，例如：
-
-. ./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master mesos://207.184.161.138:7077 \\
-
-\--deploy-mode cluster \\
-
-\--supervise \\
-
-\--executor-memory 20G \\
-
-\--total-executor-cores 100 \\
-
-http://path/to/examples.jar \\
-
-1000
-
-命令 4.32
-
-  - 注意
-
-传递给spark-submit的jar或Python文件应该是Mesos从节点可访问的地址，因为Spark驱动程序不会自动上传本地jar。
-
-Spark可以通过两种模式运行Mesos：“粗粒度”（默认）和“细粒度”（不推荐使用）。“粗粒度”模式下，每个Spark执行程序作为单个Mesos任务运行，Spark执行器的大小根据以下配置变量：
-
-（1）执行程序内存：spark.executor.memory
-
-（2）执行核心：spark.executor.cores
-
-（3）执行人数：spark.cores.max / spark.executor.cores
-
-当应用程序启动时，执行器将尽量的启动，直到达到spark.cores.max，如果没有设置spark.cores.max，Spark应用程序将保留Mesos提供的所有资源，因此当然会建议设置此变量为任何多租户群集，包括运行多个并发Spark应用。调度程序将在Mesos提供的优惠中启动执行者循环，但是没有传播保证，因为Mesos在提供流中不提供此类保证。
-
-在这种模式下，如果用户提供这种方式，则Spark执行器将会遵守端口分配。具体来说，如果用户在Spark配置中定义了spark.executor.port或spark.blockManager.port，则mesos调度程序将检查包含端口号的有效端口范围的可用提议，如果没有这样的范围可用，它将不会启动任何任务；如果用户对端口号没有限制，则照常使用临时端口；如果用户定义了一个端口，那么这个承认端口的每个主机意味着一个任务，未来网络隔离应得到支持。
-
-粗粒度模式的优点是启动开销要低得多，但是需要在整个应用程序期间保留Mesos资源，要配置作业以动态调整其资源需求，请查看动态分配 。
-
+当你需要跨环境一致交付（开发、测试、生产）时，Kubernetes 能显著降低运行时差异，通常是 Spark 4.x 的首选部署平台之一。
 ## 小结
 
 本章讲述如何设置一个完整的开发环境来开发和调试Spark应用程序。本章使用Scala作为开发语言，sbt作为构建工具，讲述如何使用管理依赖项、如何打包和部署Spark应用程序。另外还介绍了Spark应用程序的几种部署模式。
+
+
+
+
+
+

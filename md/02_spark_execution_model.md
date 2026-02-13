@@ -1,5 +1,8 @@
-# 理解Spark
+﻿# 理解Spark
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 从较高级别来看，每个Spark应用程序都包含一个驱动程序，该程序运行用户的主要功能并在集群上执行各种并行操作。Spark运行框架包括了一些重要的概念用来实现独特的数据处理机制。Spark首先提供的抽象概念是弹性分布式数据集（Resilient
 Distributed
 Dataset，RDD），是跨集群节点划分的元素集合，可以并行操作。可以通过读取存在于Hadoop文件系统（或任何其他Hadoop支持的文件系统）的文件或驱动程序中现有的Scala集合，Spark可以将其进行转换来创建RDD。用户还可以要求Spark将RDD持久存储在内存中，从而使其可以在并行操作中高效地重用，最后RDD会自动从数据存储节点故障中恢复。Spark中的第二个抽象概念是可以在并行操作中使用的共享变量。默认情况下，当Spark作为一组任务在不同节点上并行运行一个函数时，它会将函数中使用的每个变量的副本传送给每个任务。有时，需要在任务之间或任务与驱动程序之间共享变量。Spark支持两种类型的共享变量：广播变量可用于在所有节点上的内存中缓存值；累加器是仅做加法的变量，可以用作计数和求和。这里提到地共享变量的概念会在后面的章节中介绍。
@@ -104,7 +107,7 @@ Spark的引入在很大程度上解决了这些问题。Spark包含一个称为G
 
 图例 4‑4Spark的迭代操作
 
-另外，几乎所有的机器学习算法都是基于迭代计算的工作机制。如前所述，迭代算法在MapReduce实现中涉及磁盘读写瓶颈。MapReduce使用的粗粒度任务（即任务级并行处理）对于迭代算法而言过于繁重。在分布式系统内核Mesos的帮助下，Spark会在每次迭代后缓存中间数据集，并在此缓存的数据集上运行多次迭代，从而减少磁盘读写，并有助于以容错的方式更快地运行算法。Spark有一个内置可扩展的机器学习库MLlib，其中包含高质量的算法，该算法利用迭代并产生比MapReduce使用时间更少的效果。Spark另一个功能是交互式分析界面，将Spark的运行结果立即提供给用户，无需集成开发工具和代码编译。此功能可以作为交互式探索数据的主要工具，也可以对正在开发的应用程序进行分部测试。下面代码显示了一个Spark
+另外，几乎所有的机器学习算法都是基于迭代计算的工作机制。如前所述，迭代算法在MapReduce实现中涉及磁盘读写瓶颈。MapReduce使用的粗粒度任务（即任务级并行处理）对于迭代算法而言过于繁重。在统一资源调度与内存计算机制的帮助下，Spark会在每次迭代后缓存中间数据集，并在此缓存的数据集上运行多次迭代，从而减少磁盘读写，并有助于以容错的方式更快地运行算法。Spark有一个内置可扩展的机器学习库MLlib，其中包含高质量的算法，该算法利用迭代并产生比MapReduce使用时间更少的效果。Spark另一个功能是交互式分析界面，将Spark的运行结果立即提供给用户，无需集成开发工具和代码编译。此功能可以作为交互式探索数据的主要工具，也可以对正在开发的应用程序进行分部测试。下面代码显示了一个Spark
 shell，用户在其中加载一个文件，然后计算文件的行数。
 
 root@bb8bf6efccc9:\~\# spark-shell
@@ -135,11 +138,11 @@ Welcome to
 
 \_\\ \\/ \_ \\/ \_ \`/ \_\_/ '\_/
 
-/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 2.4.5
+/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 4.1.1
 
 /\_/
 
-Using Scala version 2.11.12 (OpenJDK 64-Bit Server VM, Java 1.8.0\_212)
+Using Scala version 2.13.16 (OpenJDK 64-Bit Server VM, Java 17)
 
 Type in expressions to have them evaluated.
 
@@ -633,7 +636,7 @@ Programming）两种风格编写代码。面向对象编程范例提供了一个
 
 为了执行交互式数据清理、处理、修改和分析，许多数据科学家使用R或Python作为他们最喜欢的工具，并尝试使用该工具解决所有数据分析问题或工作。因此在大多数情况下，引入新工具可能会非常具有挑战性，新工具具有更多的语法和新的学习模式集。Spark中包括了用Python和R编写的API，通过PySpark和SparkR分别允许我们使用Python或R编程语言调用Spark的功能组件。但是，大多数Spark书和在线示例都是用Scala编写的。可以说，数据科学家使用与编写Spark代码相同的语言来学习Spark的开发，将比更胜于Java，Python或R编程语言。其原因包括：更好的性能并消除了数据处理开销；提供对Spark最新和最强大功能的访问；更好的理解Spark原理。
 
-意味着您正在编写Scala代码以使用Spark及其API（即SparkR，SparkSQL，Spark Streaming，Spark
+意味着您正在编写Scala代码以使用Spark及其API（即SparkR，SparkSQL，Structured Streaming，Spark
 MLlib和Spark
 GraphX）从集群中检索数据。或者，您正在使用Scala开发Spark应用程序，以在您自己的计算机上本地处理该数据。在这两种情况下，Scala都是您真正的朋友，并将及时向您派息。
 
@@ -646,7 +649,7 @@ REPL是命令行解释器，可以将其用作测试Scala代码的环境。要�
 
 root@bb8bf6efccc9:\~\# scala
 
-Welcome to Scala 2.12.8 (OpenJDK 64-Bit Server VM, Java 1.8.0\_212).
+Welcome to Scala 2.13.16 (OpenJDK 64-Bit Server VM, Java 17).
 
 Type in expressions for evaluation. Or try :help.
 
@@ -2291,11 +2294,11 @@ Welcome to
 
 \_\\ \\/ \_ \\/ \_ \`/ \_\_/ '\_/
 
-/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 2.4.5
+/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 4.1.1
 
 /\_/
 
-Using Scala version 2.11.12 (OpenJDK 64-Bit Server VM, Java 1.8.0\_212)
+Using Scala version 2.13.16 (OpenJDK 64-Bit Server VM, Java 17)
 
 Type in expressions to have them evaluated.
 
@@ -2305,26 +2308,17 @@ scala\>
 
 ### SparkContext和SparkSession
 
-会注意到当前的Spark交互界面中使用了SparkSession和SparkContext。在这里回顾一下Spark的历史，了解一下这两个对象的由来是很有必要的，因为将会在一段时间内经常使用这两个连接对象。在Spark
-2.0之前，Spark
-Context是任何Spark应用程序的入口，用于访问所有Spark功能，并且需要具有所有群集配置和参数的SparkConf来创建SparkContext对象。我们主要可以使用Spark
-Context仅创建RDD，并且必须为任何其他Spark交互创建特定的Spark上下文。从Spark
-2.0开始，SparkSession充当所有Spark功能的入口点。SparkContext提供的所有功能也都可以通过SparkSession获得。但是，如果有人喜欢使用SparkContext，还可以继续使用。HiveContext是SQLContext的超集，它可以做SQLContext可以做的事情以及其他许多事情，其包括使用更完整的HiveQL解析器编写查询，访问Hive
-UDF以及从Hive表读取数据的功能。SQLContext允许我们连接到不同的数据源以从中写入或读取数据，但是它有局限性，当Spark程序结束或Spark
-Shell关闭时，所有到数据源的链接都消失了，在下一个会话中将不可用。
+当前的Spark交互界面中同时可以看到SparkSession和SparkContext，但在Spark 4.x的日常开发里应把SparkSession作为统一入口。历史上，Spark 2.0之前常见的入口是SparkContext、SQLContext和HiveContext；从Spark 2.0开始，SparkSession整合了这些能力，DataFrame、Dataset、SQL与Structured Streaming都通过它进入。SparkContext仍然存在并且可直接访问，但更适合作为底层执行上下文，而不是业务代码的首选入口。
 
 ![ig 7. SparkContext as it relates to Driver and Cluster
 Manager](media/02_spark_execution_model/media/image9.png)
 
 图例 4‑14SparkContext和Driver Program、Cluster Manager之间的关系
 
-从上图中看到，SparkContext是访问所有Spark功能的渠道；每个JVM只存在一个SparkContext。Spark驱动程序（Driver
-Program）使用它连接到集群管理器（Cluster
-Manager）进行通信，提交Spark作业，并知道使用什么资源管理器（YARN、Mesos或Standalone）进行通信。驱动程序允许配置Spark配置参数，通过SparkContext驱动程序可以访问其他上下文对象，如SQLContext、HiveContext和StreamingContext。但是，从Spark
-2.0开始，SparkSession可以通过单一统一的入口点访问所有上述Spark的功能。除了简化访问DataFrame和Dataset
-API之外，它还包含了用来操作数据的底层上下文对象。
+从上图中看到，SparkContext是访问执行引擎的核心渠道；每个JVM通常只存在一个SparkContext。Spark驱动程序（Driver
+Program）使用它连接集群管理器（YARN、Kubernetes或Standalone），并完成任务调度与资源协同。在Spark 4.x中，推荐通过SparkSession访问SQL、DataFrame/Dataset和流处理API；需要底层能力时再通过`spark.sparkContext`访问SparkContext。
 
-总而言之，以前通过SparkContext、SQLContext或HiveContext调用的所有功能现在可以通过SparkSession获得。本质上，SparkSession是使用Spark处理数据的单一统一入口点。这样可以减少代码的复杂度，有更少的编程架构需要实现，就可能会犯更少的错误，并且的代码可能不会那么混乱。所以，使用SparkSession会简化Spark编程。
+总而言之，SparkSession是Spark 4.x的数据处理统一入口，它降低了API切换成本，也减少了旧上下文对象并存导致的工程复杂度。
 
 ### 加载数据
 
@@ -2588,3 +2582,8 @@ res10: bidAuctionRDD.type = ShuffledRDD\[18\] at reduceByKey at
 
 本章也介绍了Spark数据处理的基本机制。Apache
 Spark是一个在Hadoop上运行并处理不同类型数据的集群计算框架，对于许多问题来说可以一站式解决方案，因为Spark拥有丰富的数据处理资源，最重要的是，它比Hadoop的MapReduce快10-20倍。Spark通过其基于内存的本质获得了这种计算速度，数据被缓存并存在于存储器（RAM）中，并执行内存中的所有计算。另外，通过本章的学习理解RDD的基本概念，掌握Spark程序的基本结构以及基础编程、编译和运行过程，学会Spark开发环境的配置。
+
+
+
+
+

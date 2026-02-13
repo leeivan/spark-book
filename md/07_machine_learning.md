@@ -1,11 +1,17 @@
-# 机器学习
+﻿# 机器学习
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 机器学习是一门多领域交叉学科，涉及概率论、统计学、逼近论、凸分析、算法复杂度理论等多门学科。专门研究计算机怎样模拟或实现人类的学习行为，以获取新的知识或技能，重新组织已有的知识结构使之不断改善自身的性能。本课程将学习怎样定义Spark机器学习库；学习三种流行的机器学习技术：分类，聚类和协同过滤（推荐算法），并利用协同过滤来预测用户会喜欢什么。
 
 ## MLlib和ML
 
 在本文中，将讨论机器学习概念以及如何使用Apache Spark
 MLlib库来运行预测分析。将使用示例应用程序来说明Spark机器学习领域中功能强大的API。
+
+> 迁移建议（Spark 4.x）：
+> 本章部分示例仍使用`spark.mllib`（RDD API）以便解释算法原理与历史写法。新项目建议优先使用`spark.ml`（DataFrame API），并将特征工程、训练、评估与推理统一到Pipeline中。
 
 目前，Spark 机器学习是Apache Spark生态系统中重要的大数据分析库，如图例 4‑1所示。Spark机器学习
 API包括两个名为spark.mllib和spark.ml软件包。spark.mllib软件包基于弹性分布式数据集（RDD）的原始机器学习API，其提供机器学习的基本统计算法，包括相关性、分类和回归、协同过滤、聚类和降维。另一方面，
@@ -16,11 +22,7 @@ SQL库的核心部分。使用该包可用于开发和管理机器学习管道�
 
 图例 4‑1Spark的生态系统
 
-基于RDD的MLlib API现在处于维护模式。从Spark
-2.0开始，spark.mllib软件包中基于RDD的API已进入维护模式。Spark的主要机器学习API现在是spark.ml包中。在spark.mllib中，Spark仍将支持基于RDD的API，并提供错误修复，但不会向基于RDD的API添加新功能。在Spark
-2.x版本中，Spark在将继续在spark.ml包中添加基于DataFrameAPI的功能，以完成基于RDD的API所实现的功能。大概估计到Spark
-2.3，当通过DataFrame了实现基于RDD API的功能后，将不推荐使用基于RDD的API。预计将在Spark
-3.0中删除基于RDD的API。目前Spark处在RDD和DataFrame混合使用的阶段，所以需要回答下面几个问题：
+基于RDD的MLlib API处于维护模式。Spark 4.x下，官方机器学习主线是`spark.ml`（基于DataFrame/Dataset的管道化API），而`spark.mllib`主要用于兼容历史代码并接收必要修复。实践中，新项目应优先使用`spark.ml`，仅在维护存量系统或处理个别未迁移能力时才使用RDD风格API。目前很多生产系统仍会在迁移过程中混合使用RDD与DataFrame能力，所以需要回答下面几个问题：
 
   - 为什么要将MLlib切换到基于DataFrame的API？
 
@@ -2348,3 +2350,6 @@ ratioWrong: Double = 0.31526520418877885
 
 从Apache
 Spark项目发布之初，MLlib就被认为是Spark成功的基础。MLlib的关键优势在于允许数据科学家更多地专注于数据和模型，而不需要考虑怎样实现分布式数据基础架构和配置问题。Spark的核心组件是基于分布式系统实现的，MLib可以利用Spark集群优势提高机器学习的规模和速度。目前，MLlib实现了大部分机器学习算法，Spark提供了开放社区允许对现有机器学习框架进行构建和扩展。通过本章学习，了解了机器学习基本算法，MLlib用到的数据类型和API，最后通过实用程序介绍了机器学习算法的应用。
+
+
+

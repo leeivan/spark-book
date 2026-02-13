@@ -1,5 +1,8 @@
-# 关系型数据处理
+﻿# 关系型数据处理
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 大数据应用程序需要混合处理各种数据源和存储格式。为这些工作负载设计的MapReduce系统提供了一个功能强大但低级别的过程式编程。过程式编码是通过调用API实现数据的读取，需要了解特定API的使用规范，并且需要用户进行手动优化以实现高性能，因此出现了很多工具试图通过大数据系统接口来提供关系型方法提高用户体验。关系型方法是通过SQL语言实现数据读取，这是一种标准的应用于关系数据库上的查询语言，为用户提供了统一的查询格式。只要是熟悉关系数据库操作的用户就可以轻松使用，而且可以自动实现优化处理。目前，Pig、Hive、Dremel和Shark等工具都可以提供利用SQL语言实现丰富的查询功能。
 
 尽管关系型系统的普及表明用户通常更喜欢编写SQL查询，但关系型方法对于许多大数据应用程序来说是不够的。首先用户想要对半结构或非结构化的各种数据源执行ETL，需要根据数据类型定制代码；其次想要执行高级分析，例如机器学习和图处理，这些高级分析在关系型系统中难以表达。在实践中，大多数数据管道在理想情况下将结合使用关系查询和复杂的过程算法来表达，但是这两类系统（关系型和过程型）到目前为止仍然很大程度上是分离的，迫使用户只能选择其中一种模式。Spark
@@ -8,11 +11,11 @@ SQL结合两种模式的优点，弥合了两中模式之间的差距。与Apach
 SQL也是一种特殊的基于大量分布式内存计算的组件，是建立在底层的Spark核心RDD数据模型之上的。Spark
 SQL使用关系型数据结构保存和查询，可以持久结构化和半结构化数据。Spark
 SQL可以使用SQL、HiveQL和自定义类似SQL的数据集API，可以将其称为针对结构化查询的领域特定语言。Spark
-SQL以批处理和流式传输模式支持结构化查询，后者作为Spark SQL的单独模块与Spark Streaming集成实现结构化流。
+SQL以批处理和流式传输模式支持结构化查询，流式能力由Structured Streaming提供，并与Spark SQL共享统一执行引擎。
 
 Spark SQL是一个基于Apache Spark核心运行的库。Spark
 SQL的一个用途是执行SQL查询，也可用于从现有的Hive中读取数据，通过编程语言运行SQL时，结果将作为Dataset或DataFrame返回。还可以使用命令行，或者JDBC和ODBC与SQL接口进行交互（图例
-4‑1）。从Spark 2.0起，Spark SQL实际上已经成为内存分布式数据高层接口，将RDD隐藏在更高层次的抽象背后。Spark
+4‑1）。从Spark 4.x起，Spark SQL实际上已经成为内存分布式数据高层接口，将RDD隐藏在更高层次的抽象背后。Spark
 SQL启用Hive支持，我们可以使用HiveQL语法读取和写入基于Hive部署的数据。通过Spark
 SQL执行的选择查询都将生成一个Catalyst表达式树，同时进一步优化到大型分布式数据集上。像SQL和NoSQL数据库一样，Spark
 SQL使用逻辑查询计划优化器生成代码，通常可能比我们自定义代码更好。Spark
@@ -130,7 +133,7 @@ scala\> df.show
 
 代码 4‑1
 
-如上所述，在Spark 2.0中DataFrame只是Scala API或Java
+如上所述，在Spark 4.x中DataFrame只是Scala API或Java
 API中包含Dataset\[Row\]或Dataset\<Row\>的集合。基于DataFrame的操作是不带类型的，而Dataset是带类型的。
 
 scala\> df.printSchema()
@@ -270,7 +273,7 @@ global\_temp.people").show()
 
 代码 4‑4
 
-从Spark 2.0开始，Spark
+从Spark 4.x开始，Spark
 SQL主要的数据结构抽象就是DataSet，其表示一个结构化数据，其中定义的数据结构和类型。DataSet与RDD类似，但不是使用Java序列化或Kryo，而使用专门的编译器来串行化对象以便通过网络进行处理或传输。虽然编译器和标准序列化都是负责将对象转换成字节的，但编译器是动态生成的代码并使用了某种格式，允许Spark执行许多操作，如过滤、排序和散列，而无需将字节反序列化到对象中。这里我们包括一些使用Dataset进行结构化数据处理的基本示例。下面的例子用toDS()函数创建一个Dataset：
 
 scala\> case class Person(name: String, age: Long)
@@ -626,7 +629,7 @@ SQL和DataFrame支持的数据类型：
 | StructType    | 表示具有StructFields(fields)序列描述的结构。                                                                                                     |
 | StructField   | 表示StructType中的一个字段。                                                                                                                  |
 
-从Spark 2.x开始，Spark
+从Spark 4.x开始，Spark
 SQL提供另一种方式为复杂数据类型定义模式。首先，让我们看一个简单的例子，必须使用import语句导入编码器：
 
 scala\> import org.apache.spark.sql.Encoders
@@ -2236,7 +2239,7 @@ scala\> sfpdDF.createOrReplaceTempView("sfpd")
 
 （2）创建由StructType表示的数据结构，该结构与创建的RDD中的Row对象结构相匹配。
 
-（3）通过SQLContext提供的createDataFrame 方法将数据结构应用于RDD中的Row对象上。
+（3）通过SparkSession提供的createDataFrame 方法将数据结构应用于RDD中的Row对象上。
 
 使用此方法的另一个原因是当有超过22个字段时，Scala中的一个案例类中有22个字段的限制。让我们用一个简单的例子来演示如何以编程方式构建数据结构，以下是将用于创建DataFrame的示例数据：
 
@@ -2640,3 +2643,6 @@ returning NoSuchObjectException
 Spark SQL是用于结构化数据处理的Spark模块。与基本RDD API不同，Spark
 SQL的接口提供了更多有关数据结构和类型的信息，Spark
 SQL使用这些额外的信息来执行性能优化。DataFrame是分布式数据集合，是由命名列组织在一起的，实现了后台优化技术的关系型数据表。Spark提供了三种类型的数据结构抽象，其中包括：RDD、DataFrame和DataSet。无论DataFrame还是DataSet都是以RDD为底层进行了结构化的封装。本章我们已经知道如何创建DataFrame和Dataset，接下来的部分是学习如何使用提供的结构化操作来使用它们。
+
+
+
