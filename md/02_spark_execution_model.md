@@ -1,4 +1,18 @@
-﻿# 理解Spark
+# 理解Spark
+
+
+## 本章先看懂什么
+- Driver、Executor、Task 的职责分工。
+- 为什么会有 Stage 划分和 Shuffle。
+- 哪些操作会触发真正执行（Action）。
+
+## 一个最小例子
+代码：`rdd.map(...).filter(...).count()`
+- `map/filter` 只记录计算计划（惰性）。
+- `count` 才触发任务提交。
+- 如果中间有 `groupByKey`，通常会看到 Shuffle 阶段。
+
+先把“计划”和“执行”分开理解，后续调优会更容易。
 
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
