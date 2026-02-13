@@ -42,9 +42,9 @@
 
 | 不纯度  | 任务 | 公式                                                 | 描述                                                                                        |
 | ---- | -- | -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 基尼指数 | 分类 | \[\sum_{i = 1}^{C}{}f_{i}(1 - f_{i})\]             | \(f_{i}\)是标签\(i\) 在一个节点的频率，\(\text{C\ }\)是唯一标签的个数。                                        |
-| 信息熵  | 分类 | \[\sum_{i = 1}^{C}{} - f_{i}\log(f_{i})\]          | \(f_{i}\)是标签\(i\) 在一个节点的频率，\(\text{C\ }\)是唯一标签的个数。                                        |
-| 方差   | 回归 | \[\frac{1}{N}\sum_{i = 1}^{N}{}(y_{i} - \mu)^{2}\] | \(y_{i}\)是一个实例的标签, \(N\) 是实例的个数， \(\mu\) 是由 \(\frac{1}{N}\sum_{i = 1}^{N}{}y_{i}\)给出的平均值。 |
+| 基尼指数 | 分类 | \(\sum_{i = 1}^{C}{}f_{i}(1 - f_{i})\)             | \(f_{i}\)是标签\(i\) 在一个节点的频率，\(\text{C\ }\)是唯一标签的个数。                                        |
+| 信息熵  | 分类 | \(\sum_{i = 1}^{C}{} - f_{i}\log(f_{i})\)          | \(f_{i}\)是标签\(i\) 在一个节点的频率，\(\text{C\ }\)是唯一标签的个数。                                        |
+| 方差   | 回归 | \(\frac{1}{N}\sum_{i = 1}^{N}{}(y_{i} - \mu)^{2}\) | \(y_{i}\)是一个实例的标签, \(N\) 是实例的个数， \(\mu\) 是由 \(\frac{1}{N}\sum_{i = 1}^{N}{}y_{i}\)给出的平均值。 |
 
 节点的不纯度是节点上标记均质性的量度，当前的实现提供了两种用于分类的不纯度度量：基尼指数和信息熵；和一种用于回归的不纯度度量：方差。
 
@@ -786,9 +786,9 @@ TreeEnsembleModel regressor with 3 trees
 
 | 损失函数 | 任务 | 公式                                                       | 描述                       |
 | ---- | -- | -------------------------------------------------------- | ------------------------ |
-| 对数   | 分类 | \[2\sum_{i = 1}^{N}{}\log(1 + \exp( - 2y_{i}F(x_{i})))\] | 两次二项式负对数似然。              |
-| 平方误差 | 回归 | \[\sum_{i = 1}^{N}{}(y_{i} - F(x_{i}))^{2}\]             | 也称为L2损失函数，回归任务的默认损失。     |
-| 绝对误差 | 回归 | \[\sum_{i = 1}^{N}|y_{i} - F(x_{i})|\]                   | 也称为L1损失函数，对于离群值比平方误差更健壮。 |
+| 对数   | 分类 | \(2\sum_{i = 1}^{N}{}\log(1 + \exp( - 2y_{i}F(x_{i})))\) | 两次二项式负对数似然。              |
+| 平方误差 | 回归 | \(\sum_{i = 1}^{N}{}(y_{i} - F(x_{i}))^{2}\)             | 也称为L2损失函数，回归任务的默认损失。     |
+| 绝对误差 | 回归 | \(\sum_{i = 1}^{N}|y_{i} - F(x_{i})|\)                   | 也称为L1损失函数，对于离群值比平方误差更健壮。 |
 
 表格 4‑7 损失函数
 
@@ -1187,7 +1187,11 @@ spark.mllib包支持二元分类、多类分类和回归分析的各种方法，
 Spark实现了流行的线性方法，如逻辑回归和\(L_{1}\)或\(L_{2}\)正则化的线性最小二乘法。Spark还包括一个弹性网络的DataFrame
 API，是Zou等人提出的\(L_{1}\)和\(L_{2}\)正则化的混合体，正则化和通过弹性网络进行变量选择。在数学上，它被定义为\(L_{1}\)和\(L_{2}\)正则化项的凸组合：
 
-\[\alpha(\lambda\|\mathbf{w}\|_{1}) + (1 - \alpha)(\frac{\lambda}{2}\|\mathbf{w}\|_{2}^{2}),\alpha \in \lbrack 0,1\rbrack,\lambda \geq 0\]
+\[
+\alpha \lambda \|\mathbf{w}\|_{1}
+ + (1-\alpha)\frac{\lambda}{2}\|\mathbf{w}\|_{2}^{2},
+\quad \alpha \in [0,1],\ \lambda \ge 0
+\]
 
 公式 4‑1
 
@@ -1195,9 +1199,9 @@ API，是Zou等人提出的\(L_{1}\)和\(L_{2}\)正则化的混合体，正则�
 
 许多标准的机器学习方法可以被表述为一个凸优化问题，也就是寻找一个依赖于变量向量\(\mathbf{w}\)（称为代码中的权重）的凸函数\(f\)的最小化的任务，其具有\(d\)条目。在形式上，Spark可以把它写成优化问题\(\min_{\mathbf{w} \in \mathbb{R}^{d}}f(\mathbf{w})\)目标函数的形式为
 
-\[\begin{matrix}
-f(\mathbf{w}): = \lambda R(\mathbf{w}) + \frac{1}{n}\sum_{i = 1}^{n}{L(\mathbf{w};\mathbf{x}_{i},y_{i})\text{\ }} \\
-\end{matrix}\]
+\[
+f(\mathbf{w}) = \lambda R(\mathbf{w}) + \frac{1}{n}\sum_{i=1}^{n} L(\mathbf{w};\mathbf{x}_{i}, y_{i})
+\]
 
 公式 4‑2
 
@@ -1207,23 +1211,20 @@ f(\mathbf{w}): = \lambda R(\mathbf{w}) + \frac{1}{n}\sum_{i = 1}^{n}{L(\mathbf{w
 
 |      | 损失函数\(\ L(\mathbf{w};\mathbf{x},y)\)                               | 渐变或次渐变                                                                                                                          |
 | ---- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| 铰链损失 | \[\max\{ 0,1 - y\mathbf{w}^{T}\mathbf{x}\},y \in \{ - 1, + 1\}\]   | \[\{\begin{matrix}
- - y \cdot \mathbf{x} & \text{if\ }y\mathbf{w}^{T}\mathbf{x} < 1, \\
-0 & \text{otherwise}. \\
-\end{matrix}\] |
-| 逻辑损失 | \[log(1 + exp( - y\mathbf{w}^{T}\mathbf{x})),y \in \{ - 1, + 1\}\] | \[- y(1 - \frac{1}{1 + exp( - y\mathbf{w}^{T}\mathbf{x})}) \cdot \mathbf{x}\]                                                   |
-| 平方损失 | \[\frac{1}{2}(\mathbf{w}^{T}\mathbf{x} - y)^{2},y \in \mathbb{R}\] | \[(\mathbf{w}^{T}\mathbf{x} - y) \cdot \mathbf{x}\]                                                                             |
+| 铰链损失 | \(\max\{ 0,1 - y\mathbf{w}^{T}\mathbf{x}\},y \in \{ - 1, + 1\}\)   | \(\begin{cases} - y \cdot \mathbf{x}, & \text{if } y\mathbf{w}^{T}\mathbf{x} < 1 \\ 0, & \text{otherwise} \end{cases}\) |
+| 逻辑损失 | \(log(1 + exp( - y\mathbf{w}^{T}\mathbf{x})),y \in \{ - 1, + 1\}\) | \(- y(1 - \frac{1}{1 + exp( - y\mathbf{w}^{T}\mathbf{x})}) \cdot \mathbf{x}\)                                                   |
+| 平方损失 | \(\frac{1}{2}(\mathbf{w}^{T}\mathbf{x} - y)^{2},y \in \mathbb{R}\) | \((\mathbf{w}^{T}\mathbf{x} - y) \cdot \mathbf{x}\)                                                                             |
 
 表格 4‑9spark.mllib支持的方法损失函数及其梯度或子梯度
 
 请注意，在上面的数学公式中，二元标签\(y\)表示为\(+ 1\)（正数）或\(- 1\)（负数），便于公式化。但是在spark.mllib中负标签由\(0\)表示而不是\(- 1\)，以便与多类标签保持一致。正规化的目的是鼓励简单的模型，避免过度拟合。Spark在spark.mllib中支持以下正规化：
 
-|                     | 正则化\(\mathbf{R(}\mathbf{w}\mathbf{)}\)                                       | 渐变或次渐变                                                |
+|                     | 正则化\(R(\mathbf{w})\)                                                          | 渐变或次渐变                                                |
 | ------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
-| zero(unregularized) | \[\mathbf{0}\]                                                               | \[\mathbf{0}\]                                        |
-| L2                  | \[\frac{1}{2}\|\mathbf{w}\|_{2}^{2}\]                                        | \[\mathbf{w}\]                                        |
-| L1                  | \[\|\mathbf{w}\|_{1}\]                                                       | \[\text{sign}(\mathbf{w})\]                           |
-| 弹性网络                | \[\alpha\|\mathbf{w}\|_{1} + (1 - \alpha)\frac{1}{2}\|\mathbf{w}\|_{2}^{2}\] | \[\text{αsign}(\mathbf{w}) + (1 - \alpha)\mathbf{w}\] |
+| zero(unregularized) | \(\mathbf{0}\)                                                               | \(\mathbf{0}\)                                        |
+| L2                  | \(\frac{1}{2}\|\mathbf{w}\|_{2}^{2}\)                                        | \(\mathbf{w}\)                                        |
+| L1                  | \(\|\mathbf{w}\|_{1}\)                                                       | \(\text{sign}(\mathbf{w})\)                           |
+| 弹性网络                | \(\alpha\|\mathbf{w}\|_{1} + (1 - \alpha)\frac{1}{2}\|\mathbf{w}\|_{2}^{2}\) | \(\alpha\,\text{sign}(\mathbf{w}) + (1 - \alpha)\mathbf{w}\) |
 
 表格 4‑10spark.mllib中支持的正规化
 
@@ -1532,13 +1533,23 @@ res7: lrModel.type = logreg\_8f4d315ead25
 
 在使用多元系列训练的逻辑回归模型上，coefficients和intercept方法不被支持。改用coefficientMatrix和interceptVector。输出结果类\(k \in 1,2,\ldots,K\)的条件概率使用softmax函数进行建模。
 
-\[P(Y = k|\mathbf{X},\mathbf{\beta}_{k},\beta_{0k}) = \frac{e^{\mathbf{\beta}_{k} \cdot \mathbf{X} + \beta_{0k}}}{\sum_{k^{'} = 0}^{K - 1}e^{\mathbf{\beta}_{k^{'}} \cdot \mathbf{X} + \beta_{0k^{'}}}}\]
+\[
+P(Y=k\mid \mathbf{X},\mathbf{\beta}_{k},\beta_{0k})
+= \frac{\exp(\mathbf{\beta}_{k}\cdot\mathbf{X}+\beta_{0k})}
+{\sum_{j=0}^{K-1}\exp(\mathbf{\beta}_{j}\cdot\mathbf{X}+\beta_{0j})}
+\]
 
 公式 4‑4
 
 Spark使用多项式响应模型将加权负对数似然最小化，并使用弹性网络（elastic-net）惩罚来控制过拟合。
 
-\[\underset{\text{β,β}_{\text{0}}}{\text{min}}\text{-}\left\lbrack \sum_{\text{i=1}}^{\text{L}}{\text{w}_{\text{i}}\text{⋅}\text{log}{\text{P}\left( \text{Y=y}_{\text{i}} \middle| \text{x}_{\text{i}} \right)}} \right\rbrack\text{+λ}\left\lbrack \frac{\text{1}}{\text{2}\left( \text{1-α} \right)\left| \left| \text{β} \right| \right|_{\text{2}}^{\text{2}}}\text{+α}\left| \left| \text{β} \right| \right|_{\text{1}} \right\rbrack\]
+\[
+\min_{\beta,\beta_0}
+\left[
+-\sum_{i=1}^{L} w_i \log P(Y=y_i\mid x_i)
++ \lambda\left(\frac{1-\alpha}{2}\|\beta\|_2^2 + \alpha\|\beta\|_1\right)
+\right]
+\]
 
 公式 4‑5
 
@@ -2756,43 +2767,58 @@ r2: 0.022861466913958184
 
 相比较线性回归假设输出遵循高斯分布，广义线性模型是线性模型的特例，其中响应变量\(Y_{i}\)遵循的分布来自指数家族分布。Spark的GeneralizedLinearRegression接口允许灵活指定广义线性模型，可用于各种类型的预测问题，包括线性回归、泊松回归、逻辑回归等。目前在spark.ml中，只支持指数系列分布的一个子集。目前Spark最多只支持到4096特征，通过GeneralizedLinearRegression接口，如果超过这个限制会抛出异常。尽管如此，对于线性和逻辑回归，随着特征的增多模型可以用LinearRegression和LogisticRegression估计器训练。广义线性模型需要指数系列分布，能够以他的“经典”或“自然”的形式写成，又称为自然指数系列分布，自然指数系列分布的形式如下：
 
-\[f_{Y}(y|\theta,\tau) = h(y,\tau)\exp(\frac{\theta \cdot y - A(\theta)}{d(\tau)})\]
+\[
+f_{Y}(y|\theta,\tau) = h(y,\tau)\exp\!\left(\frac{\theta \cdot y - A(\theta)}{d(\tau)}\right)
+\]
 
 公式 4‑9
 
 其中\(\theta\)是需要估算的参数，\(\tau\)是离散参数。在广义线性模型中，响应变量\(Y_{i}\)被假定为从自然指数族分布中得出：
 
-\[Y_{i} \sim f( \cdot |\theta_{i},\tau)\]
+\[
+Y_i \sim f(\cdot \mid \theta_i,\tau)
+\]
 
 公式 4‑10
 
 其中估算参数\(\theta_{i}\)与响应变量\(\mu_{i}\)的期望值相关
 
-\[\mu_{i} = A^{'}\left( \theta_{i} \right)\]
+\[
+\mu_i = A'(\theta_i)
+\]
 
 公式 4‑11
 
-这里，\(A^{'}(\theta_{i})\)由所选分布的形式定义。广义线性模型还允许规定一个链接函数，该函数定义了响应变量\(\mu_{i}\)的期望值和所谓的线性预测器\(\eta_{i}\)之间的关系：
+这里，\(A'(\theta_i)\)由所选分布的形式定义。广义线性模型还允许规定一个链接函数，该函数定义了响应变量\(\mu_i\)的期望值和所谓的线性预测器\(\eta_i\)之间的关系：
 
-\[g(\mu_{i}) = \eta_{i} = {\overset{\rightarrow}{x_{i}}}^{T} \cdot \overset{\rightarrow}{\beta}\]
+\[
+g(\mu_i)=\eta_i=\mathbf{x}_i^T\boldsymbol{\beta}
+\]
 
 公式 4‑12
 
-通常，链接函数被选择为使得\(A^{'} = g^{- 1}\)，其产生感兴趣参数\(\theta\)与线性预测器\(\eta\)之间的简化关系。在这种情况下，链接函数\(g(\mu)\)被认为是“规范”链接函数。
+通常，链接函数被选择为使得\(A' = g^{-1}\)，其产生感兴趣参数\(\theta\)与线性预测器\(\eta\)之间的简化关系。在这种情况下，链接函数\(g(\mu)\)被认为是“规范”链接函数。
 
-\[\theta_{i} = A^{' - 1}\left( \mu_{i} \right) = g\left( g^{- 1}\left( \eta_{i} \right) \right) = \eta_{i}\]
+\[
+\theta_i = A'^{-1}(\mu_i) = g\!\left(g^{-1}(\eta_i)\right)=\eta_i
+\]
 
 公式 4‑13
 
 广义线性模型找到回归系数\(\overset{\rightarrow}{\beta}\)最大似然函数。
 
-\[\max_{\overset{\rightarrow}{\beta}}\mathcal{L(}\overset{\rightarrow}{\theta}|\overset{\rightarrow}{y},X) = \prod_{i = 1}^{N}{h(y_{i},\tau)\exp(\frac{y_{i}\theta_{i} - A(\theta_{i})}{d(\tau)})}\]
+\[
+\max_{\boldsymbol{\beta}} \mathcal{L}(\boldsymbol{\theta}\mid\mathbf{y},X)
+= \prod_{i=1}^{N} h(y_i,\tau)\exp\!\left(\frac{y_i\theta_i - A(\theta_i)}{d(\tau)}\right)
+\]
 
 公式 4‑14
 
 其中估算参数\(\theta_{i}\)与回归系数\(\overset{\rightarrow}{\beta}\)有关
 
-\[\theta_{i} = A^{' - 1}(g^{- 1}(\overset{\rightarrow}{x_{i}} \cdot \overset{\rightarrow}{\beta}))\]
+\[
+\theta_i = A'^{-1}\!\left(g^{-1}(\mathbf{x}_i \cdot \boldsymbol{\beta})\right)
+\]
 
 公式 4‑15
 
@@ -3526,15 +3552,22 @@ Predict: 0.0
 
 在spark.ml中，我们实现了加速失败时间（Accelerated Failure
 Time，AFT）模型，该模型是用于审查数据的参数生存回归模型。它描述了对数存活时间的模型，所以它通常被称为生存分析对数线性模型。不同与同一个目的的比例风险模型设计，AFT模型更容易并行化，因为每个实例独立地作为目标函数。对于受试者i
-= 1，...，n的随机生命期\(t_{i}\)，假定给定协变量\(x^{‘}\)值带有可能的右截尾，AFT模型下的似然函数为：
+= 1，...，n的随机生命期\(t_i\)，假定给定协变量\(\mathbf{x}_i\)值带有可能的右截尾，AFT模型下的似然函数为：
 
-\[L(\beta,\sigma) = \prod_{i = 1}^{n}{\lbrack\frac{1}{\sigma}f_{0}(\frac{\log t_{i} - x^{'}\beta}{\sigma})\rbrack^{\delta_{i}}S_{0}(\frac{\log t_{i} - x^{'}\beta}{\sigma})^{1 - \delta_{i}}}\]
+\[
+L(\beta,\sigma)=\prod_{i=1}^{n}
+\left[\frac{1}{\sigma}f_0\!\left(\frac{\log t_i-\mathbf{x}_i^T\beta}{\sigma}\right)\right]^{\delta_i}
+S_0\!\left(\frac{\log t_i-\mathbf{x}_i^T\beta}{\sigma}\right)^{1-\delta_i}
+\]
 
 公式 4‑16
 
-其中\(\delta_{i}\)是发生事件的指标，即未经审查。使用\(\epsilon_{i} = \frac{\log t_{i} - x^{‘}\beta}{\sigma}\)，对数似然函数呈现如下形式：
+其中\(\delta_i\)是发生事件的指标（未删失）。使用\(\epsilon_i=\frac{\log t_i-\mathbf{x}_i^T\beta}{\sigma}\)，对数似然函数为：
 
-\[\iota(\beta,\sigma) = \sum_{i = 1}^{n}{\lbrack - \delta_{i}\log\sigma + \delta_{i}\log f_{0}(\epsilon_{i}) + (1 - \delta_{i})\log S_{0}(\epsilon_{i})\rbrack}\]
+\[
+\iota(\beta,\sigma)=\sum_{i=1}^{n}
+\left[-\delta_i\log\sigma+\delta_i\log f_0(\epsilon_i)+(1-\delta_i)\log S_0(\epsilon_i)\right]
+\]
 
 公式 4‑17
 
@@ -3554,17 +3587,25 @@ Time，AFT）模型，该模型是用于审查数据的参数生存回归模型�
 
 具有威布尔寿命分布的AFT模型的对数似然函数为：
 
-\[\iota(\beta,\sigma) = - \sum_{i = 1}^{n}{\lbrack\delta_{i}\log\sigma - \delta_{i}\epsilon_{i} + e^{\epsilon_{i}}\rbrack}\]
+\[
+\iota(\beta,\sigma)=- \sum_{i=1}^{n}\left[\delta_i\log\sigma - \delta_i\epsilon_i + e^{\epsilon_i}\right]
+\]
 
 公式 4‑20
 
 由于最小化等价于最大后验概率的负对数似然度，Spark用来优化的损失函数是\(- \iota(\beta,\sigma)\)。\(\beta\)和\(\log\sigma\)的梯度函数分别为：
 
-\[\frac{\partial\left( - \iota \right)}{\partial\beta} = \sum_{1 = 1}^{n}{\left\lbrack \delta_{i} - e^{\epsilon_{i}} \right\rbrack\frac{x_{i}}{\sigma}}\]
+\[
+\frac{\partial(-\iota)}{\partial\beta}
+=\sum_{i=1}^{n}\left[\delta_i - e^{\epsilon_i}\right]\frac{\mathbf{x}_i}{\sigma}
+\]
 
 公式 4‑21
 
-\[\frac{\partial( - \iota)}{\partial(\log\sigma)} = \sum_{i = 1}^{n}{\lbrack\delta_{i} + (\delta_{i} - e^{\epsilon_{i}})\epsilon_{i}\rbrack}\]
+\[
+\frac{\partial(-\iota)}{\partial(\log\sigma)}
+=\sum_{i=1}^{n}\left[\delta_i + (\delta_i - e^{\epsilon_i})\epsilon_i\right]
+\]
 
 公式 4‑22
 
@@ -3656,9 +3697,9 @@ scala\> model.transform(training).show(false)
 
 保序回归属于回归算法系列。正式保序回归是一个问题，其中给定的有限实数集合\(Y = y_{1},y_{2},...,y_{n}\)代表观察到的响应和\(X = x_{1},x_{2},...,x_{n}\)未知响应值被拟合发现最小化的函数：
 
-\[\begin{matrix}
-f(x) = \sum_{i = 1}^{n}{w_{i}(y_{i} - x_{i})^{2}} \\
-\end{matrix}\]
+\[
+f(x)=\sum_{i=1}^{n} w_i (y_i-x_i)^2
+\]
 
 公式 4‑23
 

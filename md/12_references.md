@@ -1,5 +1,8 @@
-# 参考文献
+﻿# 参考文献
 
+> **版本基线（更新于 2026-02-13）**
+> 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
+> 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
 1.  http://spark.apache.org/
 
 2.  <https://mapr.com/>
@@ -35,3 +38,6 @@
 16. <http://bigdatatn.blogspot.com/2017/05/spark-performance-optimization-shuffle.html>
 
 17. https://legacy.gitbook.com/@jaceklaskowski
+
+
+
