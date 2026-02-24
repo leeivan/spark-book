@@ -908,8 +908,8 @@ Spark实现了流行的线性方法，如逻辑回归和 $L_{1}$ 或 $L_{2}$ 正
 API，是Zou等人提出的 $L_{1}$ 和 $L_{2}$ 正则化的混合体，正则化和通过弹性网络进行变量选择。在数学上，它被定义为 $L_{1}$ 和 $L_{2}$ 正则化项的凸组合：
 
 $$
-\alpha \lambda \|\mathbf{w}\|_{1}
- + (1-\alpha)\frac{\lambda}{2}\|\mathbf{w}\|_{2}^{2},
+\alpha \lambda \lVert\mathbf{w}\rVert_{1}
+ + (1-\alpha)\frac{\lambda}{2}\lVert\mathbf{w}\rVert_{2}^{2},
 \quad \alpha \in [0,1],\ \lambda \ge 0
 $$
 
@@ -942,9 +942,9 @@ $$
 |                     | 正则化 $R(\mathbf{w})$                                                          | 渐变或次渐变                                                |
 | ------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
 | zero(unregularized) | $\mathbf{0}$                                                               | $\mathbf{0}$                                        |
-| L2                  | $\frac{1}{2}\|\mathbf{w}\|_{2}^{2}$                                        | $\mathbf{w}$                                        |
-| L1                  | $\|\mathbf{w}\|_{1}$                                                       | $\text{sign}(\mathbf{w})$                           |
-| 弹性网络                | $\alpha\|\mathbf{w}\|_{1} + (1 - \alpha)\frac{1}{2}\|\mathbf{w}\|_{2}^{2}$ | $\alpha\,\text{sign}(\mathbf{w}) + (1 - \alpha)\mathbf{w}$ |
+| L2                  | $\frac{1}{2}\lVert\mathbf{w}\rVert_{2}^{2}$                                        | $\mathbf{w}$                                        |
+| L1                  | $\lVert\mathbf{w}\rVert_{1}$                                                       | $\text{sign}(\mathbf{w})$                           |
+| 弹性网络                | $\alpha\lVert\mathbf{w}\rVert_{1} + (1 - \alpha)\frac{1}{2}\lVert\mathbf{w}\rVert_{2}^{2}$ | $\alpha\,\text{sign}(\mathbf{w}) + (1 - \alpha)\mathbf{w}$ |
 
 表格 4‑10spark.mllib中支持的正规化
 
@@ -1205,7 +1205,7 @@ $$
 \min_{\beta,\beta_0}
 \left[
 -\sum_{i=1}^{L} w_i \log P(Y=y_i\mid x_i)
-+ \lambda\left(\frac{1-\alpha}{2}\|\beta\|_2^2 + \alpha\|\beta\|_1\right)
++ \lambda\left(\frac{1-\alpha}{2}\lVert\beta\rVert_2^2 + \alpha\lVert\beta\rVert_1\right)
 \right]
 $$
 
