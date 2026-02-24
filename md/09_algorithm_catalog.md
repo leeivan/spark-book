@@ -1203,8 +1203,7 @@ Spark使用多项式响应模型将加权负对数似然最小化，并使用弹
 $$
 \min_{\beta,\beta_0}
 \left[
--\sum_{i=1}^{L} w_i \log P(Y=y_i\mid x_i)
-+ \lambda\left(\frac{1-\alpha}{2}\lVert\beta\rVert_2^2 + \alpha\lVert\beta\rVert_1\right)
+-\sum_{i=1}^{L} w_i \log P(Y=y_i\mid x_i) + \lambda\left(\frac{1-\alpha}{2}\lVert\beta\rVert_2^2 + \alpha\lVert\beta\rVert_1\right)
 \right]
 $$
 
