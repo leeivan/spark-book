@@ -943,7 +943,7 @@ $$
 
 |      | 损失函数 $\ L(\mathbf{w};\mathbf{x},y)$                               | 渐变或次渐变                                                                                                                          |
 | ---- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| 铰链损失 | $\max\{ 0,1 - y\mathbf{w}^{T}\mathbf{x}\},y \in \{ - 1, + 1\}$   | $\begin{cases} - y \cdot \mathbf{x}, & \text{if } y\mathbf{w}^{T}\mathbf{x} \lt 1 \\ 0, & \text{otherwise} \end{cases}$ |
+| 铰链损失 | $\max\{ 0,1 - y\mathbf{w}^{T}\mathbf{x}\},y \in \{ - 1, + 1\}$   | $\begin{cases} - y \cdot \mathbf{x}, & \text{if } y\mathbf{w}^{T}\mathbf{x} < 1 \\\\ 0, & \text{otherwise} \end{cases}$ |
 | 逻辑损失 | $log(1 + exp( - y\mathbf{w}^{T}\mathbf{x})),y \in \{ - 1, + 1\}$ | $- y(1 - \frac{1}{1 + exp( - y\mathbf{w}^{T}\mathbf{x})}) \cdot \mathbf{x}$                                                   |
 | 平方损失 | $\frac{1}{2}(\mathbf{w}^{T}\mathbf{x} - y)^{2},y \in \mathbb{R}$ | $(\mathbf{w}^{T}\mathbf{x} - y) \cdot \mathbf{x}$                                                                             |
 
