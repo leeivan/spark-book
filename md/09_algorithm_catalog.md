@@ -920,7 +920,7 @@ $$
 - 直观上，$L_{1}$ 更容易把一部分权重压到 0，从而起到“自动挑特征”的效果；$L_{2}$ 更倾向于把所有权重整体缩小，让模型更稳定。
 - 当特征很多且彼此相关（共线性较强）时，弹性网络往往比单用 $L_{1}$ 或 $L_{2}$ 更好用。
 
-其中 $\lVert\mathbf{w}\rVert_{1}=\sum_{j=1}^{d}\lvert w_j\rvert$，$\lVert\mathbf{w}\rVert_{2}^{2}=\sum_{j=1}^{d} w_j^{2}$。Spark 的管道 API 在线性回归和逻辑回归中都支持弹性网络正则化（对应参数 `elasticNetParam` 与 `regParam`）。
+其中 $\lVert\mathbf{w}\rVert_{1}=\sum_{j=1}^{d}\lvert w_j\rvert$， $\lVert\mathbf{w}\rVert_{2}^{2}=\sum_{j=1}^{d} w_j^{2}$。Spark 的管道 API 在线性回归和逻辑回归中都支持弹性网络正则化（对应参数 `elasticNetParam` 与 `regParam`）。
 
 许多标准的机器学习方法都可以被表述为一个优化问题：找到一组参数（权重）向量 $\mathbf{w}$，使目标函数 $f(\mathbf{w})$ 尽可能小。这里说“凸优化”，主要是因为凸函数不会出现“局部最小但不是全局最小”的陷阱，优化更可靠。形式化地，可以写成 $\min_{\mathbf{w} \in \mathbb{R}^{d}} f(\mathbf{w})$，其中目标函数常写为：
 
