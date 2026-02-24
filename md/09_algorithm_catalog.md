@@ -908,8 +908,7 @@ Spark实现了流行的线性方法，如逻辑回归和 $L_{1}$ 或 $L_{2}$ 正
 API，是Zou等人提出的 $L_{1}$ 和 $L_{2}$ 正则化的混合体，正则化和通过弹性网络进行变量选择。在数学上，它被定义为 $L_{1}$ 和 $L_{2}$ 正则化项的凸组合：
 
 $$
-\alpha \lambda \lVert\mathbf{w}\rVert_{1}
- + (1-\alpha)\frac{\lambda}{2}\lVert\mathbf{w}\rVert_{2}^{2},
+\alpha \lambda \lVert\mathbf{w}\rVert_{1} + (1-\alpha)\frac{\lambda}{2}\lVert\mathbf{w}\rVert_{2}^{2},
 \quad \alpha \in [0,1],\ \lambda \ge 0
 $$
 
