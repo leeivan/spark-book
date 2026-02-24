@@ -162,14 +162,13 @@ Type in expressions to have them evaluated.
 
 Type :help for more information.
 
-scala\> val auctionRDD = sc.textFile("/data/auctiondata.csv")
-
-auctionRDD: org.apache.spark.rdd.RDD\[String\] = /data/auctiondata.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:24
-
-scala\> auctionRDD.count
-
+```scala
+scala> val auctionRDD = sc.textFile("/data/auctiondata.csv")
+auctionRDD: org.apache.spark.rdd.RDD[String] = /data/auctiondata.csv
+MapPartitionsRDD[1] at textFile at <console>:24
+scala> auctionRDD.count
 res0: Long = 10654
+```
 
 代码 4.1
 
@@ -209,29 +208,22 @@ S3。这使作业的计算变慢，因为它在此过程中涉及许多IO操作�
 Spark生成初始的RDD有两种方法。一种是将驱动程序中的现有并行化集合，或者从外部存储系统中引用数据集，例如共享文件系统、HDFS、HBase、或者任何提供了Hadoop
 InputFormat的数据源。通过在驱动程序中的现有集合（对于Scala，此数据类型为Seq）上调用SparkContext的parallelize()方法创建并行化集合，集合中的元素被复制形成分布式数据集，可以进行并行操作的。该方法用于学习Spark的初始阶段，因为它可以在交互界面中快速创建我们自己的RDD并对其执行操作。此方法很少在测试和原型制作中使用，因为如果数据量大此方法无法在一台计算机上存储整个数据集。考虑以下sortByKey()的示例，要排序的数据通过并行化集合来获取：
 
-scala\> val
+```scala
+scala> val
 data=spark.sparkContext.parallelize(Seq(("maths",52),("english",75),("science",82),
 ("computer",65),("maths",85)))
-
-data: org.apache.spark.rdd.RDD\[(String, Int)\] =
-ParallelCollectionRDD\[2\] at parallelize at \<console\>:23
-
-scala\> val sorted = data.sortByKey()
-
-sorted: org.apache.spark.rdd.RDD\[(String, Int)\] = ShuffledRDD\[5\] at
-sortByKey at \<console\>:25
-
-scala\> sorted.foreach(println)
-
+data: org.apache.spark.rdd.RDD[(String, Int)] =
+ParallelCollectionRDD[2] at parallelize at <console>:23
+scala> val sorted = data.sortByKey()
+sorted: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[5] at
+sortByKey at <console>:25
+scala> sorted.foreach(println)
 (maths,52)
-
 (science,82)
-
 (english,75)
-
 (computer,65)
-
 (maths,85)
+```
 
 代码 4.3
 
@@ -244,30 +236,22 @@ Spark将为群集的每个分区运行一个任务。对于群集中的每个CPU
 但是我们也可以手动设置分区数。
 这是通过将分区数作为第二个参数进行并行化来实现的。例如sc.parallelize(data,10)，这里我们手动给定分区数为10。再看一个示例，在这里我们使用了并行化收集，并手动指定了分区数：
 
-scala\> val rdd1 =
+```scala
+scala> val rdd1 =
 spark.sparkContext.parallelize(Array("jan","feb","mar","april","may","jun"),3)
-
-rdd1: org.apache.spark.rdd.RDD\[String\] = ParallelCollectionRDD\[6\] at
-parallelize at \<console\>:23
-
-scala\> val result = rdd1.coalesce(2)
-
-result: org.apache.spark.rdd.RDD\[String\] = CoalescedRDD\[7\] at
-coalesce at \<console\>:25
-
-scala\> result.foreach(println)
-
+rdd1: org.apache.spark.rdd.RDD[String] = ParallelCollectionRDD[6] at
+parallelize at <console>:23
+scala> val result = rdd1.coalesce(2)
+result: org.apache.spark.rdd.RDD[String] = CoalescedRDD[7] at
+coalesce at <console>:25
+scala> result.foreach(println)
 jan
-
 mar
-
 feb
-
 april
-
 may
-
 jun
+```
 
 Spark可以从被Hadoop支持的任何存储源创建RDD，其中包括本地文件系统、HDFS、Cassandra、HBase、Amazon
 S3等。Spark支持文本文件、SequenceFiles和任何其他Hadoop
@@ -290,10 +274,11 @@ RDD谱系也称为RDD运算符图或RDD依赖图，是一个逻辑执行计划�
 
 首先介绍基于一个RDD的转换。基于一个RDD的转换是指输入的RDD只有一个。首先首先通过并行化数据集创建一个RDD：
 
-scala\> val rdd = sc.parallelize(List(1,2,3,3))
-
-rdd: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[0\] at
-parallelize at \<console\>:24
+```scala
+scala> val rdd = sc.parallelize(List(1,2,3,3))
+rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[0] at
+parallelize at <console>:24
+```
 
 代码 4.35
 
@@ -301,9 +286,10 @@ parallelize at \<console\>:24
 
 通过对这个RDD的所有元素应用一个匿名函数来返回一个新的RDD。map()方法具有灵活性，即RDD的输入和返回类型可以彼此不同。例如可以输入RDD类型为String，在应用map()方法之后，返回的RDD可以是布尔值。map()是Spark中的转换操作，适用于RDD的每个元素，并将结果作为新的RDD返回。在map()中，操作开发人员可以定义自己的自定义业务逻辑，相同的逻辑将应用于RDD的所有元素。map()方法根据自定义代码将一个元素作为输入过程，并一次返回一个元素。map()将长度为N的RDD转换为长度为N的另一个RDD，输入和输出RDD通常具有相同数量的记录。
 
-scala\> rdd.map(x =\> x + 1).collect
-
-res0: Array\[Int\] = Array(2, 3, 4, 4)
+```scala
+scala> rdd.map(x => x + 1).collect
+res0: Array[Int] = Array(2, 3, 4, 4)
+```
 
 代码 4.36
 
@@ -311,9 +297,10 @@ res0: Array\[Int\] = Array(2, 3, 4, 4)
 
 返回一个仅包含满足条件元素的新RDD。filter()方法返回一个新的RDD，其中仅包含满足条件的元素。这是一个狭窄的操作，因为它不会将数据从一个分区拖到多个分区。例如，假设RDD包含五个自然数1、2、3、4和5，并且根据条件检查偶数，过滤器后的结果RDD将仅包含偶数，即2和4。
 
-scala\> rdd.filter(x =\> x \!= 1).collect
-
-res1: Array\[Int\] = Array(2, 3, 3)
+```scala
+scala> rdd.filter(x => x != 1).collect
+res1: Array[Int] = Array(2, 3, 3)
+```
 
 代码 4.37
 
@@ -322,14 +309,13 @@ res1: Array\[Int\] = Array(2, 3, 3)
 
 首先对这个RDD的所有元素应用一个函数，然后扁平化结果，最终返回一个新的RDD。flatMap()方法是一种转换操作，适用于RDD的每个元素，并将结果作为新的RDD返回。它类似于map()，但是flatMap方法根据一个自定义代码将一个元素作为输入过程，相同的逻辑将应用于RDD的所有元素，并一次返回0个或多个元素。flatMap()方法将长度为N的RDD转换为长度为M的另一个RDD。借助于flatMap()方法，对于每个输入元素在输出RDD中都有许多对应的元素，flatMap()的最简单用法是将每个输入字符串分成单词。map()和flatMap()的相似之处在于它们从输入RDD中获取一个元素，并在该元素上应用方法。map()和flatMap()之间的主要区别是map()仅返回一个元素，而flatMap()可以返回元素列表。
 
-scala\> rdd.flatMap(x =\> x.to(3)).collect
-
-res2: Array\[Int\] = Array(1, 2, 3, 2, 3, 3, 3)
-
-scala\> rdd.map(x =\> x.to(3)).collect
-
-res2: Array\[scala.collection.immutable.Range.Inclusive\] =
+```scala
+scala> rdd.flatMap(x => x.to(3)).collect
+res2: Array[Int] = Array(1, 2, 3, 2, 3, 3, 3)
+scala> rdd.map(x => x.to(3)).collect
+res2: Array[scala.collection.immutable.Range.Inclusive] =
 Array(Range(1, 2, 3), Range(2, 3), Range(3), Range(3))
+```
 
 代码 4.38
 
@@ -337,21 +323,21 @@ Array(Range(1, 2, 3), Range(2, 3), Range(3), Range(3))
 
 Range是相等地间隔开的整数有序序列。例如，“1,2,3”是一个Range，“5,8,11,14”也是。要创建Scala中的一个Range，使用预定义的方法to和by。
 
-scala\> 1 to 3
-
+```scala
+scala> 1 to 3
 res4: scala.collection.immutable.Range.Inclusive = Range(1, 2, 3)
-
-scala\> 5 to 14 by 3
-
+scala> 5 to 14 by 3
 res3: scala.collection.immutable.Range = Range(5, 8, 11, 14)
+```
 
 代码 4.39
 
 如果想创建一个Range，而不包括上限，可以用方便的方法until：
 
-scala\> 1 until 3
-
+```scala
+scala> 1 until 3
 res3: scala.collection.immutable.Range = Range(1, 2)
+```
 
 代码 4.40
 
@@ -362,9 +348,10 @@ Range以恒定的间隔表示，因为它们可以由三个数字定义：开始
 返回一个包含该RDD中不同元素的新RDD，返回一个新的数据集，其中包含源数据集的不同元素，删除重复数据很有帮助。例如如果RDD具有元素(Spark,
 Spark, Hadoop, Flink)，则rdd.distinct()将给出元素(Spark, Hadoop, Flink)。
 
-scala\> rdd.distinct().collect
-
-res4: Array\[Int\] = Array(2, 1, 3)
+```scala
+scala> rdd.distinct().collect
+res4: Array[Int] = Array(2, 1, 3)
+```
 
 代码 4.41
 
@@ -377,32 +364,28 @@ res4: Array\[Int\] = Array(2, 1, 3)
 
 该函数最多可以传三个参数：第一个参数是一个匿名函数，该函数的也有一个带T泛型的参数，返回类型和RDD中元素的类型是一致的；第二个参数是ascending，该参数决定排序后RDD中的元素是升序还是降序，默认是true，也就是升序；第三个参数是numPartitions，该参数决定排序后的RDD的分区个数，默认排序后的分区个数和排序之前的个数相等，即为this.partitions.size。从sortBy函数的实现可以看出，第一个参数是必须传入的，而后面的两个参数可以不需要传入。而且sortBy函数的实现依赖于sortByKey函数，关于sortByKey函数后面会进行说明：
 
-scala\> val rdd = sc.parallelize(List(3,1,90,3,5,12))
-
-rdd: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[96\] at
-parallelize at \<console\>:24 scala\>
-
-scala\> rdd.sortBy(x =\> x).collect
-
-res73: Array\[Int\] = Array(1, 3, 3, 5, 12, 90)
-
-scala\> rdd.sortBy(x =\> x, false).collect
-
-res3: Array\[Int\] = Array(90, 12, 5, 3, 3, 1)
+```scala
+scala> val rdd = sc.parallelize(List(3,1,90,3,5,12))
+rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[96] at
+parallelize at <console>:24 scala>
+scala> rdd.sortBy(x => x).collect
+res73: Array[Int] = Array(1, 3, 3, 5, 12, 90)
+scala> rdd.sortBy(x => x, false).collect
+res3: Array[Int] = Array(90, 12, 5, 3, 3, 1)
+```
 
 代码 4.42
 
 下面介绍的转换是基于两个RDD。基于二个RDD的转换是指输入RDD是两个，转换后变成一个。首先创建两个RDD：
 
-scala\> val rdd = sc.parallelize(List(1,2,3))
-
-rdd: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[10\] at
-parallelize at \<console\>:24
-
-scala\> val other = sc.parallelize(List(3,4,5))
-
-other: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[11\] at
-parallelize at \<console\>:24
+```scala
+scala> val rdd = sc.parallelize(List(1,2,3))
+rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[10] at
+parallelize at <console>:24
+scala> val other = sc.parallelize(List(3,4,5))
+other: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[11] at
+parallelize at <console>:24
+```
 
 代码 4.43
 
@@ -413,9 +396,10 @@ Spark, Hadoop, Flink)，而RDD2的元素是(Big data, Spark,
 Flink)，因此生成的rdd1.union(rdd2)将具有元素(Spark, Spark, Spark
 Hadoop, Flink, Flink, Big data）。
 
-scala\> rdd.union(other).collect
-
-res6: Array\[Int\] = Array(1, 2, 3, 3, 4, 5)
+```scala
+scala> rdd.union(other).collect
+res6: Array[Int] = Array(1, 2, 3, 3, 4, 5)
+```
 
 代码 4.44
 
@@ -426,9 +410,10 @@ res6: Array\[Int\] = Array(1, 2, 3, 3, 4, 5)
 Flink)，而RDD2的元素为(Big data, Spark,
 Flink)，因此rdd1.intersection(rdd2)生成的RDD将具有元素(spark)。
 
-scala\> rdd.intersection(other).collect
-
-res7: Array\[Int\] = Array(3)
+```scala
+scala> rdd.intersection(other).collect
+res7: Array[Int] = Array(3)
+```
 
 代码 4.45
 
@@ -436,9 +421,10 @@ res7: Array\[Int\] = Array(3)
 
 返回一个RDD，其中包括的元素在调用subtract()方法的RDD而不在另一个。
 
-scala\> rdd.subtract(other).collect
-
-res8: Array\[Int\] = Array(2, 1)
+```scala
+scala> rdd.subtract(other).collect
+res8: Array[Int] = Array(2, 1)
+```
 
 代码 4.46
 
@@ -447,10 +433,11 @@ res8: Array\[Int\] = Array(2, 1)
 
 计算两个RDD之间的笛卡尔积，即第一个RDD的每个项目与第二个RDD的每个项目连接，并将它们作为新的RDD返回。使用此功能时要小心，内存消耗很快就会成为问题。
 
-scala\> rdd.cartesian(other).collect
-
-res9: Array\[(Int, Int)\] = Array((1,3), (1,4), (1,5), (2,3), (3,3),
+```scala
+scala> rdd.cartesian(other).collect
+res9: Array[(Int, Int)] = Array((1,3), (1,4), (1,5), (2,3), (3,3),
 (2,4), (2,5), (3,4), (3,5))
+```
 
 代码 4.47
 
@@ -458,10 +445,11 @@ res9: Array\[(Int, Int)\] = Array((1,3), (1,4), (1,5), (2,3), (3,3),
 
 转换会创建RDD，但是当我们要获取实际数据集时将需要执行动作。当触发动作后，不会像转换那样形成新的RDD，因此动作是提供非RDD值的操作，计算结果存储到驱动程序或外部存储系统中，并将惰性执行的RDD转换激活开始实际的计算任务。动作是将数据从执行器发送到驱动程序的方法之一，执行器是负责执行任务的代理。驱动程序是一个JVM进程，可协调工作节点和任务的执行。现在来看看Spark包含哪些基本动作，首先创建一个RDD：
 
-scala\> val rdd = sc.parallelize(List(1,2,3,3))
-
-rdd: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[24\] at
-parallelize at \<console\>:24
+```scala
+scala> val rdd = sc.parallelize(List(1,2,3,3))
+rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[24] at
+parallelize at <console>:24
+```
 
 代码 4.48
 
@@ -469,9 +457,10 @@ parallelize at \<console\>:24
 
 此函数提供Spark中众所周知的Reduce功能。请注意，提供的任何方法f都应该符合交换律，以产生可重复的结果。reduce()方法将RDD中的两个元素作为输入，然后生成与输入元素相同类型的输出。这种方法的一种简单形式是相加，可以添加RDD中的元素，然后计算单词数。reduce()方法接受交换和关联运算符作为参数。
 
-scala\> rdd.reduce((x, y) =\> x + y)
-
+```scala
+scala> rdd.reduce((x, y) => x + y)
 res11: Int = 9
+```
 
 代码 4.49
 
@@ -479,9 +468,10 @@ res11: Int = 9
 
 返回一个包含此RDD中所有元素的数组。动作collect()是最常见且最简单的操作，它将我们整个RDD的内容返回到驱动程序。如果预计整个RDD都适合内存，可以将collect()方法应用到单元测试，可以轻松地将RDD的结果与预期的结果进行比较。动作Collect()有一个约束，要求计算机的内存大小可以满足所有返回地结果数据，并复制到驱动程序中。只有当结果数据的预期尺寸不大时才应使用此方法，因为所有数据都加载到驱动程序的内存中，有可能产生内存不足的情况。
 
-scala\> rdd.collect
-
-res12: Array\[Int\] = Array(1, 2, 3, 3)
+```scala
+scala> rdd.collect
+res12: Array[Int] = Array(1, 2, 3, 3)
+```
 
 代码 4.50
 
@@ -489,9 +479,10 @@ res12: Array\[Int\] = Array(1, 2, 3, 3)
 
 返回数据集中元素的数量。例如RDD的值为(1, 2, 2, 3, 4, 5, 5, 6)，rdd.count()将得出结果8。
 
-scala\> rdd.count
-
+```scala
+scala> rdd.count
 res13: Long = 4
+```
 
 代码 4.51
 
@@ -499,9 +490,10 @@ res13: Long = 4
 
 返回数据集的第一元素，类似于take(1)。
 
-scala\> rdd.first
-
+```scala
+scala> rdd.first
 res14: Int = 1
+```
 
 代码 4.52
 
@@ -510,9 +502,10 @@ res14: Int = 1
 提取RDD的前num个元素并将其作为数组返回。此方法尝试减少其访问的分区数量，因此它表示一个有偏差的集合，我们不能假定元素的顺序。例如有RDD为{1,2,2,3,4,5,5,6}
 ，如果执行take(4)，将得出结果{2,2,3,4}。
 
-scala\> rdd.take(3)
-
-res15: Array\[Int\] = Array(1, 2, 3)
+```scala
+scala> rdd.take(3)
+res15: Array[Int] = Array(1, 2, 3)
+```
 
 代码 4.53
 
@@ -529,9 +522,10 @@ res15: Array\[Int\] = Array(1, 2, 3)
 
 因为所有的数据都被加载到驱动程序的内存中，所以这个方法只应该在返回样本比较小的情况下被使用。
 
-scala\> rdd.takeSample(true,3)
-
-res16: Array\[Int\] = Array(2, 1, 1)
+```scala
+scala> rdd.takeSample(true,3)
+res16: Array[Int] = Array(2, 1, 1)
+```
 
 代码 4.54
 
@@ -543,13 +537,12 @@ res16: Array\[Int\] = Array(2, 1, 1)
 
   - > ord：隐式排序
 
-scala\> rdd.takeOrdered(2)
-
-res17: Array\[Int\] = Array(1, 2)
-
-scala\> rdd.takeOrdered(2)(Ordering\[Int\].reverse)
-
-res18: Array\[Int\] = Array(3, 3)
+```scala
+scala> rdd.takeOrdered(2)
+res17: Array[Int] = Array(1, 2)
+scala> rdd.takeOrdered(2)(Ordering[Int].reverse)
+res18: Array[Int] = Array(3, 3)
+```
 
 代码 4.55
 
@@ -557,9 +550,10 @@ res18: Array\[Int\] = Array(3, 3)
 
 对该RDD的所有元素应用函数f。与其他操作不同，foreach不返回任何值。它只是在RDD中的所有元素上运行，可以在不想返回任何结果的情况下使用，但是需要启动对RDD的计算，一个很好的例子是将RDD中的元素插入数据库，或者打印输出。
 
-scala\> rdd.foreach(x =\> print(x +" "))
-
+```scala
+scala> rdd.foreach(x => print(x +" "))
 1 3 3 2
+```
 
 代码 4.56
 
@@ -572,21 +566,21 @@ t2)允许修改t1并将其作为结果值返回，以避免对象分配；但是
 
   - > op：一个运算符用于在分区内累积结果，并组合不同分区的结果
 
-scala\> rdd.fold(0)((x, y) =\> x + y)
-
+```scala
+scala> rdd.fold(0)((x, y) => x + y)
 res28: Int = 9
-
-scala\> rdd.fold(1)((x, y) =\> x + y)
-
+scala> rdd.fold(1)((x, y) => x + y)
 res29: Int = 12
+```
 
 代码 4.57
 
 第二个代码为什么是12？先执行下面的代码查看一下rdd的分区数：
 
-scala\> rdd.partitions.size
-
+```scala
+scala> rdd.partitions.size
 res25: Int = 2
+```
 
 代码 4.58
 
@@ -607,10 +601,11 @@ res25: Int = 2
 
   - > combOp：用于组合来自不同分区的结果的关联运算符
 
-scala\> rdd.aggregate((0, 0))((x, y)=\>(x.\_1 + y, x.\_2 + 1),(x,
-y)=\>(x.\_1 + y.\_1, x.\_2 + y.\_2))
-
+```scala
+scala> rdd.aggregate((0, 0))((x, y)=>(x._1 + y, x._2 + 1),(x,
+y)=>(x._1 + y._1, x._2 + y._2))
 res32: (Int, Int) = (9,4)
+```
 
 代码 4.59
 
@@ -667,277 +662,240 @@ Welcome to Scala 2.13.16 (OpenJDK 64-Bit Server VM, Java 17).
 
 Type in expressions for evaluation. Or try :help.
 
-scala\>
+```scala
+scala>
+```
 
 因为REPL是命令行解释器，所以需要键入代码然后回车执行就可以看到结果。进入REPL后，可以键入Scala表达式以查看其工作方式：
 
-scala\> val x = 1
-
+```scala
+scala> val x = 1
 x: Int = 1
-
-scala\> val y = x + 1
-
+scala> val y = x + 1
 y: Int = 2
+```
 
 如这些示例所示，只需在REPL内键入表达式，它就会在下一行上显示每个表达式的结果。
 
 scala
 REPL会根据需要创建变量，如果不将表达式的结果分配给变量，则REPL会自动创建以res为开头的变量，第一个变量是res0，第二个变量是res1，等等：
 
-scala\> 2 + 2
-
+```scala
+scala> 2 + 2
 res0: Int = 4
-
-scala\> 3 / 3
-
+scala> 3 / 3
 res1: Int = 1
+```
 
 这些是动态创建的实际变量名，可以在表达式中使用它们：
 
-scala\> val z = res0 + res1
-
+```scala
+scala> val z = res0 + res1
 z: Int = 5
+```
 
 上面简单介绍了scala REPL的使用。在本书中大部分的例子使用了Spark
 Shell工具，这就是Spark提供的REPL，只是在启动工具时加载了Spark程序包，可以直接在命令上调用。这里继续使用REPL进行实验。下面是一些表达式，可以尝试看看它们如何工作：
 
-scala\> val name = "John Doe"
-
+```scala
+scala> val name = "John Doe"
 name: String = John Doe
-
-scala\> "hello".head
-
+scala> "hello".head
 res0: Char = h
-
-scala\> "hello".tail
-
+scala> "hello".tail
 res1: String = ello
-
-scala\> "hello, world".take(5)
-
+scala> "hello, world".take(5)
 res2: String = hello
-
-scala\> println("hi")
-
+scala> println("hi")
 hi
-
-scala\> 1 + 2 \* 3
-
+scala> 1 + 2 * 3
 res4: Int = 7
-
-scala\> (1 + 2) \* 3
-
+scala> (1 + 2) * 3
 res5: Int = 9
-
-scala\> if (2 \> 1) println("greater") else println("lesser")
-
+scala> if (2 > 1) println("greater") else println("lesser")
 greater
+```
 
 Scala具有两种类型的变量：val类型创建一个不可变的变量，例如在Java中的final）；var创建一个可变变量。这是Scala中的变量声明：
 
-scala\> val s = "hello"
-
+```scala
+scala> val s = "hello"
 s: String = hello
-
-scala\> var i = 42
-
+scala> var i = 42
 i: Int = 42
+```
 
 这些示例表明Scala编译器通常可以从“=”符号右侧的代码推断出变量的数据类型，所以说变量的类型可以由编译器推断的。如果愿意，还可以显式声明变量类型：
 
-scala\> val s: String = "hello"
-
+```scala
+scala> val s: String = "hello"
 s: String = hello
-
-scala\> var i: Int = 42
-
+scala> var i: Int = 42
 i: Int = 42
+```
 
 在大多数情况下，编译器不需要查看那些显式类型，但是如果您认为它们使代码更易于阅读，则可以添加它们。实际上，当使用第三方库中的方法时，特别是如果不经常使用该库或它们的方法名称不能使类型清晰时，可以帮助提示变量类型。
 
 val和var之间的区别是：val使变量不变，var并使变量可变。由于val字段不能改变，因此有些人将其称为值而不是变量。当尝试重新分配val字段时，REPL显示会发生什么：
 
-scala\> val a = 'a'
-
+```scala
+scala> val a = 'a'
 a: Char = a
-
-scala\> a = 'b'
-
-\<console\>:12: error: reassignment to val
-
+scala> a = 'b'
+<console>:12: error: reassignment to val
 a = 'b'
-
 ^
+```
 
 正如预期的那样，此操作失败并显示val的重新分配错误，相反我们可以重新分配var：
 
-scala\> var a = 'a'
-
+```scala
+scala> var a = 'a'
 a: Char = a
-
-scala\> a = 'b'
-
+scala> a = 'b'
 a: Char = b
+```
 
 REPL与在IDE中使用源代码并非100％相同，因此在REPL中可以做一些事情，而在编写scala应用程序中是做不到的，例如可以使用val方法在REPL中重新定义变量，如下所示：
 
-scala\> val age = 18
-
+```scala
+scala> val age = 18
 age: Int = 18
-
-scala\> val age = 19
-
+scala> val age = 19
 age: Int = 19
+```
 
 而在scala应用程序代码中，不能使用val方法重新定义变量，但是可以在REPL中重新定义。Scala带有标准数字数据类型。在Scala中，所有这些数据类型都是对象，不是原始数据类型。这些示例说明如何声明基本数字类型的变量：
 
-scala\> val b: Byte = 1
-
+```scala
+scala> val b: Byte = 1
 b: Byte = 1
-
-scala\> val x: Int = 1
-
+scala> val x: Int = 1
 x: Int = 1
-
-scala\> val l: Long = 1
-
+scala> val l: Long = 1
 l: Long = 1
-
-scala\> val s: Short = 1
-
+scala> val s: Short = 1
 s: Short = 1
-
-scala\> val d: Double = 2.0
-
+scala> val d: Double = 2.0
 d: Double = 2.0
-
-scala\> val f: Float = 3.0f
-
+scala> val f: Float = 3.0f
 f: Float = 3.0
+```
 
 在前四个例子中，如果没有明确指定类型，数量1将默认为Int，所以如果需要其他数据类型Byte、Long或者Short中的一种，需要显式声明的类型。带小数的数字（如2.0）将默认为双精度，因此如果需要单精度，则需要使用Float类型声明。
 
 因为Int和Double是默认数字类型，所以通常在不显式声明数据类型的情况下创建它们：
 
-scala\> val i = 123
-
+```scala
+scala> val i = 123
 i: Int = 123
-
-scala\> val x = 1.0
-
+scala> val x = 1.0
 x: Double = 1.0
+```
 
 对于大数，Scala还包括类型BigInt和BigDecimal：
 
-scala\> var b = BigInt(1234567890)
-
+```scala
+scala> var b = BigInt(1234567890)
 b: scala.math.BigInt = 1234567890
-
-scala\> var b = BigDecimal(123456.789)
-
+scala> var b = BigDecimal(123456.789)
 b: scala.math.BigDecimal = 123456.789
+```
 
 BigInt和BigDecimal的一大优点是它们支持您习惯于使用数值类型的所有运算符。Scala还具有String和Char数据类型，通常可以使用隐式形式进行声明：
 
-scala\> val name = "Bill"
-
+```scala
+scala> val name = "Bill"
 name: String = Bill
-
-scala\> val c = 'a'
-
+scala> val c = 'a'
 c: Char = a
+```
 
 如上例所示，将字符串括在双引号中，将字符括在单引号中。Scala字符串具有很多不错的功能，其中一个功能是Scala具有一种类似于Ruby的方式来合并多个字符串：
 
-scala\> val firstName = "John"
-
+```scala
+scala> val firstName = "John"
 firstName: String = John
-
-scala\> val mi = 'C'
-
+scala> val mi = 'C'
 mi: Char = C
-
-scala\> val lastName = "Doe"
-
+scala> val lastName = "Doe"
 lastName: String = Doe
+```
 
 可以按以下方式将它们附加在一起：
 
-scala\> val name = firstName + " " + mi + " " + lastName
-
+```scala
+scala> val name = firstName + " " + mi + " " + lastName
 name: String = John C Doe
+```
 
 但是，Scala提供了以下更方便的形式：
 
-scala\> val name = s"$firstName $mi $lastName"
-
+```scala
+scala> val name = s"$firstName $mi $lastName"
 name: String = John C Doe
+```
 
 这种形式创建了一种非常易读的方式来打印包含变量的字符串：
 
-scala\> println(s"Name: $firstName $mi $lastName")
-
+```scala
+scala> println(s"Name: $firstName $mi $lastName")
 Name: John C Doe
+```
 
 如图所示，您所要做的就是在字符串前加上字母s，然后在字符串内的变量名之前添加$符号，此功能称为字符串插值。Scala中的字符串插值提供了更多功能，例如还可以将变量名称括在花括号内：
 
-scala\> println(s"Name: ${firstName} ${mi} ${lastName}")
-
+```scala
+scala> println(s"Name: ${firstName} ${mi} ${lastName}")
 Name: John C Doe
+```
 
 对于一些人来说这种格式较易读，但更重要的好处是可以将表达式放在花括号内，如以下REPL示例所示：
 
-scala\> println(s"1+1 = ${1+1}")
-
+```scala
+scala> println(s"1+1 = ${1+1}")
 1+1 = 2
+```
 
 使用字符串插值可以在字符串前面加上字母f，以便在字符串内部使用printf样式格式，而且原始插值器不对字符串内的文字（例如\\n）进行转义，另外还可以创建自己的字符串插值器。Scala字符串的另一个重要功能是可以通过将字符串包含在三个双引号中来创建多行字符串：
 
-scala\> val speech = """Four score and
-
+```scala
+scala> val speech = """Four score and
 | seven years ago
-
 | our fathers ..."""
-
 speech: String =
-
 Four score and
-
 seven years ago
-
 our fathers ...
+```
 
 当您需要使用多行字符串时，这非常有用。这种基本方法的一个缺点是第一行之后的行是缩进的。解决此问题的简单方法是：在第一行之后的所有行前面加上符号“|”，并在字符串之后调用stripMargin方法：
 
-scala\> val speech = """Four score and
-
+```scala
+scala> val speech = """Four score and
 | |seven years ago
-
 | |our fathers ...""".stripMargin
-
 speech: String =
-
 Four score and
-
 seven years ago
-
 our fathers ...
+```
 
 下面让我们看一下如何使用Scala处理命令行输入和输出。如前所述，可以使用以下命令println将输出写入标准输出，该函数在字符串后添加一个换行符，因此，如果您不希望这样做，只需使用print：
 
-scala\> println("Hello, world")
-
+```scala
+scala> println("Hello, world")
 Hello, world
-
-scala\> print("Hello without newline")
-
+scala> print("Hello without newline")
 Hello without newline
+```
 
 因为println是常用方法，所以同其他常用数据类型一样不需要导入它。有几种读取命令行输入的方法，但是最简单的方法是使用scala.io.StdIn包中的readLine方法。就像使用Java和其他语言一样，通过import语句将类和方法带入Scala的作用域：
 
-scala\> import scala.io.StdIn.readLine
-
+```scala
+scala> import scala.io.StdIn.readLine
 import scala.io.StdIn.readLine
+```
 
 该import语句将readLine方法带入当前范围，因此可以在应用程序中使用它。Scala具有编程语言的基本控制结构，包括：条件语句（if/then/else）、for循环、异常捕获（try/catch/finally），它还具有一些独特的构造：match表达式、for表达式。我们将在以下内容中进行演示。一个基本的Scala
 if语句如下所示：
@@ -982,170 +940,134 @@ doZ()
 
 Scala if构造总是返回结果，可以像前面的示例中那样忽略结果，但是更常见的方法（尤其是在函数编程中）是将结果分配给变量：
 
-scala\> val a=1
-
+```scala
+scala> val a=1
 a: Int = 1
-
-scala\> val b=2
-
+scala> val b=2
 b: Int = 2
-
-scala\> val minValue = if (a \< b) a else b
-
+scala> val minValue = if (a < b) a else b
 minValue: Int = 1
+```
 
 这意味着Scala不需要特殊的三元运算符。Scala
 for循环可用于迭代集合中的元素。例如给定一个整数序列，然后遍历它们并打印出它们的值，如下所示：：
 
-scala\> val nums = Seq(1,2,3)
-
-nums: Seq\[Int\] = List(1, 2, 3)
-
-scala\> for (n \<- nums) println(n)
-
+```scala
+scala> val nums = Seq(1,2,3)
+nums: Seq[Int] = List(1, 2, 3)
+scala> for (n <- nums) println(n)
 1
-
 2
-
 3
+```
 
 上面的示例使用整数序列，其数据类型为Seq\[Int\]，下面例子的数据类型为字符串列表List\[String\]，使用for循环来打印其值，就像前面的示例一样：
 
-scala\> val people = List(
-
+```scala
+scala> val people = List(
 | "Bill",
-
 | "Candy",
-
 | "Karen",
-
 | "Leo",
-
 | "Regina"
-
 | )
-
-people: List\[String\] = List(Bill, Candy, Karen, Leo, Regina)
-
-scala\> for (p \<- people) println(p)
-
+people: List[String] = List(Bill, Candy, Karen, Leo, Regina)
+scala> for (p <- people) println(p)
 Bill
-
 Candy
-
 Karen
-
 Leo
-
 Regina
+```
 
 Seq和List是线性集合的两种类型。在Scala中，这些集合类优于Array。为了遍历元素集合并打印其内容，还可以使用foreach方法，对于Scala集合类可用的这个方法，例如用foreach来打印先前的字符串列表：
 
-scala\> people.foreach(println)
-
+```scala
+scala> people.foreach(println)
 Bill
-
 Candy
-
 Karen
-
 Leo
-
 Regina
+```
 
 foreach 可用于大多数集合类，对于Map（类似于Java
 的HashMap），可以使用for和foreach。下面的例子中使用Map定义电影名称和等级，分别使用for和foreach方法打印输出电影名称和等级：
 
-scala\> val ratings = Map(
-
-| "Lady in the Water" -\> 3.0,
-
-| "Snakes on a Plane" -\> 4.0,
-
-| "You, Me and Dupree" -\> 3.5
-
+```scala
+scala> val ratings = Map(
+| "Lady in the Water" -> 3.0,
+| "Snakes on a Plane" -> 4.0,
+| "You, Me and Dupree" -> 3.5
 | )
-
-ratings: scala.collection.immutable.Map\[String,Double\] = Map(Lady in
-the Water -\> 3.0, Snakes on a Plane -\> 4.0, You, Me and Dupree -\>
+ratings: scala.collection.immutable.Map[String,Double] = Map(Lady in
+the Water -> 3.0, Snakes on a Plane -> 4.0, You, Me and Dupree ->
 3.5)
-
-scala\> for ((name,rating) \<- ratings) println(s"Movie: $name, Rating:
+scala> for ((name,rating) <- ratings) println(s"Movie: $name, Rating:
 $rating")
-
 Movie: Lady in the Water, Rating: 3.0
-
 Movie: Snakes on a Plane, Rating: 4.0
-
 Movie: You, Me and Dupree, Rating: 3.5
-
-scala\> ratings.foreach {
-
-| case(movie, rating) =\> println(s"key: $movie, value: $rating")
-
+scala> ratings.foreach {
+| case(movie, rating) => println(s"key: $movie, value: $rating")
 | }
-
 key: Lady in the Water, value: 3.0
-
 key: Snakes on a Plane, value: 4.0
-
 key: You, Me and Dupree, value: 3.5
+```
 
 在此示例中，name对应于Map中的每个键，rating是分配给每个name的值。一旦开始使用Scala，我们会发现在函数式编程语言for中，除了for循环之外，还可以使用更强大的for表达式。在Scala中，for表达式是for结构的另一种用法。例如给定以下整数列表，然后创建一个新的整数列表，其中所有值都加倍，如下所示：
 
-scala\> val nums = Seq(1,2,3)
-
-nums: Seq\[Int\] = List(1, 2, 3)
-
-scala\> val doubledNums = for (n \<- nums) yield n \* 2
-
-doubledNums: Seq\[Int\] = List(2, 4, 6)
+```scala
+scala> val nums = Seq(1,2,3)
+nums: Seq[Int] = List(1, 2, 3)
+scala> val doubledNums = for (n <- nums) yield n * 2
+doubledNums: Seq[Int] = List(2, 4, 6)
+```
 
 该表达式可以理解为：对于数字nums列表中的每个数字n的值加倍，然后将所有新值分配给变量doubledNums。总而言之，for表达式的结果是将创建一个名为doubledNums的新变量，其值是通过将原始列表中nums的每个值加倍而创建的。我们可以对字符串列表使用相同的方法，例如给出以下小写字符串列表，使用for表达式创建大写的字符串列表：
 
-scala\> val names = List("adam", "david", "frank")
-
-names: List\[String\] = List(adam, david, frank)
-
-scala\>
-
-scala\> val ucNames = for (name \<- names) yield name.capitalize
-
-ucNames: List\[String\] = List(Adam, David, Frank)
+```scala
+scala> val names = List("adam", "david", "frank")
+names: List[String] = List(adam, david, frank)
+scala>
+scala> val ucNames = for (name <- names) yield name.capitalize
+ucNames: List[String] = List(Adam, David, Frank)
+```
 
 上面两个for表达式都使用yield关键字，表示使用所示算法在for表达式中迭代的现有集合产生一个新集合。如果要解决下面的问题，必须使用yield表达式，例如给定这样的字符串列表：
 
-scala\> val names = List("\_adam", "\_david", "\_frank")
-
-names: List\[String\] = List(\_adam, \_david, \_frank)
+```scala
+scala> val names = List("_adam", "_david", "_frank")
+names: List[String] = List(_adam, _david, _frank)
+```
 
 假设我们要创建一个包含每个大写姓名的新列表。为此，首先需要删除每个名称开头的下划线字符，然后大写每个名称。要从每个名称中删除下划线，需要在每个String上调用drop(1)，完成之后在每个字符串上调用大写方法，可以通过以下方式使用for表达式解决此问题：
 
-scala\> val capNames = for (name \<- names) yield {
-
+```scala
+scala> val capNames = for (name <- names) yield {
 | val nameWithoutUnderscore = name.drop(1)
-
 | val capName = nameWithoutUnderscore.capitalize
-
 | capName
-
 | }
-
-capNames: List\[String\] = List(Adam, David, Frank)
+capNames: List[String] = List(Adam, David, Frank)
+```
 
 我们在该示例中显示了一种比较繁琐解决方案，因此可以看到在yield之后使用了多行代码。但是，对于这个特定的示例也可以使用更短的编写代码，这更像是Scala风格的：
 
-scala\> val capNames = for (name \<- names) yield
+```scala
+scala> val capNames = for (name <- names) yield
 name.drop(1).capitalize
-
-capNames: List\[String\] = List(Adam, David, Frank)
+capNames: List[String] = List(Adam, David, Frank)
+```
 
 还可以在算法周围加上花括号：
 
-scala\> val capNames = for (name \<- names) yield {
+```scala
+scala> val capNames = for (name <- names) yield {
 name.drop(1).capitalize }
-
-capNames: List\[String\] = List(Adam, David, Frank)
+capNames: List[String] = List(Adam, David, Frank)
+```
 
 Scala还有一个match表达式的概念。在最简单的情况下，可以使用match类似Java
 switch语句的表达式。使用match表达式可以编写了许多case语句，用于匹配可能的值。在示例中，我们将整数值1到12进行匹配。其他任何值都将落入最后一个符号“\_”，这是通用的默认情况。match表达式很不错，因为它们也返回值，所以您可以将字符串结果分配给新值：
@@ -1182,99 +1104,81 @@ case \_ =\> "Invalid month"
 
 另外，Scala还使将match表达式用作方法主体变得容易。作为简要介绍，下面是一个名为的方法convertBooleanToStringMessage，该方法接受一个Boolean值并返回String：
 
-scala\> def convertBooleanToStringMessage(bool: Boolean): String = {
-
+```scala
+scala> def convertBooleanToStringMessage(bool: Boolean): String = {
 | if (bool) "true" else "false"
-
 | }
-
 convertBooleanToStringMessage: (bool: Boolean)String
+```
 
 这些示例说明了为它提供布尔值true和false时它是如何工作的：
 
-scala\> val answer = convertBooleanToStringMessage(true)
-
+```scala
+scala> val answer = convertBooleanToStringMessage(true)
 answer: String = true
-
-scala\> val answer = convertBooleanToStringMessage(false)
-
+scala> val answer = convertBooleanToStringMessage(false)
 answer: String = false
+```
 
 下面是第二个示例，与上一个示例一样工作，将Boolean值作为输入参数并返回一条String消息。最大的区别是此方法将match表达式用作方法的主体：
 
-scala\> def convertBooleanToStringMessage(bool: Boolean): String = bool
+```scala
+scala> def convertBooleanToStringMessage(bool: Boolean): String = bool
 match {
-
-| case true =\> "you said true"
-
-| case false =\> "you said false"
-
+| case true => "you said true"
+| case false => "you said false"
 | }
-
 convertBooleanToStringMessage: (bool: Boolean)String
+```
 
 该方法的主体只有两个case语句，一个匹配true，另一个匹配false。因为这些是唯一可能的Boolean值，所以不需要默认case语句，可以调用该方法然后打印其结果的方式：
 
-scala\> val result = convertBooleanToStringMessage(true)
-
+```scala
+scala> val result = convertBooleanToStringMessage(true)
 result: String = you said true
-
-scala\> println(result)
-
+scala> println(result)
 you said true
+```
 
 将match表达式用作方法的主体也是一种常见用法。match
 表达式非常强大，我们将演示可以使用match执行的其他操作。match表达式可以在单个case语句中处理多种情况，为了说明这一点，假设0或空白字符串求值为false，其他任何值求为true，使用match表达式计算true和fales，这一条语句（case
 0 | "" =\> false）让0和空字符串都可以评估为false：
 
-scala\> def isTrue(a: Any) = a match {
-
-| case 0 | "" =\> false
-
-| case \_ =\> true
-
+```scala
+scala> def isTrue(a: Any) = a match {
+| case 0 | "" => false
+| case _ => true
 | }
-
 isTrue: (a: Any)Boolean
+```
 
 因为将输入参数a定义为Any类型，这是所有Scala类的根，就像Java中的Object一样，所以此方法可与传入的任何数据类型一起使用：
 
-scala\> isTrue(0)
-
+```scala
+scala> isTrue(0)
 res0: Boolean = false
-
-scala\> isTrue("")
-
+scala> isTrue("")
 res1: Boolean = false
-
-scala\> isTrue(1.1F)
-
+scala> isTrue(1.1F)
 res2: Boolean = true
-
-scala\> isTrue(new java.io.File("/etc/passwd"))
-
+scala> isTrue(new java.io.File("/etc/passwd"))
 res3: Boolean = true
+```
 
 match表达式的另一个优点是，可以在case语句中使用if表达式来进行强大的模式匹配。在此示例中，第二和第三种情况语句均使用if表达式来匹配数字范围：
 
-scala\> val count=1
-
+```scala
+scala> val count=1
 count: Int = 1
-
-scala\> count match {
-
-| case 1 =\> println("one, a lonely number")
-
-| case x if x == 2 || x == 3 =\> println("two's company, three's a
+scala> count match {
+| case 1 => println("one, a lonely number")
+| case x if x == 2 || x == 3 => println("two's company, three's a
 crowd")
-
-| case x if x \> 3 =\> println("4+, that's a party")
-
-| case \_ =\> println("i'm guessing your number is zero or less")
-
+| case x if x > 3 => println("4+, that's a party")
+| case _ => println("i'm guessing your number is zero or less")
 | }
-
 one, a lonely number
+```
 
 Scala不需要在if表达式中使用括号，但是如果使用可以提高可读性：
 
@@ -1293,291 +1197,213 @@ case \_ =\> println("i'm guessing your number is zero or less")
 
 为了支持面向对象编程，Scala提供了一个类构造。语法比Java和C＃之类的语言简洁得多，而且易于使用和阅读。这里有一个Scala的类，它的构造函数定义两个参数firstName和lastName：
 
-scala\> class Person(var firstName: String, var lastName: String)
-
+```scala
+scala> class Person(var firstName: String, var lastName: String)
 defined class Person
+```
 
 有了这个定义，可以创建如下的新Person实例：
 
-scala\> val p = new Person("Bill", "Panner")
-
+```scala
+scala> val p = new Person("Bill", "Panner")
 p: Person = Person@4e52d2f2
+```
 
 在类构造函数中定义参数会自动在类中创建字段，在本示例中可以像这样访问firstName和lastName字段：
 
-scala\> println(p.firstName + " " + p.lastName)
-
+```scala
+scala> println(p.firstName + " " + p.lastName)
 Bill Panner
+```
 
 在此示例中，由于两个字段都被定义为var字段，因此它们也是可变的，这意味着可以更改它们：
 
-scala\> p.firstName = "Ivan"
-
+```scala
+scala> p.firstName = "Ivan"
 p.firstName: String = Ivan
-
-scala\> p.lastName = "Lee"
-
+scala> p.lastName = "Lee"
 p.lastName: String = Lee
+```
 
 在上面的示例中，两个字段都被定义为var字段，这使得这些字段可变，还可以将它们定义为val字段，这使它们不可变：
 
-scala\> class Person(val firstName: String, val lastName: String)
-
+```scala
+scala> class Person(val firstName: String, val lastName: String)
 defined class Person
-
-scala\> val p = new Person("Bill", "Panner")
-
+scala> val p = new Person("Bill", "Panner")
 p: Person = Person@496c6d94
-
-scala\> p.firstName = "Fred"
-
-\<console\>:12: error: reassignment to val
-
+scala> p.firstName = "Fred"
+<console>:12: error: reassignment to val
 p.firstName = "Fred"
-
 ^
-
-scala\> p.lastName = "Jones"
-
-\<console\>:12: error: reassignment to val
-
+scala> p.lastName = "Jones"
+<console>:12: error: reassignment to val
 p.lastName = "Jones"
-
 ^
+```
 
 如果使用Scala编写面向对象编程的代码，将字段创建为var字段，以便对其进行改变。当使用Scala编写函数编程的代码时，一般使用用例类而不是像这样的类。
 
 在Scala中，类的构造可以包括：构造参数；类主体中调用的方法；在类主体中执行的语句和表达式。在Scala类的主体中声明的字段以类似于Java的方式处理，它们是在首次实例化该类时分配的。下面的Person类演示了可以在类体内执行的一些操作：
 
-scala\> class Person(var firstName: String, var lastName: String) {
-
+```scala
+scala> class Person(var firstName: String, var lastName: String) {
 |
-
 | println("the constructor begins")
-
 |
-
 | // 'public' access by default
-
 | var age = 0
-
 |
-
 | // some class fields
-
 | private val HOME = System.getProperty("user.home")
-
 |
-
 | // some methods
-
 | override def toString(): String = s"$firstName $lastName is $age years
 old"
-
 |
-
 | def printHome(): Unit = println(s"HOME = $HOME")
-
 | def printFullName(): Unit = println(this)
-
 |
-
 | printHome()
-
 | printFullName()
-
 | println("you've reached the end of the constructor")
-
 |
-
 | }
-
 defined class Person
+```
 
 Scala REPL中的以下代码演示了该类的工作方式：
 
-scala\> val p = new Person("Kim", "Carnes")
-
+```scala
+scala> val p = new Person("Kim", "Carnes")
 the constructor begins
-
 HOME = /Users/al
-
 Kim Carnes is 0 years old
-
 you've reached the end of the constructor
-
 p: Person = Kim Carnes is 0 years old
-
-scala\> p.age
-
+scala> p.age
 res0: Int = 0
-
-scala\> p.age = 36
-
+scala> p.age = 36
 p.age: Int = 36
-
-scala\> p
-
+scala> p
 res1: Person = Kim Carnes is 36 years old
-
-scala\> p.printHome
-
+scala> p.printHome
 HOME = /Users/al
-
-scala\> p.printFullName
-
+scala> p.printFullName
 Kim Carnes is 36 years old
+```
 
 在Scala中，方法一般是在类内部定义的（就像Java），但是也可以在REPL中创建它们。本课将显示一些方法示例，以便您可以看到语法。这是如何定义名为double的方法，该方法采用一个名为a的整数输入参数并返回该整数的2倍，方法名称和签名显示在=符号的左侧：
 
-scala\> def double(a: Int) = a \* 2
-
+```scala
+scala> def double(a: Int) = a * 2
 double: (a: Int)Int
+```
 
 def是用于定义方法的关键字，方法名称为double，输入参数a的类型Int为Scala的整数类型。函数的主体显示在右侧，在此示例中，它只是将输入参数a的值加倍。将该方法粘贴到REPL之后，可以通过给它一个Int值来调用它：
 
-scala\> double(2)
-
+```scala
+scala> double(2)
 res0: Int = 4
-
-scala\> double(10)
-
+scala> double(10)
 res1: Int = 20
+```
 
 上一个示例未显示该方法的返回类型，但是可以显示它：
 
-scala\> def double(a: Int): Int = a \* 2
-
+```scala
+scala> def double(a: Int): Int = a * 2
 double: (a: Int)Int
+```
 
 编写这样的方法会显式声明该方法的返回类型。有些人喜欢显式声明方法返回类型，因为它使代码更容易维护。如果将该方法粘贴到REPL中，将看到它的工作方式与之前的方法相同。为了显示一些更复杂的方法，以下是一个使用两个输入参数的方法：
 
-scala\> def add(a: Int, b: Int) = a + b
-
+```scala
+scala> def add(a: Int, b: Int) = a + b
 add: (a: Int, b: Int)Int
+```
 
 当一个方法只有一行，可以使用上面的格式，但是当方法主体变长时可以将多行放在花括号内：
 
-scala\> def addThenDouble(a: Int, b: Int): Int = {
-
+```scala
+scala> def addThenDouble(a: Int, b: Int): Int = {
 | val sum = a + b
-
-| val doubled = sum \* 2
-
+| val doubled = sum * 2
 | doubled
-
 | }
-
 addThenDouble: (a: Int, b: Int)Int
-
-scala\> addThenDouble(1, 1)
-
+scala> addThenDouble(1, 1)
 res0: Int = 4
+```
 
 Scala特质是该语言的一大特色，可以像使用Java接口一样使用它们，也可以像使用具有实际方法的抽象类一样使用它们。Scala类还可以扩展和混合多个特质。Scala还具有抽象类的概念，我们需要了解何时应该使用抽象类而不是特质。一种使用Scala特质的方法就像原始Java的接口，在其中可以为某些功能定义所需的接口，但是没有实现任何行为。举一个例子，假设想编写一些代码来模拟任何有尾巴的动物，如狗和猫。在Scala中，我们编写了一个特质来启动该建模过程，如下所示：
 
-scala\> trait TailWagger {
-
+```scala
+scala> trait TailWagger {
 | def startTail(): Unit
-
 | def stopTail(): Unit
-
 | }
-
 defined trait TailWagger
+```
 
 该代码声明了一个名为TailWagger的特质，该特质指出扩展TailWagger的任何类都应实现startTail和stopTail方法。这两种方法都没有输入参数，也没有返回值。可以编写一个扩展特质并实现如下方法的类：
 
-scala\> class Dog extends TailWagger {
-
+```scala
+scala> class Dog extends TailWagger {
 | // the implemented msethods
-
 | def startTail(): Unit = println("tail is wagging")
-
 | def stopTail(): Unit = println("tail is stopped")
-
 | }
-
 defined class Dog
-
-scala\> val d = new Dog
-
+scala> val d = new Dog
 d: Dog = Dog@5b8572df
-
-scala\> d.startTail
-
+scala> d.startTail
 tail is wagging
-
-scala\> d.stopTail
-
+scala> d.stopTail
 tail is stopped
+```
 
 我们可以使用extends关键字来创建扩展单个特征的类。这演示了如何使用扩展特质类来实现其中方法。Scala允许创建具有特质的非常模块化的代码。
 例如可以将动物的属性分解为模块化的单元：
 
-scala\> trait Speaker {
-
+```scala
+scala> trait Speaker {
 | def speak(): String
-
 | }
-
 defined trait Speaker
-
-scala\>
-
-scala\> trait TailWagger {
-
+scala>
+scala> trait TailWagger {
 | def startTail(): Unit
-
 | def stopTail(): Unit
-
 | }
-
 defined trait TailWagger
-
-scala\>
-
-scala\> trait Runner {
-
+scala>
+scala> trait Runner {
 | def startRunning(): Unit
-
 | def stopRunning(): Unit
-
 | }
-
 defined trait Runner
+```
 
 一旦有了这些小片段，就可以通过扩展所有它们并实现必要的方法来创建Dog类：
 
-scala\> class Dog extends Speaker with TailWagger with Runner {
-
+```scala
+scala> class Dog extends Speaker with TailWagger with Runner {
 |
-
 | // Speaker
-
-| def speak(): String = "Woof\!"
-
+| def speak(): String = "Woof!"
 |
-
 | // TailWagger
-
 | def startTail(): Unit = println("tail is wagging")
-
 | def stopTail(): Unit = println("tail is stopped")
-
 |
-
 | // Runner
-
 | def startRunning(): Unit = println("I'm running")
-
 | def stopRunning(): Unit = println("Stopped running")
-
 |
-
 | }
-
 defined class Dog
+```
 
 注意如何extends和with用于从多个特征创建类。
 
@@ -1601,107 +1427,85 @@ String方法也是纯函数：isEmpty、length和substring。在Scala集合类�
 
 当然应用程序不可能完全与外界没有输入输出，因此人们提出以下建议：使用纯函数编写应用程序的核心，然后围绕该核心编写不纯的包装以与外界交互。用Scala编写纯函数是关于函数编程的较简单部分之一，只需使用Scala定义方法的语法编写纯函数。这是一个纯函数，将给定的输入值加倍：
 
-scala\> def double(i: Int): Int = i \* 2
-
+```scala
+scala> def double(i: Int): Int = i * 2
 double: (i: Int)Int
+```
 
 纯函数是仅依赖于其声明的输入及其内部算法来生成其输出的函数。它不会从外部世界（函数范围之外的世界）中读取任何其他值，并且不会修改外部世界中的任何值。实际的应用程序包含纯功能和不纯功能的组合，通常的建议是使用纯函数编写应用程序的核心，然后使用不纯函数与外界进行通信。
 
 尽管曾经创建的每种编程语言都可能允许我们编写纯函数，但是Scala另一个函数式编程的特点是可以将函数创建为变量，就像创建String和Int变量一样。此功能有很多好处，其中最常见的好处是可以将函数作为参数传递给其他函数，例如：
 
-scala\> val nums = (1 to 10).toList
-
-nums: List\[Int\] = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-
-scala\>
-
-scala\> val doubles = nums.map(\_ \* 2)
-
-doubles: List\[Int\] = List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
-
-scala\> val lessThanFive = nums.filter(\_ \< 5)
-
-lessThanFive: List\[Int\] = List(1, 2, 3, 4)
+```scala
+scala> val nums = (1 to 10).toList
+nums: List[Int] = List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+scala>
+scala> val doubles = nums.map(_ * 2)
+doubles: List[Int] = List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+scala> val lessThanFive = nums.filter(_ < 5)
+lessThanFive: List[Int] = List(1, 2, 3, 4)
+```
 
 在这些示例中，匿名函数被传递到map和filter中，与将常规函数传递给相同map：
 
-scala\> def double(i: Int): Int = i \* 2
-
+```scala
+scala> def double(i: Int): Int = i * 2
 double: (i: Int)Int
-
-scala\> val doubles = nums.map(double)
-
-doubles: List\[Int\] = List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+scala> val doubles = nums.map(double)
+doubles: List[Int] = List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+```
 
 如这些示例所示，Scala显然允许您将匿名函数和常规函数传递给其他方法。这是优秀的函数式编程语言提供的强大功能。如果从技术术语角度介绍的话，将另一个函数作为输入参数的函数称为高阶函数。将函数作为变量传递的能力是函数式编程语言的一个显着特征，就像map和filter将函数作为参数传递给其他函数的能力可以帮助我们创建简洁而又易读的代码。为了更好的体验将函数作为参数传递给其他函数的过程，可以在REPL中尝试以下几个示例：
 
-scala\> List("foo", "bar").map(\_.toUpperCase)
-
-res3: List\[String\] = List(FOO, BAR)
-
-scala\> List("foo", "bar").map(\_.capitalize)
-
-res4: List\[String\] = List(Foo, Bar)
-
-scala\> List("adam", "scott").map(\_.length)
-
-res5: List\[Int\] = List(4, 5)
-
-scala\> List(1,2,3,4,5).map(\_ \* 10)
-
-res6: List\[Int\] = List(10, 20, 30, 40, 50)
-
-scala\> List(1,2,3,4,5).filter(\_ \> 2)
-
-res7: List\[Int\] = List(3, 4, 5)
-
-scala\> List(5,1,3,11,7).takeWhile(\_ \< 6)
-
-res8: List\[Int\] = List(5, 1, 3)
+```scala
+scala> List("foo", "bar").map(_.toUpperCase)
+res3: List[String] = List(FOO, BAR)
+scala> List("foo", "bar").map(_.capitalize)
+res4: List[String] = List(Foo, Bar)
+scala> List("adam", "scott").map(_.length)
+res5: List[Int] = List(4, 5)
+scala> List(1,2,3,4,5).map(_ * 10)
+res6: List[Int] = List(10, 20, 30, 40, 50)
+scala> List(1,2,3,4,5).filter(_ > 2)
+res7: List[Int] = List(3, 4, 5)
+scala> List(5,1,3,11,7).takeWhile(_ < 6)
+res8: List[Int] = List(5, 1, 3)
+```
 
 这些匿名函数中的任何一个也可以写为常规函数，因此我们可以编写如下函数：
 
-scala\> def toUpper(s: String): String = s.toUpperCase
-
+```scala
+scala> def toUpper(s: String): String = s.toUpperCase
 toUpper: (s: String)String
-
-scala\> List("foo", "bar").map(toUpper)
-
-res9: List\[String\] = List(FOO, BAR)
-
-scala\> List("foo", "bar").map(s =\> toUpper(s))
-
-res10: List\[String\] = List(FOO, BAR)
+scala> List("foo", "bar").map(toUpper)
+res9: List[String] = List(FOO, BAR)
+scala> List("foo", "bar").map(s => toUpper(s))
+res10: List[String] = List(FOO, BAR)
+```
 
 这些使用常规函数的示例等同于这些匿名函数示例：
 
-scala\> List("foo", "bar").map(s =\> s.toUpperCase)
-
-res11: List\[String\] = List(FOO, BAR)
-
-scala\> List("foo", "bar").map(\_.toUpperCase)
-
-res12: List\[String\] = List(FOO, BAR)
+```scala
+scala> List("foo", "bar").map(s => s.toUpperCase)
+res11: List[String] = List(FOO, BAR)
+scala> List("foo", "bar").map(_.toUpperCase)
+res12: List[String] = List(FOO, BAR)
+```
 
 函数式编程就像编写一系列代数方程式一样，并且由于在代数中不使用空值，因此在函数式编程中不使用空值。Scala的解决方案是使用构造，例如Option/Some/None类。虽然第一个Option/Some/None示例不处理空值，但这是演示Option/Some/None类的好方法，因此我们从它开始。
 
 想象一下，我们想编写一种方法来简化将字符串转换为整数值的过程，并且想要一种优雅的方法来处理当获取的字符串类似“foo”而不能转换为数字时可能引发的异常。对这种函数的首次猜测可能是这样的：
 
-scala\> def toInt(s: String): Int = {
-
+```scala
+scala> def toInt(s: String): Int = {
 | try {
-
 | Integer.parseInt(s.trim)
-
 | } catch {
-
-| case e: Exception =\> 0
-
+| case e: Exception => 0
 | }
-
 | }
-
 toInt: (s: String)Int
+```
 
 此函数的思路是：如果字符串转换为整数，则返回整数，但如果转换失败，则返回0。出于某些目的这可能还可以，但实际上并不准确。例如该方法可能会接收到“0”，但是也可能是“foo”或者也可能收到“bar”等无数其他字符串。这就产生了一个实际的问题：怎么知道该方法何时真正收到“0”，或何时收到其他东西？但是，使用这种方法无法知道。Scala解决这个问题的方法是使用三个类：Option、Some和None。Some与None类是Option的子类，因此解决方案是这样的：
 
@@ -1713,31 +1517,25 @@ toInt: (s: String)Int
 
 解决方案的实现如下所示：
 
-scala\> def toInt(s: String): Option\[Int\] = {
-
+```scala
+scala> def toInt(s: String): Option[Int] = {
 | try {
-
 | Some(Integer.parseInt(s.trim))
-
 | } catch {
-
-| case e: Exception =\> None
-
+| case e: Exception => None
 | }
-
 | }
-
-toInt: (s: String)Option\[Int\]
+toInt: (s: String)Option[Int]
+```
 
 这段代码可以理解为：当给定的字符串转换为整数时，返回Some包装器中的整数，例如Some(1)，如果字符串不能转换为整数，则返回None值。以下是两个REPL示例，它们演示了toInt的实际作用：
 
-scala\> val a = toInt("1")
-
-a: Option\[Int\] = Some(1)
-
-scala\> val a = toInt("foo")
-
-a: Option\[Int\] = None
+```scala
+scala> val a = toInt("1")
+a: Option[Int] = Some(1)
+scala> val a = toInt("foo")
+a: Option[Int] = None
+```
 
 如图所示，字符串“1”转换为Some(1)，而字符串“foo”转换为None。这是Option/Some/None方法的本质，用于处理异常（如本例所示），并且相同的技术也可用于处理空值，我们会发现整个Scala库类以及第三方Scala库都使用了这种方法。
 
@@ -1754,29 +1552,20 @@ case None =\> println("That didn't work.")
 
 在此示例中，如果x可以转换为Int，case则执行第一条语句；如果x不能转换为Int，case则执行第二条语句。另一个常见的解决方案是使用for/yield组合。为了证明这一点，假设将三个字符串转换为整数值，然后将它们加在一起。for/yield解决方案如下所示：
 
-scala\> val stringA = "1"
-
+```scala
+scala> val stringA = "1"
 stringA: String = 1
-
-scala\> val stringB = "2"
-
+scala> val stringB = "2"
 stringB: String = 2
-
-scala\> val stringC = "3"
-
+scala> val stringC = "3"
 stringC: String = 3
-
-scala\> val y = for {
-
-| a \<- toInt(stringA)
-
-| b \<- toInt(stringB)
-
-| c \<- toInt(stringC)
-
+scala> val y = for {
+| a <- toInt(stringA)
+| b <- toInt(stringB)
+| c <- toInt(stringC)
 | } yield a + b + c
-
-y: Option\[Int\] = Some(6)
+y: Option[Int] = Some(6)
+```
 
 该表达式结束运行时，y将是以下两件事之一：
 
@@ -1790,11 +1579,11 @@ REPL中自己对此进行测试，输入三个字符串变量，y的值为Some(6
 因为可以将Some和None视为容器，所以可以将它们进一步视为类似于集合类。
 因此，它们具有应用于集合类的所有方法，包括map、filter、foreach等，例如：
 
-scala\> toInt("1").foreach(println)
-
+```scala
+scala> toInt("1").foreach(println)
 1
-
-scala\> toInt("x").foreach(println)
+scala> toInt("x").foreach(println)
+```
 
 第一个示例显示数字1，而第二个示例不显示任何内容。这是因为toInt("1")计算为
 Some(1)，Some类上的foreach方法知道如何从Some容器内部提取其中的值，因此将该值传递给println。同样，第二个示例不打印任何内容，因为toInt("x")计算为
@@ -1814,415 +1603,338 @@ Scala集合类是一个易于理解且经常使用的编程抽象，可以分为
 
 ArrayBuffer是一个可变序列，因此可以使用其方法来修改其内容，并且这些方法类似于Java序列上的方法。要使用ArrayBuffer必须先将其导入：
 
-scala\> import scala.collection.mutable.ArrayBuffer
-
+```scala
+scala> import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ArrayBuffer
+```
 
 将其导入本地范围后，将创建一个空的ArrayBuffer，可以通过多种方式向其中添加元素，如下所示：
 
-scala\> val ints = ArrayBuffer\[Int\]()
-
-ints: scala.collection.mutable.ArrayBuffer\[Int\] = ArrayBuffer()
-
-scala\> ints += 1
-
+```scala
+scala> val ints = ArrayBuffer[Int]()
+ints: scala.collection.mutable.ArrayBuffer[Int] = ArrayBuffer()
+scala> ints += 1
 res17: ints.type = ArrayBuffer(1)
-
-scala\> ints += 2
-
+scala> ints += 2
 res18: ints.type = ArrayBuffer(1, 2)
+```
 
 这只是创建ArrayBuffer并向其中添加元素的一种方法，还可以使用以下初始元素创建ArrayBuffer，通过以下几种方法向此ArrayBuffer添加更多元素：
 
-scala\> val nums = ArrayBuffer(1, 2, 3)
-
-nums: scala.collection.mutable.ArrayBuffer\[Int\] = ArrayBuffer(1, 2, 3)
-
-scala\> nums += 4
-
+```scala
+scala> val nums = ArrayBuffer(1, 2, 3)
+nums: scala.collection.mutable.ArrayBuffer[Int] = ArrayBuffer(1, 2, 3)
+scala> nums += 4
 res19: nums.type = ArrayBuffer(1, 2, 3, 4)
-
-scala\> nums += 5 += 6
-
+scala> nums += 5 += 6
 res20: nums.type = ArrayBuffer(1, 2, 3, 4, 5, 6)
-
-scala\> nums ++= List(7, 8, 9)
-
+scala> nums ++= List(7, 8, 9)
 res21: nums.type = ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8, 9)
+```
 
 还可以使用“-=”和“-=”方法从ArrayBuffer中删除元素：
 
-scala\> nums -= 9
-
-val res3: ArrayBuffer\[Int\] = ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8)
-
-scala\> nums -= 7 -= 8
-
-val res4: ArrayBuffer\[Int\] = ArrayBuffer(1, 2, 3, 4, 5, 6)
-
-scala\> nums --= Array(5, 6)
-
-val res5: ArrayBuffer\[Int\] = ArrayBuffer(1, 2, 3, 4)
+```scala
+scala> nums -= 9
+val res3: ArrayBuffer[Int] = ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8)
+scala> nums -= 7 -= 8
+val res4: ArrayBuffer[Int] = ArrayBuffer(1, 2, 3, 4, 5, 6)
+scala> nums --= Array(5, 6)
+val res5: ArrayBuffer[Int] = ArrayBuffer(1, 2, 3, 4)
+```
 
 简要概述一下，可以将以下几种方法用于ArrayBuffer：
 
-scala\> val a = ArrayBuffer(1, 2, 3) // ArrayBuffer(1, 2, 3)
-
-a: scala.collection.mutable.ArrayBuffer\[Int\] = ArrayBuffer(1, 2, 3)
-
-scala\> a.append(4) // ArrayBuffer(1, 2, 3, 4)
-
-scala\> a.append(5, 6) // ArrayBuffer(1, 2, 3, 4, 5, 6)
-
-scala\> a.appendAll(Seq(7,8)) // ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8)
-
-scala\> a.clear // ArrayBuffer()
-
-scala\>
-
-scala\> val a = ArrayBuffer(9, 10) // ArrayBuffer(9, 10)
-
-a: scala.collection.mutable.ArrayBuffer\[Int\] = ArrayBuffer(9, 10)
-
-scala\> a.insert(0, 8) // ArrayBuffer(8, 9, 10)
-
-scala\> a.insertAll(0, Vector(4, 5, 6, 7)) // ArrayBuffer(4, 5, 6, 7, 8,
+```scala
+scala> val a = ArrayBuffer(1, 2, 3) // ArrayBuffer(1, 2, 3)
+a: scala.collection.mutable.ArrayBuffer[Int] = ArrayBuffer(1, 2, 3)
+scala> a.append(4) // ArrayBuffer(1, 2, 3, 4)
+scala> a.append(5, 6) // ArrayBuffer(1, 2, 3, 4, 5, 6)
+scala> a.appendAll(Seq(7,8)) // ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8)
+scala> a.clear // ArrayBuffer()
+scala>
+scala> val a = ArrayBuffer(9, 10) // ArrayBuffer(9, 10)
+a: scala.collection.mutable.ArrayBuffer[Int] = ArrayBuffer(9, 10)
+scala> a.insert(0, 8) // ArrayBuffer(8, 9, 10)
+scala> a.insertAll(0, Vector(4, 5, 6, 7)) // ArrayBuffer(4, 5, 6, 7, 8,
 9, 10)
-
-scala\> a.prepend(3) // ArrayBuffer(3, 4, 5, 6, 7, 8, 9, 10)
-
-scala\> a.prepend(1, 2) // ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-
-scala\> a.prependAll(Array(0)) // ArrayBuffer(0, 1, 2, 3, 4, 5, 6, 7, 8,
+scala> a.prepend(3) // ArrayBuffer(3, 4, 5, 6, 7, 8, 9, 10)
+scala> a.prepend(1, 2) // ArrayBuffer(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+scala> a.prependAll(Array(0)) // ArrayBuffer(0, 1, 2, 3, 4, 5, 6, 7, 8,
 9, 10)
-
-scala\>
-
-scala\> val a = ArrayBuffer.range('a', 'h') // ArrayBuffer(a, b, c, d,
+scala>
+scala> val a = ArrayBuffer.range('a', 'h') // ArrayBuffer(a, b, c, d,
 e, f, g)
-
-a: scala.collection.mutable.ArrayBuffer\[Char\] = ArrayBuffer(a, b, c,
+a: scala.collection.mutable.ArrayBuffer[Char] = ArrayBuffer(a, b, c,
 d, e, f, g)
-
-scala\> a.remove(0) // ArrayBuffer(b, c, d, e, f, g)
-
+scala> a.remove(0) // ArrayBuffer(b, c, d, e, f, g)
 res44: Char = a
-
-scala\> a.remove(2, 3) // ArrayBuffer(b, c, g)
-
-scala\>
-
-scala\> val a = ArrayBuffer.range('a', 'h') // ArrayBuffer(a, b, c, d,
+scala> a.remove(2, 3) // ArrayBuffer(b, c, g)
+scala>
+scala> val a = ArrayBuffer.range('a', 'h') // ArrayBuffer(a, b, c, d,
 e, f, g)
-
-a: scala.collection.mutable.ArrayBuffer\[Char\] = ArrayBuffer(a, b, c,
+a: scala.collection.mutable.ArrayBuffer[Char] = ArrayBuffer(a, b, c,
 d, e, f, g)
-
-scala\> a.trimStart(2) // ArrayBuffer(c, d, e, f, g)
-
-scala\> a.trimEnd(2) // ArrayBuffer(c, d, e)
+scala> a.trimStart(2) // ArrayBuffer(c, d, e, f, g)
+scala> a.trimEnd(2) // ArrayBuffer(c, d, e)
+```
 
 List类是线性的，不可变的序列。这意味着它是一个无法修改的链表，每当要添加或删除List元素时，都可以从一个现存的List中创建一个新元素List。这是创建初始列表的方法：
 
-scala\> val ints = List(1, 2, 3)
-
-ints: List\[Int\] = List(1, 2, 3)
-
-scala\> val names = List("Joel", "Chris", "Ed")
-
-names: List\[String\] = List(Joel, Chris, Ed)
+```scala
+scala> val ints = List(1, 2, 3)
+ints: List[Int] = List(1, 2, 3)
+scala> val names = List("Joel", "Chris", "Ed")
+names: List[String] = List(Joel, Chris, Ed)
+```
 
 由于列表是不可变的，因此无法向其中添加新元素。相反，可以通过在现有列表之前或之后添加元素来创建新列表，例如给定此列表：
 
-scala\> val a = List(1,2,3)
-
-a: List\[Int\] = List(1, 2, 3)
-
-scala\> val b = 0 +: a
-
-b: List\[Int\] = List(0, 1, 2, 3)
-
-scala\> val b = List(-1, 0) ++: a
-
-b: List\[Int\] = List(-1, 0, 1, 2, 3)
+```scala
+scala> val a = List(1,2,3)
+a: List[Int] = List(1, 2, 3)
+scala> val b = 0 +: a
+b: List[Int] = List(0, 1, 2, 3)
+scala> val b = List(-1, 0) ++: a
+b: List[Int] = List(-1, 0, 1, 2, 3)
+```
 
 也可以将元素追加到List，但是由于List是单链接列表，因此实际上只应在元素之前添加元素；向其添加元素是一个相对较慢的操作，尤其是在处理大序列时。如果要在不可变序列的前面和后面添加元素，需要使用Vector。由于列表是链接列表类，因此不应尝试通过大列表的索引值来访问它们。例如，如果具有一个包含一百万个元素的列表，则访问myList(999999)之类的元素将花费很长时间，如果要访问这样的元素，需要使用Vector或ArrayBuffer。下面的例子展示如何遍历列表的语法，给定这样的List：
 
-scala\> val names = List("Joel", "Chris", "Ed")
-
-names: List\[String\] = List(Joel, Chris, Ed)
-
-scala\> for (name \<- names) println(name)
-
+```scala
+scala> val names = List("Joel", "Chris", "Ed")
+names: List[String] = List(Joel, Chris, Ed)
+scala> for (name <- names) println(name)
 Joel
-
 Chris
-
 Ed
+```
 
 关于这种方法的最大好处是，它适用于所有的序列类，包括ArrayBuffer、List、Seq和Vector等。确实还可以通过以下方式创建完全相同的列表：
 
-scala\> val list = 1 :: 2 :: 3 :: Nil
-
-list: List\[Int\] = List(1, 2, 3)
+```scala
+scala> val list = 1 :: 2 :: 3 :: Nil
+list: List[Int] = List(1, 2, 3)
+```
 
 这是有效的，因为一个List是以Nil元素结尾的单链列表。
 
 Vector类是一个索引的，不变的序列，可以通过Vector元素的索引值非常快速地访问它们，例如访问listOfPeople(999999)。通常，除了对Vector进行索引和不对List进行索引的区别外，这两个类的工作方式相同。我们可以通过以下几种方法创建Vector：
 
-scala\> val nums = Vector(1, 2, 3, 4, 5)
-
-nums: scala.collection.immutable.Vector\[Int\] = Vector(1, 2, 3, 4, 5)
-
-scala\>
-
-scala\> val strings = Vector("one", "two")
-
-strings: scala.collection.immutable.Vector\[String\] = Vector(one, two)
+```scala
+scala> val nums = Vector(1, 2, 3, 4, 5)
+nums: scala.collection.immutable.Vector[Int] = Vector(1, 2, 3, 4, 5)
+scala>
+scala> val strings = Vector("one", "two")
+strings: scala.collection.immutable.Vector[String] = Vector(one, two)
+```
 
 由于Vector是不可变的，因此无法向其中添加新元素，可以通过将元素追加或添加到现有Vector上来创建新序列。例如给定此向量：
 
-scala\> val a = Vector(1,2,3)
-
-a: Vector\[Int\] = List(1, 2, 3)
-
-scala\> val b = a :+ 4
-
-b: Vector\[Int\] = List(1, 2, 3, 4)
-
-scala\> val b = a ++ Vector(4, 5)
-
-b: Vector\[Int\] = List(1, 2, 3, 4, 5)
+```scala
+scala> val a = Vector(1,2,3)
+a: Vector[Int] = List(1, 2, 3)
+scala> val b = a :+ 4
+b: Vector[Int] = List(1, 2, 3, 4)
+scala> val b = a ++ Vector(4, 5)
+b: Vector[Int] = List(1, 2, 3, 4, 5)
+```
 
 您也可以在前面加上这样的内容：
 
-scala\> val b = 0 +: a
-
-b: Vector\[Int\] = List(0, 1, 2, 3)
-
-scala\> val b = Vector(-1, 0) ++: a
-
-b: Vector\[Int\] = List(-1, 0, 1, 2, 3)
+```scala
+scala> val b = 0 +: a
+b: Vector[Int] = List(0, 1, 2, 3)
+scala> val b = Vector(-1, 0) ++: a
+b: Vector[Int] = List(-1, 0, 1, 2, 3)
+```
 
 因为Vector不是链表（如List），所以可以在它的前面和后面添加元素，并且两种方法的速度应该相似，循环遍历Vector元素，就像ArrayBuffer或List：
 
-scala\> val names = Vector("Joel", "Chris", "Ed")
-
-val names: Vector\[String\] = Vector(Joel, Chris, Ed)
-
-scala\> for (name \<- names) println(name)
-
+```scala
+scala> val names = Vector("Joel", "Chris", "Ed")
+val names: Vector[String] = Vector(Joel, Chris, Ed)
+scala> for (name <- names) println(name)
 Joel
-
 Chris
-
 Ed
+```
 
 Map类文档将Map描述为由键值对组成的可迭代序列。一个简单的Map看起来像这样：
 
-scala\> val states = Map(
-
-| "AK" -\> "Alaska",
-
-| "IL" -\> "Illinois",
-
-| "KY" -\> "Kentucky"
-
+```scala
+scala> val states = Map(
+| "AK" -> "Alaska",
+| "IL" -> "Illinois",
+| "KY" -> "Kentucky"
 | )
-
-states: scala.collection.immutable.Map\[String,String\] = Map(AK -\>
-Alaska, IL -\> Illinois, KY -\> Kentucky)
+states: scala.collection.immutable.Map[String,String] = Map(AK ->
+Alaska, IL -> Illinois, KY -> Kentucky)
+```
 
 Scala具有可变和不变的Map类。在本课程中，我们将展示如何使用可变的类。要使用可变Map类，请首先导入它：
 
-scala\> import scala.collection.mutable.Map
-
+```scala
+scala> import scala.collection.mutable.Map
 import scala.collection.mutable.Map
+```
 
 然后可以创建一个像这样的Map：
 
-scala\> val states = collection.mutable.Map("AK" -\> "Alaska")
-
-states: scala.collection.mutable.Map\[String,String\] = Map(AK -\>
+```scala
+scala> val states = collection.mutable.Map("AK" -> "Alaska")
+states: scala.collection.mutable.Map[String,String] = Map(AK ->
 Alaska)
+```
 
 现在，可以使用+ =向Map添加一个元素，如下所示：
 
-scala\> states += ("AL" -\> "Alabama")
-
-res49: states.type = Map(AL -\> Alabama, AK -\> Alaska)
+```scala
+scala> states += ("AL" -> "Alabama")
+res49: states.type = Map(AL -> Alabama, AK -> Alaska)
+```
 
 还可以使用+=添加多个元素：
 
-scala\> states += ("AR" -\> "Arkansas", "AZ" -\> "Arizona")
-
-res50: states.type = Map(AZ -\> Arizona, AL -\> Alabama, AR -\>
-Arkansas, AK -\> Alaska)
+```scala
+scala> states += ("AR" -> "Arkansas", "AZ" -> "Arizona")
+res50: states.type = Map(AZ -> Arizona, AL -> Alabama, AR ->
+Arkansas, AK -> Alaska)
+```
 
 可以使用“++=”从其他Map添加元素：
 
-scala\> states ++= Map("CA" -\> "California", "CO" -\> "Colorado")
-
-res51: states.type = Map(CO -\> Colorado, AZ -\> Arizona, AL -\>
-Alabama, CA -\> California, AR -\> Arkansas, AK -\> Alaska)
+```scala
+scala> states ++= Map("CA" -> "California", "CO" -> "Colorado")
+res51: states.type = Map(CO -> Colorado, AZ -> Arizona, AL ->
+Alabama, CA -> California, AR -> Arkansas, AK -> Alaska)
+```
 
 使用“-=”和“-=”并指定键值从Map中删除元素，如以下示例所示：
 
-scala\> states -= "AR"
-
-res52: states.type = Map(CO -\> Colorado, AZ -\> Arizona, AL -\>
-Alabama, CA -\> California, AK -\> Alaska)
-
-scala\> states -= ("AL", "AZ")
-
-res53: states.type = Map(CO -\> Colorado, CA -\> California, AK -\>
+```scala
+scala> states -= "AR"
+res52: states.type = Map(CO -> Colorado, AZ -> Arizona, AL ->
+Alabama, CA -> California, AK -> Alaska)
+scala> states -= ("AL", "AZ")
+res53: states.type = Map(CO -> Colorado, CA -> California, AK ->
 Alaska)
-
-scala\> states --= List("AL", "AZ")
-
-res54: states.type = Map(CO -\> Colorado, CA -\> California, AK -\>
+scala> states --= List("AL", "AZ")
+res54: states.type = Map(CO -> Colorado, CA -> California, AK ->
 Alaska)
+```
 
 可以通过将Map元素的键重新分配为新值来更新它们：
 
-scala\> states("AK") = "Alaska, A Really Big State"
-
-scala\> states
-
-res6: scala.collection.mutable.Map\[String,String\] = Map(CO -\>
-Colorado, CA -\> California, AK -\> Alaska, A Really Big State)
+```scala
+scala> states("AK") = "Alaska, A Really Big State"
+scala> states
+res6: scala.collection.mutable.Map[String,String] = Map(CO ->
+Colorado, CA -> California, AK -> Alaska, A Really Big State)
+```
 
 有几种不同的方法可以迭代Map中的元素，给定一个样本Map：
 
-scala\> val ratings = Map(
-
-| "Lady in the Water"-\> 3.0,
-
-| "Snakes on a Plane"-\> 4.0,
-
-| "You, Me and Dupree"-\> 3.5
-
+```scala
+scala> val ratings = Map(
+| "Lady in the Water"-> 3.0,
+| "Snakes on a Plane"-> 4.0,
+| "You, Me and Dupree"-> 3.5
 | )
-
-ratings: scala.collection.mutable.Map\[String,Double\] = Map(Snakes on a
-Plane -\> 4.0, Lady in the Water -\> 3.0, You, Me and Dupree -\> 3.5)
+ratings: scala.collection.mutable.Map[String,Double] = Map(Snakes on a
+Plane -> 4.0, Lady in the Water -> 3.0, You, Me and Dupree -> 3.5)
+```
 
 循环所有Map元素的一种好方法是使用以下for循环语法：
 
-scala\> for ((k,v) \<- ratings) println(s"key: $k, value: $v")
-
+```scala
+scala> for ((k,v) <- ratings) println(s"key: $k, value: $v")
 key: Snakes on a Plane, value: 4.0
-
 key: Lady in the Water, value: 3.0
-
 key: You, Me and Dupree, value: 3.5
+```
 
 将match表达式与foreach方法一起使用也很容易理解：
 
-scala\> ratings.foreach {
-
-| case(movie, rating) =\> println(s"key: $movie, value: $rating")
-
+```scala
+scala> ratings.foreach {
+| case(movie, rating) => println(s"key: $movie, value: $rating")
 | }
-
 key: Snakes on a Plane, value: 4.0
-
 key: Lady in the Water, value: 3.0
-
 key: You, Me and Dupree, value: 3.5
+```
 
 Scala Set类是一个可迭代的集合，没有重复的元素。Scala具有可变和不变的Set类。
 在本课程中，我们将展示如何使用可变的类。要使用可变的Set，首先导入它：
 
-scala\> val set = scala.collection.mutable.Set\[Int\]()
-
-set: scala.collection.mutable.Set\[Int\] = Set()
+```scala
+scala> val set = scala.collection.mutable.Set[Int]()
+set: scala.collection.mutable.Set[Int] = Set()
+```
 
 可以使用“+=”、“++=”将元素添加到可变Set中，还有add()方法。这里有一些例子：
 
-scala\> set += 1
-
-val res0: scala.collection.mutable.Set\[Int\] = Set(1)
-
-scala\> set += 2 += 3
-
-val res1: scala.collection.mutable.Set\[Int\] = Set(1, 2, 3)
-
-scala\> set ++= Vector(4, 5)
-
-val res2: scala.collection.mutable.Set\[Int\] = Set(1, 5, 2, 3, 4)
+```scala
+scala> set += 1
+val res0: scala.collection.mutable.Set[Int] = Set(1)
+scala> set += 2 += 3
+val res1: scala.collection.mutable.Set[Int] = Set(1, 2, 3)
+scala> set ++= Vector(4, 5)
+val res2: scala.collection.mutable.Set[Int] = Set(1, 5, 2, 3, 4)
+```
 
 如果您尝试将值添加到其中已存在的集合中，则该尝试将被忽略：
 
-scala\> set += 2
-
-val res3: scala.collection.mutable.Set\[Int\] = Set(1, 5, 2, 3, 4)
+```scala
+scala> set += 2
+val res3: scala.collection.mutable.Set[Int] = Set(1, 5, 2, 3, 4)
+```
 
 Set还具有add方法，如果将元素添加到集合中，则返回true；如果未添加元素，则返回false：
 
-scala\> set.add(6)
-
+```scala
+scala> set.add(6)
 res4: Boolean = true
-
-scala\> set.add(5)
-
+scala> set.add(5)
 res5: Boolean = false
+```
 
 可以使用“-=”和“-=”方法从集合中删除元素，如以下示例所示：
 
-scala\> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
-
-set: scala.collection.mutable.Set\[Int\] = Set(2, 1, 4, 3, 5)
-
+```scala
+scala> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
+set: scala.collection.mutable.Set[Int] = Set(2, 1, 4, 3, 5)
 // one element
-
-scala\> set -= 1
-
-res0: scala.collection.mutable.Set\[Int\] = Set(2, 4, 3, 5)
-
+scala> set -= 1
+res0: scala.collection.mutable.Set[Int] = Set(2, 4, 3, 5)
 // two or more elements (-= has a varargs field)
-
-scala\> set -= (2, 3)
-
-res1: scala.collection.mutable.Set\[Int\] = Set(4, 5)
-
+scala> set -= (2, 3)
+res1: scala.collection.mutable.Set[Int] = Set(4, 5)
 // multiple elements defined in another sequence
-
-scala\> set --= Array(4,5)
-
-res2: scala.collection.mutable.Set\[Int\] = Set()
+scala> set --= Array(4,5)
+res2: scala.collection.mutable.Set[Int] = Set()
+```
 
 如上例所示，还有更多使用集合的方法，包括clear和remove：
 
-scala\> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
-
-set: scala.collection.mutable.Set\[Int\] = Set(2, 1, 4, 3, 5)
-
+```scala
+scala> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
+set: scala.collection.mutable.Set[Int] = Set(2, 1, 4, 3, 5)
 // clear
-
-scala\> set.clear()
-
-scala\> set
-
-res0: scala.collection.mutable.Set\[Int\] = Set()
-
+scala> set.clear()
+scala> set
+res0: scala.collection.mutable.Set[Int] = Set()
 // remove
-
-scala\> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
-
-set: scala.collection.mutable.Set\[Int\] = Set(2, 1, 4, 3, 5)
-
-scala\> set.remove(2)
-
+scala> val set = scala.collection.mutable.Set(1, 2, 3, 4, 5)
+set: scala.collection.mutable.Set[Int] = Set(2, 1, 4, 3, 5)
+scala> set.remove(2)
 res1: Boolean = true
-
-scala\> set
-
-res2: scala.collection.mutable.Set\[Int\] = Set(1, 4, 3, 5)
-
-scala\> set.remove(40)
-
+scala> set
+res2: scala.collection.mutable.Set[Int] = Set(1, 4, 3, 5)
+scala> set.remove(40)
 res3: Boolean = false
+```
 
 ## 2.7 案例分析
 
@@ -2318,7 +2030,9 @@ Type in expressions to have them evaluated.
 
 Type :help for more information.
 
-scala\>
+```scala
+scala>
+```
 
 ### 2.7.2 SparkContext和SparkSession
 
@@ -2338,11 +2052,12 @@ Program）使用它连接集群管理器（YARN、Kubernetes或Standalone），�
 
 首先启动交互式界面，运行spark-shell来完成。一旦启动界面，接下来使用SparkContext.textFile方法将数据加载到Spark中。请注意，代码中的sc是指SparkContext对象。
 
-scala\> val auctionRDD = sc.textFile("/data/auctiondata.csv")
-
-auctionRDD: org.apache.spark.rdd.RDD\[String\] =
-/root/data/auctiondata.csv MapPartitionsRDD\[1\] at textFile at
-\<console\>:24
+```scala
+scala> val auctionRDD = sc.textFile("/data/auctiondata.csv")
+auctionRDD: org.apache.spark.rdd.RDD[String] =
+/root/data/auctiondata.csv MapPartitionsRDD[1] at textFile at
+<console>:24
+```
 
 代码 4.60
 
@@ -2352,9 +2067,10 @@ textFile方法返回一个RDD，每行包含一条记录。除了文本文件，
 
 可以使用first()方法返回auctionRDD中第一行的数据。
 
-scala\> auctionRDD.first
-
+```scala
+scala> auctionRDD.first
 res2: String = 8213034705,95,2.927373,jake7870,0,95,117.5,xbox,3
+```
 
 代码 4.61
 
@@ -2362,10 +2078,11 @@ res2: String = 8213034705,95,2.927373,jake7870,0,95,117.5,xbox,3
 
   - 可以使用什么转换操作来仅获得所有Xbox的出价信息？
 
-scala\> val xboxRDD = auctionRDD.filter(line=\>line.contains("xbox"))
-
-xboxRDD: org.apache.spark.rdd.RDD\[String\] = MapPartitionsRDD\[2\] at
-filter at \<console\>:26
+```scala
+scala> val xboxRDD = auctionRDD.filter(line=>line.contains("xbox"))
+xboxRDD: org.apache.spark.rdd.RDD[String] = MapPartitionsRDD[2] at
+filter at <console>:26
+```
 
 代码 4.62
 
@@ -2411,11 +2128,12 @@ val daystolive=8
 
 从本地文件系统中，使用SparkContext的textFile()方法加载.csv格式的数据，在map()转换中将split函数应用到每行上，并使用“,”符号分割每行，将每行数据转换成一个数组Array。
 
-scala\> val auctionRDD =
-sc.textFile("/data/auctiondata.csv").map(\_.split(","))
-
-auctionRDD: org.apache.spark.rdd.RDD\[Array\[String\]\] =
-MapPartitionsRDD\[11\] at map at \<console\>:24
+```scala
+scala> val auctionRDD =
+sc.textFile("/data/auctiondata.csv").map(_.split(","))
+auctionRDD: org.apache.spark.rdd.RDD[Array[String]] =
+MapPartitionsRDD[11] at map at <console>:24
+```
 
 代码 4.64
 
@@ -2426,9 +2144,10 @@ MapPartitionsRDD\[11\] at map at \<console\>:24
 如果想让函数文本更简洁，可以把下划线当做一个或更多参数的占位符，只要每个参数在函数文本内仅出现一次。比如下面代码，\_ \>
 0对于检查值是否大于零的函数来说就是非常短的标注：
 
-scala\> List(-11, -10, -5, 0, 5, 10).filter(\_ \> 0)
-
-res3: List\[Int\] = List(5, 10)
+```scala
+scala> List(-11, -10, -5, 0, 5, 10).filter(_ > 0)
+res3: List[Int] = List(5, 10)
+```
 
 代码 4.65
 
@@ -2437,41 +2156,37 @@ res3: List\[Int\] = List(5, 10)
 0，这样直到List的最后一个值。因此函数文本\_ \> 0与稍微冗长一点儿的x =\> x \>
 0相同，代码如下：
 
-scala\> List(-11, -10, -5, 0, 5, 10).filter(x =\> x \> 0)
-
-res3: List\[Int\] = List(5, 10)
+```scala
+scala> List(-11, -10, -5, 0, 5, 10).filter(x => x > 0)
+res3: List[Int] = List(5, 10)
+```
 
 代码 4.66
 
 有时把下划线当作参数的占位符时，编译器有可能没有足够的信息推断缺失的参数类型。例如，假设只是写\_ + \_：
 
-scala\> val f = \_ + \_
-
-\<console\>:23: error: missing parameter type for expanded function
-((x$1, x$2) =\> x$1.$plus(x$2))
-
-val f = \_ + \_
-
+```scala
+scala> val f = _ + _
+<console>:23: error: missing parameter type for expanded function
+((x$1, x$2) => x$1.$plus(x$2))
+val f = _ + _
 ^
-
-\<console\>:23: error: missing parameter type for expanded function
-((x$1: \<error\>, x$2) =\> x$1.$plus(x$2))
-
-val f = \_ + \_
-
+<console>:23: error: missing parameter type for expanded function
+((x$1: <error>, x$2) => x$1.$plus(x$2))
+val f = _ + _
 ^
+```
 
 代码 4.67
 
 这种情况下，可以使用冒号指定类型，如下：
 
-scala\> val f = (\_: Int) + (\_: Int)
-
-f: (Int, Int) =\> Int = \<function2\>
-
-scala\> f(5,10)
-
+```scala
+scala> val f = (_: Int) + (_: Int)
+f: (Int, Int) => Int = <function2>
+scala> f(5,10)
 res4: Int = 15
+```
 
 代码 4.68
 
@@ -2480,10 +2195,11 @@ res4: Int = 15
 
   - 有多少个项目被卖出？
 
-scala\> val items\_sold =
-auctionRDD.map(bid=\>bid(auctionid)).distinct.count
-
-items\_sold: Long = 627
+```scala
+scala> val items_sold =
+auctionRDD.map(bid=>bid(auctionid)).distinct.count
+items_sold: Long = 627
+```
 
 代码 4.69
 
@@ -2493,19 +2209,21 @@ items\_sold: Long = 627
 
 在数据中商品类型itemtype可以是xbox、cartier或palm，每个商品类型可能有多个商品。
 
-scala\> val bids\_item =
-auctionRDD.map(bid=\>(bid(itemtype),1)).reduceByKey((x,y)=\>x+y).collect()
-
-bids\_item: Array\[(String, Int)\] = Array((palm,5917), (cartier,1953),
+```scala
+scala> val bids_item =
+auctionRDD.map(bid=>(bid(itemtype),1)).reduceByKey((x,y)=>x+y).collect()
+bids_item: Array[(String, Int)] = Array((palm,5917), (cartier,1953),
 (xbox,2784))
+```
 
 代码 4.70
 
 这时auctionRDD中的每个行数据都是一个数组，就可以使用数组取值的方式bid(itemtype)获得每行数据的产品类型。所以map()转换将auctionRDD的每行数组bid映射到由itemtype和1组成的2维元组中。如果想看一看map()转换后的数据，则使用take(1)动作返回一行数据，代码为：
 
-scala\> val bids\_item = auctionRDD.map(bid=\>(bid(itemtype),1)).take(1)
-
-bids\_item: Array\[(String, Int)\] = Array((xbox,1))
+```scala
+scala> val bids_item = auctionRDD.map(bid=>(bid(itemtype),1)).take(1)
+bids_item: Array[(String, Int)] = Array((xbox,1))
+```
 
 代码 4.71
 
@@ -2515,17 +2233,19 @@ bids\_item: Array\[(String, Int)\] = Array((xbox,1))
 
 正如前面提到的，RDD的转换是惰性计算，这意味着定义auctionRDD的时候，还没有在内存中实际生成，直到在其上调用的动作之后，auctionRDD才会在内存中生成，而使用完之后auctionRDD会从内存中被释放。每次在RDD上调用动作时，Spark会重新计算RDD和其所有的依赖。例如当计算出价的总计次数时，数据将被加载到auctionRDD中，然后应用count动作，代码如下：
 
-scala\> auctionRDD.count
-
+```scala
+scala> auctionRDD.count
 res40: Long = 10654
+```
 
 代码 4.72
 
 运行完count动作之后，数据不在内存中。同样，如果计算xbox的总计出价次数时，将会按照定义RDD谱系图的先后顺序，先计算auctionRDD，后计算xboxRDD，然后在xboxRDD上应用count动作。运行完后，auctionRDD和xboxRDD都回从内存中释放，代码如下：
 
-scala\> xboxRDD.count
-
+```scala
+scala> xboxRDD.count
 res41: Long = 2784
+```
 
 代码 4.73
 
@@ -2535,15 +2255,13 @@ res41: Long = 2784
 
 另外，当需要知道每个商品auctionid的总出价次数和出价最大次数，需要定义另一个RDD，代码如下：
 
-scala\> val bidAuctionRDD =
-auctionRDD.map(bid=\>(bid(auctionid),1)).reduceByKey((x,y)=\>x+y)
-
-bidAuctionRDD: org.apache.spark.rdd.RDD\[(String, Int)\] =
-ShuffledRDD\[97\] at reduceByKey at \<console\>:34
-
-scala\> bidAuctionRDD.collect
-
-res54: Array\[(String, Int)\] = Array((3024504428,1), (3018732453,11),
+```scala
+scala> val bidAuctionRDD =
+auctionRDD.map(bid=>(bid(auctionid),1)).reduceByKey((x,y)=>x+y)
+bidAuctionRDD: org.apache.spark.rdd.RDD[(String, Int)] =
+ShuffledRDD[97] at reduceByKey at <console>:34
+scala> bidAuctionRDD.collect
+res54: Array[(String, Int)] = Array((3024504428,1), (3018732453,11),
 (3018904443,24), (8212237522,10), (3024980402,26), (3014835507,27),
 (3023275213,7), (3024895548,7), (1649858595,7), (8213472092,3),
 (8212969221,19), (3024406300,19), (1640550476,23), (3013951754,18),
@@ -2555,11 +2273,10 @@ res54: Array\[(String, Int)\] = Array((3024504428,1), (3018732453,11),
 (3024659380,26), (8212182237,5), (3016035790,11), (8214733985,7),
 (3024307294,3), (1639979107,16), (3017950485,20), (3025507248,7),
 (3015710025,7), (3024799631,18), (8212602164,50), (3016893433,13...
-
-scala\> val
-maxbids=bidAuctionRDD.map(x=\>x.\_2).reduce((x,y)=\>Math.max(x,y))
-
+scala> val
+maxbids=bidAuctionRDD.map(x=>x._2).reduce((x,y)=>Math.max(x,y))
 maxbids: Int = 75
+```
 
 代码 4.74
 
@@ -2583,10 +2300,11 @@ maxbids: Int = 75
 
   - 第三步在RDD上使用cache方法。
 
-scala\> bidAuctionRDD.cache
-
-res10: bidAuctionRDD.type = ShuffledRDD\[18\] at reduceByKey at
-\<console\>:30
+```scala
+scala> bidAuctionRDD.cache
+res10: bidAuctionRDD.type = ShuffledRDD[18] at reduceByKey at
+<console>:30
+```
 
 代码 4.75
 
@@ -2596,8 +2314,3 @@ res10: bidAuctionRDD.type = ShuffledRDD\[18\] at reduceByKey at
 
 本章也介绍了Spark数据处理的基本机制。Apache
 Spark是一个在Hadoop上运行并处理不同类型数据的集群计算框架，对于许多问题来说可以一站式解决方案，因为Spark拥有丰富的数据处理资源，最重要的是，它比Hadoop的MapReduce快10-20倍。Spark通过其基于内存的本质获得了这种计算速度，数据被缓存并存在于存储器（RAM）中，并执行内存中的所有计算。另外，通过本章的学习理解RDD的基本概念，掌握Spark程序的基本结构以及基础编程、编译和运行过程，学会Spark开发环境的配置。
-
-
-
-
-

@@ -126,124 +126,78 @@ Spark中所有功能的入口点是SparkSession。当启动spark-shell时，系�
 2.0开始，SparkSession提供了Hive功能的内置支持，包括使用HiveQL编写查询，访问Hive
 UDF以及从Hive表读取数据的功能。要使用这些功能，我们不需要具有现有的Hive设置。使用SparkSession，应用程序可以从现有的RDD、Hive表或Spark数据源创建DataFrame。
 
-scala\> val df = spark.read.json("/data/people.json")
-
-df: org.apache.spark.sql.DataFrame = \[age: bigint, name: string\]
-
-scala\> df.show
-
-\+----+-------+
-
+```scala
+scala> val df = spark.read.json("/data/people.json")
+df: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+scala> df.show
++----+-------+
 | age| name|
-
-\+----+-------+
-
++----+-------+
 |null|Michael|
-
 | 30| Andy|
-
 | 19| Justin|
-
-\+----+-------+
++----+-------+
+```
 
 代码 4‑1
 
 如上所述，在Spark 4.x中DataFrame只是Scala API或Java
 API中包含Dataset\[Row\]或Dataset\<Row\>的集合。基于DataFrame的操作是不带类型的，而Dataset是带类型的。
 
-scala\> df.printSchema()
-
+```scala
+scala> df.printSchema()
 root
-
 |-- age: long (nullable = true)
-
 |-- name: string (nullable = true)
-
-scala\> df.select("name").show()
-
-\+-------+
-
+scala> df.select("name").show()
++-------+
 | name|
-
-\+-------+
-
++-------+
 |Michael|
-
 | Andy|
-
 | Justin|
-
-\+-------+
-
-scala\> df.select($"name", $"age" + 1).show()
-
-\+-------+---------+
-
++-------+
+scala> df.select($"name", $"age" + 1).show()
++-------+---------+
 | name|(age + 1)|
-
-\+-------+---------+
-
++-------+---------+
 |Michael| null|
-
 | Andy| 31|
-
 | Justin| 20|
-
-\+-------+---------+
-
-scala\> df.filter($"age" \> 21).show()
-
-\+---+----+
-
++-------+---------+
+scala> df.filter($"age" > 21).show()
++---+----+
 |age|name|
-
-\+---+----+
-
++---+----+
 | 30|Andy|
-
-\+---+----+
-
-scala\> df.groupBy("age").count().show()
-
-\+----+-----+
-
++---+----+
+scala> df.groupBy("age").count().show()
++----+-----+
 | age|count|
-
-\+----+-----+
-
++----+-----+
 | 19| 1|
-
 |null| 1|
-
 | 30| 1|
-
-\+----+-----+
++----+-----+
+```
 
 代码 4‑2
 
 除了简单的列引用和表达式，DataFrame还具有丰富的函数库，包括字符串操作、日期算术、常用的数学运算等。SparkSession上的sql()函数使应用程序以编程方式运行SQL查询，并将结果创建新的DataFrame。
 
-scala\> df.createOrReplaceTempView("people")
-
-scala\> val sqlDF = spark.sql("SELECT \* FROM people")
-
-sqlDF: org.apache.spark.sql.DataFrame = \[age: bigint, name: string\]
-
-scala\> sqlDF.show()
-
-\+----+-------+
-
+```scala
+scala> df.createOrReplaceTempView("people")
+scala> val sqlDF = spark.sql("SELECT * FROM people")
+sqlDF: org.apache.spark.sql.DataFrame = [age: bigint, name: string]
+scala> sqlDF.show()
++----+-------+
 | age| name|
-
-\+----+-------+
-
++----+-------+
 |null|Michael|
-
 | 30| Andy|
-
 | 19| Justin|
-
-\+----+-------+
++----+-------+
+```
 
 代码 4‑3
 
@@ -251,105 +205,69 @@ Spark
 SQL中的本地临时视图是基于会话范围的，如果创建它的会话终止，其也将消失。如果要在所有会话之间共享临时视图，并保持活动状态，直到Spark应用程序终止，可以创建一个全局临时视图。全局临时视图与系统保留的数据库global\_temp绑定，必须使用global\_temp限定名称来引用它，例如SELECT
 \* FROM global\_temp.people。
 
-scala\> df.createGlobalTempView("people")
-
-scala\> spark.sql("SELECT \* FROM global\_temp.people").show()
-
-\+----+-------+
-
+```scala
+scala> df.createGlobalTempView("people")
+scala> spark.sql("SELECT * FROM global_temp.people").show()
++----+-------+
 | age| name|
-
-\+----+-------+
-
++----+-------+
 |null|Michael|
-
 | 30| Andy|
-
 | 19| Justin|
-
-\+----+-------+
-
-scala\> spark.newSession().sql("SELECT \* FROM
-global\_temp.people").show()
-
-\+----+-------+
-
++----+-------+
+scala> spark.newSession().sql("SELECT * FROM
+global_temp.people").show()
++----+-------+
 | age| name|
-
-\+----+-------+
-
++----+-------+
 |null|Michael|
-
 | 30| Andy|
-
 | 19| Justin|
-
-\+----+-------+
++----+-------+
+```
 
 代码 4‑4
 
 从Spark 4.x开始，Spark
 SQL主要的数据结构抽象就是DataSet，其表示一个结构化数据，其中定义的数据结构和类型。DataSet与RDD类似，但不是使用Java序列化或Kryo，而使用专门的编译器来串行化对象以便通过网络进行处理或传输。虽然编译器和标准序列化都是负责将对象转换成字节的，但编译器是动态生成的代码并使用了某种格式，允许Spark执行许多操作，如过滤、排序和散列，而无需将字节反序列化到对象中。这里我们包括一些使用Dataset进行结构化数据处理的基本示例。下面的例子用toDS()函数创建一个Dataset：
 
-scala\> case class Person(name: String, age: Long)
-
+```scala
+scala> case class Person(name: String, age: Long)
 defined class Person
-
-scala\> val caseClassDS = Seq(Person("Andy", 32)).toDS()
-
-caseClassDS: org.apache.spark.sql.Dataset\[Person\] = \[name: string,
-age: bigint\]
-
-scala\> caseClassDS.show()
-
-\+----+---+
-
+scala> val caseClassDS = Seq(Person("Andy", 32)).toDS()
+caseClassDS: org.apache.spark.sql.Dataset[Person] = [name: string,
+age: bigint]
+scala> caseClassDS.show()
++----+---+
 |name|age|
-
-\+----+---+
-
++----+---+
 |Andy| 32|
-
-\+----+---+
-
-scala\> val primitiveDS = Seq(1, 2, 3).toDS()
-
-primitiveDS: org.apache.spark.sql.Dataset\[Int\] = \[value: int\]
-
-scala\> primitiveDS.map(\_ + 1).collect()
-
-res13: Array\[Int\] = Array(2, 3, 4)
++----+---+
+scala> val primitiveDS = Seq(1, 2, 3).toDS()
+primitiveDS: org.apache.spark.sql.Dataset[Int] = [value: int]
+scala> primitiveDS.map(_ + 1).collect()
+res13: Array[Int] = Array(2, 3, 4)
+```
 
 通过JSON文件生成一个Dataset：
 
-scala\> val peopleDS = spark.read.json("/data/people.json").as\[Person\]
-
-peopleDS: org.apache.spark.sql.Dataset\[Person\] = \[age: bigint, name:
-string\]
-
-scala\> peopleDS.show()
-
-\+----+-------+
-
+```scala
+scala> val peopleDS = spark.read.json("/data/people.json").as[Person]
+peopleDS: org.apache.spark.sql.Dataset[Person] = [age: bigint, name:
+string]
+scala> peopleDS.show()
++----+-------+
 | age| name|
-
-\+----+-------+
-
++----+-------+
 |null|Michael|
-
 | 30| Andy|
-
 | 19| Justin|
-
-\+----+-------+
-
-scala\> peopleDS.printSchema
-
++----+-------+
+scala> peopleDS.printSchema
 root
-
 |-- age: long (nullable = true)
-
 |-- name: string (nullable = true)
+```
 
 代码 4‑5
 
@@ -367,66 +285,46 @@ root
 
 为了有效地支持特定域对象，需要一个编译器将域特定类型T映射到Spark的内部类型系统。例如给定一个具有两个字段name（String）和age（int）的类Person，编译器告诉Spark在运行时生成代码以将Person对象序列化为二进制结构。这种二进制结构通常具有更低的内存占用，并且针对数据处理的效率进行了优化，要了解数据的内部二进制表示形式，可以调用schema()函数：
 
-scala\> peopleDS.schema
-
+```scala
+scala> peopleDS.schema
 res16: org.apache.spark.sql.types.StructType =
 StructType(StructField(age,LongType,true),
 StructField(name,StringType,true))
-
 Spark
+```
+
 SQL支持两种将现有RDD转换为Dataset的方法。第一种方法使用案例类反射来推断包含特定对象类型的RDD的架构。这种基于反射的方法可以使代码更简洁，当我们在编写Spark应用程序时已经了解数据的结构，这种情况下适合使用反射的方法。第二种方法是通过编程接口，该接口允许我们构造数据结构，然后将其应用于现有的RDD上，尽管此方法较为冗长，但可以在运行时获得列及其类型的情况下构造Dataset。Spark
 SQL的Scala接口支持自动将包含案例类的RDD转换为DataFrame。案例类定义了表的架构。案例类的参数名称被用反射读取，并成为列的名称。案例类也可以嵌套或包含复杂类型，例如Seqs或Arrays。可以将该RDD隐式转换为DataFrame，然后将其注册为表，可以在后续的SQL语句中使用。
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val peopleDF = spark.sparkContext
-
 .textFile("/data/people.txt")
-
-.map(\_.split(","))
-
-.map(attributes =\> Person(attributes(0), attributes(1).trim.toInt))
-
+.map(_.split(","))
+.map(attributes => Person(attributes(0), attributes(1).trim.toInt))
 .toDF()
-
 // Exiting paste mode, now interpreting.
-
-peopleDF: org.apache.spark.sql.DataFrame = \[name: string, age: bigint\]
-
-scala\> peopleDF.createOrReplaceTempView("people")
-
-scala\> val teenagersDF = spark.sql("SELECT name, age FROM people WHERE
+peopleDF: org.apache.spark.sql.DataFrame = [name: string, age: bigint]
+scala> peopleDF.createOrReplaceTempView("people")
+scala> val teenagersDF = spark.sql("SELECT name, age FROM people WHERE
 age BETWEEN 13 AND 19")
-
-teenagersDF: org.apache.spark.sql.DataFrame = \[name: string, age:
-bigint\]
-
-scala\> teenagersDF.map(teenager =\> "Name: " + teenager(0)).show()
-
-\+------------+
-
+teenagersDF: org.apache.spark.sql.DataFrame = [name: string, age:
+bigint]
+scala> teenagersDF.map(teenager => "Name: " + teenager(0)).show()
++------------+
 | value|
-
-\+------------+
-
++------------+
 |Name: Justin|
-
-\+------------+
-
-scala\> teenagersDF.map(teenager =\> "Name: " +
-teenager.getAs\[String\]("name")).show()
-
-\+------------+
-
++------------+
+scala> teenagersDF.map(teenager => "Name: " +
+teenager.getAs[String]("name")).show()
++------------+
 | value|
-
-\+------------+
-
++------------+
 |Name: Justin|
-
-\+------------+
++------------+
+```
 
 解决多行语句问题的一种简单方法是在REPL中使用：paste命令。
 输入多行语句之前，在REPL中键入：paste命令。执行此操作时，REPL会提示粘贴命令（多行表达式），然后在命令末尾按\[Ctrl\]
@@ -440,81 +338,49 @@ teenager.getAs\[String\]("name")).show()
 
 （3）通过SparkSession提供的createDataFrame()方法将模式应用于RDD。
 
-scala\> import org.apache.spark.sql.types.\_
-
-import org.apache.spark.sql.types.\_
-
-scala\> import org.apache.spark.sql.Row
-
+```scala
+scala> import org.apache.spark.sql.types._
+import org.apache.spark.sql.types._
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
-
-scala\> val peopleRDD = spark.sparkContext.textFile("/data/people.txt")
-
-peopleRDD: org.apache.spark.rdd.RDD\[String\] = /data/people.txt
-MapPartitionsRDD\[92\] at textFile at \<console\>:31
-
-scala\> val schemaString = "name age"
-
+scala> val peopleRDD = spark.sparkContext.textFile("/data/people.txt")
+peopleRDD: org.apache.spark.rdd.RDD[String] = /data/people.txt
+MapPartitionsRDD[92] at textFile at <console>:31
+scala> val schemaString = "name age"
 schemaString: String = name age
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 // Generate the schema based on the string of schema
-
 val fields = schemaString.split(" ")
-
-.map(fieldName =\> StructField(fieldName, StringType, nullable = true))
-
+.map(fieldName => StructField(fieldName, StringType, nullable = true))
 val schema = StructType(fields)
-
 // Convert records of the RDD (people) to Rows
-
 val rowRDD = peopleRDD
-
-.map(\_.split(","))
-
-.map(attributes =\> Row(attributes(0), attributes(1).trim))
-
+.map(_.split(","))
+.map(attributes => Row(attributes(0), attributes(1).trim))
 // Exiting paste mode, now interpreting.
-
-fields: Array\[org.apache.spark.sql.types.StructField\] =
+fields: Array[org.apache.spark.sql.types.StructField] =
 Array(StructField(name,StringType,true),
 StructField(age,StringType,true))
-
 schema: org.apache.spark.sql.types.StructType =
 StructType(StructField(name,StringType,true),
 StructField(age,StringType,true))
-
-rowRDD: org.apache.spark.rdd.RDD\[org.apache.spark.sql.Row\] =
-MapPartitionsRDD\[94\] at map at \<pastie\>:45
-
-scala\> val peopleDF = spark.createDataFrame(rowRDD, schema)
-
-peopleDF: org.apache.spark.sql.DataFrame = \[name: string, age: string\]
-
-scala\> peopleDF.createOrReplaceTempView("people")
-
-scala\> val results = spark.sql("SELECT name FROM people")
-
-results: org.apache.spark.sql.DataFrame = \[name: string\]
-
-scala\> results.map(attributes =\> "Name: " + attributes(0)).show()
-
-\+-------------+
-
+rowRDD: org.apache.spark.rdd.RDD[org.apache.spark.sql.Row] =
+MapPartitionsRDD[94] at map at <pastie>:45
+scala> val peopleDF = spark.createDataFrame(rowRDD, schema)
+peopleDF: org.apache.spark.sql.DataFrame = [name: string, age: string]
+scala> peopleDF.createOrReplaceTempView("people")
+scala> val results = spark.sql("SELECT name FROM people")
+results: org.apache.spark.sql.DataFrame = [name: string]
+scala> results.map(attributes => "Name: " + attributes(0)).show()
++-------------+
 | value|
-
-\+-------------+
-
++-------------+
 |Name: Michael|
-
 | Name: Andy|
-
 | Name: Justin|
-
-\+-------------+
++-------------+
+```
 
 代码 4‑6
 
@@ -522,103 +388,77 @@ scala\> results.map(attributes =\> "Name: " + attributes(0)).show()
 SQL的API就会通过读取标题行来推断模式。我们还可以选择指定用于拆分文本文件行的分隔符，从CSV文件的标题行读取推导数据结构，并使用逗号“,”作为分隔符。
 我们还展示了使用schema函数和printSchema函数来验证输入文件的模式。
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val statesDF = spark.read.option("header", "true")
-
 .option("inferschema", "true")
-
 .option("sep", ",")
-
 .csv("/data/statesPopulation.csv")
-
 // Exiting paste mode, now interpreting.
-
-statesDF: org.apache.spark.sql.DataFrame = \[State: string, Year: int
-... 1 more field\]
-
-scala\> statesDF.schema
-
+statesDF: org.apache.spark.sql.DataFrame = [State: string, Year: int
+... 1 more field]
+scala> statesDF.schema
 res6: org.apache.spark.sql.types.StructType =
 StructType(StructField(State,StringType,true),
 StructField(Year,IntegerType,true),
 StructField(Population,IntegerType,true))
-
-scala\> statesDF.printSchema
-
+scala> statesDF.printSchema
 root
-
 |-- State: string (nullable = true)
-
 |-- Year: integer (nullable = true)
-
 |-- Population: integer (nullable = true)
+```
 
 我们使用StructType描述数据结构模式，是StructField对象的集合。StructType和StructField属于org.apache.spark.sql.types包，IntegerType和StringType等数据类型也属于theorg.apache.spark.sql.types包，导入这些类，我们可以显示自定义模式。
 
-scala\> import org.apache.spark.sql.types.{StructType,
+```scala
+scala> import org.apache.spark.sql.types.{StructType,
 IntegerType,StringType}
-
 import org.apache.spark.sql.types.{StructType, IntegerType, StringType}
+```
 
 定义一个模式包含用两个字段，一个为整数，后跟一个字符串：
 
-scala\> val schema = new StructType().add("i",
+```scala
+scala> val schema = new StructType().add("i",
 IntegerType).add("s",StringType)
-
 schema: org.apache.spark.sql.types.StructType =
 StructType(StructField(i,IntegerType,true),
 StructField(s,StringType,true))
-
-scala\> schema.printTreeString
-
+scala> schema.printTreeString
 root
-
 |-- i: integer (nullable = true)
-
 |-- s: string (nullable = true)
+```
 
 还有一个使用prettyJson()函数来打印JSON的选项，如下所示：
 
-scala\> schema.prettyJson
-
+```scala
+scala> schema.prettyJson
 res9: String =
-
 {
-
 "type" : "struct",
-
-"fields" : \[ {
-
+"fields" : [ {
 "name" : "i",
-
 "type" : "integer",
-
 "nullable" : true,
-
 "metadata" : { }
-
 }, {
-
 "name" : "s",
-
 "type" : "string",
-
 "nullable" : true,
-
 "metadata" : { }
-
-} \]
-
+} ]
 }
+```
 
 Spark SQL的所有数据类型都位于org.apache.spark.sql.types包中，我们可以通过以下方式访问它们：
 
-scala\> import org.apache.spark.sql.types.\_
-
-import org.apache.spark.sql.types.\_
+```scala
+scala> import org.apache.spark.sql.types._
+import org.apache.spark.sql.types._
+```
 
 DataType抽象类是Spark SQL中所有内置数据类型的基本类型，例如字符串等等。表格 4‑1中包括了Spark
 SQL和DataFrame支持的数据类型：
@@ -647,35 +487,35 @@ SQL和DataFrame支持的数据类型：
 从Spark 4.x开始，Spark
 SQL提供另一种方式为复杂数据类型定义模式。首先，让我们看一个简单的例子，必须使用import语句导入编码器：
 
-scala\> import org.apache.spark.sql.Encoders
-
+```scala
+scala> import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.Encoders
+```
 
 让我们看一个简单的示例，将元组定义为要在Dataset API中使用的数据类型：
 
-scala\> Encoders.product\[(Integer, String)\].schema.printTreeString
-
+```scala
+scala> Encoders.product[(Integer, String)].schema.printTreeString
 root
-
-|-- \_1: integer (nullable = true)
-
-|-- \_2: string (nullable = true)
+|-- _1: integer (nullable = true)
+|-- _2: string (nullable = true)
+```
 
 前面的代码始终看起来很复杂，因此我们还可以根据需要定义一个案例类Record，包括两个字段一个为Integer，另一个为String。
 
-scala\> case class Record(i: Integer, s: String)
-
+```scala
+scala> case class Record(i: Integer, s: String)
 defined class Record
+```
 
 使用编码器，我们可以轻松地在案例类的基础上创建一个模式，从而使我们可以轻松地使用各种API：
 
-scala\> Encoders.product\[Record\].schema.printTreeString
-
+```scala
+scala> Encoders.product[Record].schema.printTreeString
 root
-
 |-- i: integer (nullable = true)
-
 |-- s: string (nullable = true)
+```
 
 ## 4.4 结构化数据操作
 
@@ -789,57 +629,38 @@ SQL的应用程序域是分布式数据操作，如果我们曾经使用过SQL�
 
 col和column函数是同义词，在Spark的Scala和Python函数库中都可用。如果需要经常在Scala和Python之间切换，那么使用col函数是很有意义的，这样我们的代码就具有可移植性；如果主要或仅使用Scala，那么建议是使用“'”方式，因为输入更少的字符。DataFrame类具有自己的col函数，该函数用于在执行两个或多个DataFrame联接时区分具有相同名称的列。
 
-scala\> import org.apache.spark.sql.functions.\_
-
-import org.apache.spark.sql.functions.\_
-
-scala\> val kvDF = Seq((1,2),(2,3)).toDF("key","value")
-
-kvDF: org.apache.spark.sql.DataFrame = \[key: int, value: int\]
-
-scala\> kvDF.columns
-
-res0: Array\[String\] = Array(key, value)
-
-scala\> kvDF.select("key")
-
-res1: org.apache.spark.sql.DataFrame = \[key: int\]
-
-scala\> kvDF.select(col("key"))
-
-res2: org.apache.spark.sql.DataFrame = \[key: int\]
-
-scala\> kvDF.select(column("key"))
-
-res3: org.apache.spark.sql.DataFrame = \[key: int\]
-
-scala\> kvDF.select($"key")
-
-res4: org.apache.spark.sql.DataFrame = \[key: int\]
-
-scala\> kvDF.select('key)
-
-res5: org.apache.spark.sql.DataFrame = \[key: int\]
+```scala
+scala> import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions._
+scala> val kvDF = Seq((1,2),(2,3)).toDF("key","value")
+kvDF: org.apache.spark.sql.DataFrame = [key: int, value: int]
+scala> kvDF.columns
+res0: Array[String] = Array(key, value)
+scala> kvDF.select("key")
+res1: org.apache.spark.sql.DataFrame = [key: int]
+scala> kvDF.select(col("key"))
+res2: org.apache.spark.sql.DataFrame = [key: int]
+scala> kvDF.select(column("key"))
+res3: org.apache.spark.sql.DataFrame = [key: int]
+scala> kvDF.select($"key")
+res4: org.apache.spark.sql.DataFrame = [key: int]
+scala> kvDF.select('key)
+res5: org.apache.spark.sql.DataFrame = [key: int]
+```
 
 使用了DataFrame中的col函数：
 
-scala\> kvDF.select(kvDF.col("key"))
-
-res6: org.apache.spark.sql.DataFrame = \[key: int\]
-
-scala\> kvDF.select('key, 'key \> 1).show
-
-\+---+---------+
-
-|key|(key \> 1)|
-
-\+---+---------+
-
+```scala
+scala> kvDF.select(kvDF.col("key"))
+res6: org.apache.spark.sql.DataFrame = [key: int]
+scala> kvDF.select('key, 'key > 1).show
++---+---------+
+|key|(key > 1)|
++---+---------+
 | 1| false|
-
 | 2| true|
-
-\+---+---------+
++---+---------+
+```
 
 上面的示例说明了列表达式“'key \>
 1”，因此需要将列指定为Column类的实例，如果将该列指定为字符串，则将导致类型不匹配错误。在以下使用各种DataFrame结构化操作的示例中，将显示列表达式的更多示例。
@@ -848,116 +669,87 @@ scala\> kvDF.select('key, 'key \> 1).show
 
 此转换通常用于执行投影，从DataFrame中选择所有列或列的子集。在选择期间，每个列都可以通过表达式进行转换，此转换有两种方式，一种是将列作为字符串，而另一种是将列作为Column类，不允许混合使用。
 
-scala\> val df = spark.createDataset(Seq(
-
+```scala
+scala> val df = spark.createDataset(Seq(
 | ("Ivan", 1, 2), ("Tom", 3, 4), ("Rose", 3, 5), ("John", 4, 6))
-
 | ).toDF("col1", "col2", "col3")
-
-df: org.apache.spark.sql.DataFrame = \[col1: string, col2: int ... 1
-more field\]
-
-scala\> df.show
-
-\+----+----+----+
-
+df: org.apache.spark.sql.DataFrame = [col1: string, col2: int ... 1
+more field]
+scala> df.show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 |Rose| 3| 5|
-
 |John| 4| 6|
-
-\+----+----+----+
++----+----+----+
+```
 
 代码 4‑18
 
 上面的代码创建了一个DataFrame，列名分别是col1、col2、col3，类型对应为String、Integer、Integer。当前造了4条记录，如上所示。接下来看看选择列的几种调用方式
 
-scala\> df.select("col1").collect
-
-res6: Array\[org.apache.spark.sql.Row\] = Array(\[Ivan\], \[Tom\],
-\[Rose\], \[John\])
-
-scala\> df.select($"col1").collect
-
-res7: Array\[org.apache.spark.sql.Row\] = Array(\[Ivan\], \[Tom\],
-\[Rose\], \[John\])
-
-scala\> df.select(df.col("col1")).collect
-
-res8: Array\[org.apache.spark.sql.Row\] = Array(\[Ivan\], \[Tom\],
-\[Rose\], \[John\])
+```scala
+scala> df.select("col1").collect
+res6: Array[org.apache.spark.sql.Row] = Array([Ivan], [Tom],
+[Rose], [John])
+scala> df.select($"col1").collect
+res7: Array[org.apache.spark.sql.Row] = Array([Ivan], [Tom],
+[Rose], [John])
+scala> df.select(df.col("col1")).collect
+res8: Array[org.apache.spark.sql.Row] = Array([Ivan], [Tom],
+[Rose], [John])
+```
 
 代码 4‑19
 
 如果select方法中参数直接用字符串引用DataFrame中字段名，不能对字段名再使用表达式，“$"col1"”这种写法是创建Column类的实例，所以可以支持表达式：
 
-scala\> df.select(upper($"col1")).collect
-
-res11: Array\[org.apache.spark.sql.Row\] = Array(\[IVAN\], \[TOM\],
-\[ROSE\], \[JOHN\])
-
-scala\> df.select(upper("col1")).collect
-
-\<console\>:26: error: type mismatch;
-
+```scala
+scala> df.select(upper($"col1")).collect
+res11: Array[org.apache.spark.sql.Row] = Array([IVAN], [TOM],
+[ROSE], [JOHN])
+scala> df.select(upper("col1")).collect
+<console>:26: error: type mismatch;
 found : String("col1")
-
 required: org.apache.spark.sql.Column
-
 df.select(upper("col1")).collect
+```
 
 代码 4‑20
 
 上面在select中对字段col1调用了upper()函数转换大小写，“$”符号是Scala的语法糖，而没有加“$”符号的语法报错了，提示需要的是Column类型，而当前给出的则是个String类型，这时候的select也可以用selectExpr()方法替换，比如下面的调用：
 
-scala\> df.selectExpr("upper(col1)", "col2 as col22").show
-
-\+-----------+-----+
-
+```scala
+scala> df.selectExpr("upper(col1)", "col2 as col22").show
++-----------+-----+
 |upper(col1)|col22|
-
-\+-----------+-----+
-
++-----------+-----+
 | IVAN| 1|
-
 | TOM| 3|
-
 | ROSE| 3|
-
 | JOHN| 4|
-
-\+-----------+-----+
++-----------+-----+
+```
 
 代码 4‑21
 
 代码
 4‑21中，selectExpr()方法使用了两个表达式，一个是将col1字段调用upper函数，另一个是将col2字段改为别名col22。selectExpr转换是select转换的变体，一个很大的不同是它接受一个或多个SQL表达式，而不是列，但是两者实际上都在执行相同的投影任务。SQL表达式是一种强大而灵活的构造，使我们可以根据思考方式自然地表达列转换逻辑，可以用字符串格式表示SQL表达式，Spark会将它们解析为逻辑树，以便按正确的顺序对其进行求值。
 
-scala\> df.select('col1, ('col2 + ('col3 \* 2)).as("(col2 + col3 \*
+```scala
+scala> df.select('col1, ('col2 + ('col3 * 2)).as("(col2 + col3 *
 2)")).show
-
-\+----+-----------------+
-
-|col1|(col2 + col3 \* 2)|
-
-\+----+-----------------+
-
++----+-----------------+
+|col1|(col2 + col3 * 2)|
++----+-----------------+
 |Ivan| 5|
-
 | Tom| 11|
-
 |Rose| 13|
-
 |John| 16|
-
-\+----+-----------------+
++----+-----------------+
+```
 
 代码 4‑22
 
@@ -968,81 +760,54 @@ scala\> df.select('col1, ('col2 + ('col3 \* 2)).as("(col2 + col3 \*
 
 withColumn用于向DataFrame添加新列。它需要两个输入参数：列名和通过列表达式产生的值。如果通过使用selectExpr转换，我们也可以实现几乎相同的目标。但是，如果给定的列名称与现有名称之一匹配，则该列将替换为给定的列表达式。
 
-scala\> df.withColumn("sum", ('col2 + 'col3)).show
-
-\+----+----+----+---+
-
+```scala
+scala> df.withColumn("sum", ('col2 + 'col3)).show
++----+----+----+---+
 |col1|col2|col3|sum|
-
-\+----+----+----+---+
-
++----+----+----+---+
 |Ivan| 1| 2| 3|
-
 | Tom| 3| 4| 7|
-
 |Rose| 3| 5| 8|
-
 |John| 4| 6| 10|
-
-\+----+----+----+---+
-
-scala\> df.withColumn("col2", ('col2 + 'col3)).show
-
-\+----+----+----+
-
++----+----+----+---+
+scala> df.withColumn("col2", ('col2 + 'col3)).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 3| 2|
-
 | Tom| 7| 4|
-
 |Rose| 8| 5|
-
 |John| 10| 6|
-
-\+----+----+----+
++----+----+----+
+```
 
 withColumnRenamed转换重命名DataFrame中的现有列名。
 
-scala\> df.withColumnRenamed("col2", "col2\_rename").show
-
-\+----+-----------+----+
-
-|col1|col2\_rename|col3|
-
-\+----+-----------+----+
-
+```scala
+scala> df.withColumnRenamed("col2", "col2_rename").show
++----+-----------+----+
+|col1|col2_rename|col3|
++----+-----------+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 |Rose| 3| 5|
-
 |John| 4| 6|
-
-\+----+-----------+----+
++----+-----------+----+
+```
 
 drop转换只是从DataFrame中删除指定的列，可以指定要删除的一个或多个列名，但是只会删除存在的列名，而不会删除那些不存在的列名。可以通过select转换仅投影要保留的列，而删除不需要，但是如果DataFrame有100列，而想删除几列，使用drop转换比select转换更易于使用。
 
-scala\> df.drop('col2).show
-
-\+----+----+
-
+```scala
+scala> df.drop('col2).show
++----+----+
 |col1|col3|
-
-\+----+----+
-
++----+----+
 |Ivan| 2|
-
 | Tom| 4|
-
 |Rose| 5|
-
 |John| 6|
-
-\+----+----+
++----+----+
+```
 
 ### 4.4.4 条件语句（where、filter）
 
@@ -1054,79 +819,45 @@ scala\> df.drop('col2).show
 
   - def filter(condition: Column): Dataset\[T\]
 
-scala\> df.filter($"col1"\>"Tom").show
-
-\+----+----+----+
-
+```scala
+scala> df.filter($"col1">"Tom").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
-\+----+----+----+
-
-scala\> df.filter($"col1"==="Tom").show
-
-\+----+----+----+
-
++----+----+----+
++----+----+----+
+scala> df.filter($"col1"==="Tom").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 | Tom| 3| 4|
-
-\+----+----+----+
-
-scala\> df.filter("col1='Tom'").show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.filter("col1='Tom'").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 | Tom| 3| 4|
-
-\+----+----+----+
-
-scala\> df.filter("col2=1").show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.filter("col2=1").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
-\+----+----+----+
-
-scala\> df.filter($"col2"===3).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.filter($"col2"===3).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 | Tom| 3| 4|
-
 |Rose| 3| 5|
-
-\+----+----+----+
-
-scala\> df.filter($"col2"===$"col3"-1).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.filter($"col2"===$"col3"-1).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
-\+----+----+----+
++----+----+----+
+```
 
 代码 4‑23
 
@@ -1136,63 +867,37 @@ scala\> df.filter($"col2"===$"col3"-1).show
 
   - def where(condition: Column): Dataset\[T\]
 
-scala\> df.where("col1 = 'John'").show
-
-\+----+----+----+
-
+```scala
+scala> df.where("col1 = 'John'").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |John| 4| 6|
-
-\+----+----+----+
-
-scala\> df.where($"col2"=\!= 3).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.where($"col2"=!= 3).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 |John| 4| 6|
-
-\+----+----+----+
-
-scala\> df.where($"col3"\>col("col2")).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.where($"col3">col("col2")).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 |Rose| 3| 5|
-
 |John| 4| 6|
-
-\+----+----+----+
-
-scala\> df.where($"col3"\>col("col2")+1).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.where($"col3">col("col2")+1).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Rose| 3| 5|
-
 |John| 4| 6|
-
-\+----+----+----+
++----+----+----+
+```
 
 代码 4‑24
 
@@ -1200,55 +905,33 @@ scala\> df.where($"col3"\>col("col2")+1).show
 
 这两个转换具有相同的行为，但是dropDuplicates允许我们控制使用哪些列应用到重复数据删除逻辑中，如果未指定任何内容，则重复数据删除逻辑将使用DataFrame中的所有列。
 
-scala\> df.select('col2).distinct.show
-
-\+----+
-
+```scala
+scala> df.select('col2).distinct.show
++----+
 |col2|
-
-\+----+
-
++----+
 | 1|
-
 | 3|
-
 | 4|
-
-\+----+
-
-scala\> df.dropDuplicates("col2").show()
-
-\+----+----+----+
-
++----+
+scala> df.dropDuplicates("col2").show()
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 |John| 4| 6|
-
-\+----+----+----+
-
-scala\> df.distinct.show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.distinct.show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |John| 4| 6|
-
 |Rose| 3| 5|
-
 | Tom| 3| 4|
-
 |Ivan| 1| 2|
-
-\+----+----+----+
++----+----+----+
+```
 
 ### 4.4.6 排序语句（sort、orderBy）
 
@@ -1262,59 +945,35 @@ scala\> df.distinct.show
 
   - def orderBy(sortCol: String, sortCols: String\*): Dataset\[T\]
 
-scala\> df.sort('col2).show
-
-\+----+----+----+
-
+```scala
+scala> df.sort('col2).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 |Rose| 3| 5|
-
 | Tom| 3| 4|
-
 |John| 4| 6|
-
-\+----+----+----+
-
-scala\> df.sort('col2.desc).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.sort('col2.desc).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |John| 4| 6|
-
 | Tom| 3| 4|
-
 |Rose| 3| 5|
-
 |Ivan| 1| 2|
-
-\+----+----+----+
-
-scala\> df.sort('col2.desc, 'col3.desc).show
-
-\+----+----+----+
-
++----+----+----+
+scala> df.sort('col2.desc, 'col3.desc).show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |John| 4| 6|
-
 |Rose| 3| 5|
-
 | Tom| 3| 4|
-
 |Ivan| 1| 2|
-
-\+----+----+----+
++----+----+----+
+```
 
 ### 4.4.7 操作多表（union、join）
 
@@ -1363,149 +1022,98 @@ SQL中使用连接转换及其支持的各种连接。
 
 先定义两个DataFrame：
 
-scala\> val df1 = spark.createDataset(Seq(("Ivan", 1, 2), ("Tom", 3, 4),
+```scala
+scala> val df1 = spark.createDataset(Seq(("Ivan", 1, 2), ("Tom", 3, 4),
 ("John", 3, 5), ("Tom", 4, 6))).toDF("col1", "col2", "col3")
-
-df1: org.apache.spark.sql.DataFrame = \[col1: string, col2: int ... 1
-more field\]
-
-scala\> val df2 = spark.createDataset(Seq(("Ivan", 2, 2), ("Tom", 3, 5),
+df1: org.apache.spark.sql.DataFrame = [col1: string, col2: int ... 1
+more field]
+scala> val df2 = spark.createDataset(Seq(("Ivan", 2, 2), ("Tom", 3, 5),
 ("Jack", 3, 5), ("Tom", 4, 6), ("Rose", 1, 2), ("Ivan", 1, 5), ("Marry",
 5, 6))).toDF("col1", "col2", "col4")
-
-df2: org.apache.spark.sql.DataFrame = \[col1: string, col2: int ... 1
-more field\]
-
-scala\> df1.show()
-
-\+----+----+----+
-
+df2: org.apache.spark.sql.DataFrame = [col1: string, col2: int ... 1
+more field]
+scala> df1.show()
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 |John| 3| 5|
-
 | Tom| 4| 6|
-
-\+----+----+----+
-
-scala\> df2.show()
-
-\+-----+----+----+
-
++----+----+----+
+scala> df2.show()
++-----+----+----+
 | col1|col2|col4|
-
-\+-----+----+----+
-
++-----+----+----+
 | Ivan| 2| 2|
-
 | Tom| 3| 5|
-
 | Jack| 3| 5|
-
 | Tom| 4| 6|
-
 | Rose| 1| 2|
-
 | Ivan| 1| 5|
-
 |Marry| 5| 6|
-
-\+-----+----+----+
++-----+----+----+
+```
 
 代码 4‑25
 
 #### 4.4.7.1 union
 
-scala\> df1.union(df2).show
-
-\+-----+----+----+
-
+```scala
+scala> df1.union(df2).show
++-----+----+----+
 | col1|col2|col3|
-
-\+-----+----+----+
-
++-----+----+----+
 | Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 | John| 3| 5|
-
 | Tom| 4| 6|
-
 | Ivan| 2| 2|
-
 | Tom| 3| 5|
-
 | Jack| 3| 5|
-
 | Tom| 4| 6|
-
 | Rose| 1| 2|
-
 | Ivan| 1| 5|
-
 |Marry| 5| 6|
-
-\+-----+----+----+
++-----+----+----+
+```
 
 #### 4.4.7.2 内连接
 
 这是最常用的连接类型，其连接表达式包含在两个数据集中列的相等性比较。仅当连接表达式的计算结果为true时，换句话说当两个数据集中的连接列值相同时，连接的数据集才包含行，列值没有匹配成功的行将从合并的数据集中排除，如果连接表达式使用相等性比较，则连接表中的行数将仅与较小数据集的大小一样大。在Spark
 SQL中，内连接是默认连接类型，因此在连接转换中指定内连接是可选的。
 
-scala\> df1.join(df2, "col1").show
-
-\+----+----+----+----+----+
-
+```scala
+scala> df1.join(df2, "col1").show
++----+----+----+----+----+
 |col1|col2|col3|col2|col4|
-
-\+----+----+----+----+----+
-
++----+----+----+----+----+
 |Ivan| 1| 2| 1| 5|
-
 |Ivan| 1| 2| 2| 2|
-
 | Tom| 3| 4| 4| 6|
-
 | Tom| 3| 4| 3| 5|
-
 | Tom| 4| 6| 4| 6|
-
 | Tom| 4| 6| 3| 5|
-
-\+----+----+----+----+----+
++----+----+----+----+----+
+```
 
 代码 4‑26
 
 还是内连接，这次用joinWith，这和join的区别是连接后的新数据集的结构会不一样，注意和上面的对比一下：
 
-scala\> df1.joinWith(df2, df1("col1") === df2("col1")).show
-
-\+----------+----------+
-
-| \_1| \_2|
-
-\+----------+----------+
-
-|\[Ivan,1,2\]|\[Ivan,1,5\]|
-
-|\[Ivan,1,2\]|\[Ivan,2,2\]|
-
-| \[Tom,3,4\]| \[Tom,4,6\]|
-
-| \[Tom,3,4\]| \[Tom,3,5\]|
-
-| \[Tom,4,6\]| \[Tom,4,6\]|
-
-| \[Tom,4,6\]| \[Tom,3,5\]|
-
-\+----------+----------+
+```scala
+scala> df1.joinWith(df2, df1("col1") === df2("col1")).show
++----------+----------+
+| _1| _2|
++----------+----------+
+|[Ivan,1,2]|[Ivan,1,5]|
+|[Ivan,1,2]|[Ivan,2,2]|
+| [Tom,3,4]| [Tom,4,6]|
+| [Tom,3,4]| [Tom,3,5]|
+| [Tom,4,6]| [Tom,4,6]|
+| [Tom,4,6]| [Tom,3,5]|
++----------+----------+
+```
 
 代码 4‑27
 
@@ -1516,96 +1124,64 @@ scala\> df1.joinWith(df2, df1("col1") === df2("col1")).show
 代码
 4‑28是左外连接，此连接类型的连接数据集包括内部联接的所有行，以及连接表达式计算为false的左侧数据集的所有行。对于那些不匹配的行，它将右数据集的列填充NULL值。
 
-scala\> df1.join(df2, df1("col1") === df2("col1"), "left\_outer").show
-
-\+----+----+----+----+----+----+
-
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1"), "left_outer").show
++----+----+----+----+----+----+
 |col1|col2|col3|col1|col2|col4|
-
-\+----+----+----+----+----+----+
-
++----+----+----+----+----+----+
 |Ivan| 1| 2|Ivan| 1| 5|
-
 |Ivan| 1| 2|Ivan| 2| 2|
-
 | Tom| 3| 4| Tom| 4| 6|
-
 | Tom| 3| 4| Tom| 3| 5|
-
 |John| 3| 5|null|null|null|
-
 | Tom| 4| 6| Tom| 4| 6|
-
 | Tom| 4| 6| Tom| 3| 5|
-
-\+----+----+----+----+----+----+
++----+----+----+----+----+----+
+```
 
 代码 4‑28
 
 代码
 4‑29是右外连接，此连接类型的行为类似于左外连接类型的行为，只是对右数据集采用了相同的处理。换句话说，连接数据集包括内部连接的所有行以及连接表达式计算为false的右数据集的所有行。对于那些不匹配的行，它将为左侧数据集的列填充NULL值。
 
-scala\> df1.join(df2, df1("col1") === df2("col1"), "right\_outer").show
-
-\+----+----+----+-----+----+----+
-
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1"), "right_outer").show
++----+----+----+-----+----+----+
 |col1|col2|col3| col1|col2|col4|
-
-\+----+----+----+-----+----+----+
-
++----+----+----+-----+----+----+
 |Ivan| 1| 2| Ivan| 2| 2|
-
 | Tom| 4| 6| Tom| 3| 5|
-
 | Tom| 3| 4| Tom| 3| 5|
-
 |null|null|null| Jack| 3| 5|
-
 | Tom| 4| 6| Tom| 4| 6|
-
 | Tom| 3| 4| Tom| 4| 6|
-
 |null|null|null| Rose| 1| 2|
-
 |Ivan| 1| 2| Ivan| 1| 5|
-
 |null|null|null|Marry| 5| 6|
-
-\+----+----+----+-----+----+----+
++----+----+----+-----+----+----+
+```
 
 代码 4‑29
 
 代码 4‑31是全外连接，此连接类型的行为组合左外连接和右外连接的结果。
 
-scala\> df1.join(df2, df1("col1") === df2("col1"), "outer").show
-
-\+----+----+----+-----+----+----+
-
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1"), "outer").show
++----+----+----+-----+----+----+
 |col1|col2|col3| col1|col2|col4|
-
-\+----+----+----+-----+----+----+
-
++----+----+----+-----+----+----+
 |null|null|null| Rose| 1| 2|
-
 |null|null|null| Jack| 3| 5|
-
 | Tom| 3| 4| Tom| 3| 5|
-
 | Tom| 3| 4| Tom| 4| 6|
-
 | Tom| 4| 6| Tom| 3| 5|
-
 | Tom| 4| 6| Tom| 4| 6|
-
 |null|null|null|Marry| 5| 6|
-
 |John| 3| 5| null|null|null|
-
 |Ivan| 1| 2| Ivan| 2| 2|
-
 |Ivan| 1| 2| Ivan| 1| 5|
-
-\+----+----+----+-----+----+----+
++----+----+----+-----+----+----+
+```
 
 代码 4‑31
 
@@ -1614,17 +1190,14 @@ scala\> df1.join(df2, df1("col1") === df2("col1"), "outer").show
 代码
 4‑32为左反连接，通过这种连接类型，我们可以找出左侧数据集中的哪些行在右侧数据集中没有匹配的行，并且连接的数据集中将仅包含左侧数据集中的列。
 
-scala\> df1.join(df2, df1("col1") === df2("col1"), "left\_anti").show
-
-\+----+----+----+
-
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1"), "left_anti").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |John| 3| 5|
-
-\+----+----+----+
++----+----+----+
+```
 
 代码 4‑32
 
@@ -1633,21 +1206,16 @@ scala\> df1.join(df2, df1("col1") === df2("col1"), "left\_anti").show
 代码
 4‑33为左半连接，此连接类型的行为与内连接类型相似，不同之处在于连接的数据集不包括来自右数据集的列，可以将这种连接类型的行为考虑为与左反连接相反，连接的数据集仅包含匹配的行。
 
-scala\> df1.join(df2, df1("col1") === df2("col1"), "left\_semi").show
-
-\+----+----+----+
-
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1"), "left_semi").show
++----+----+----+
 |col1|col2|col3|
-
-\+----+----+----+
-
++----+----+----+
 |Ivan| 1| 2|
-
 | Tom| 3| 4|
-
 | Tom| 4| 6|
-
-\+----+----+----+
++----+----+----+
+```
 
 代码 4‑33
 
@@ -1655,37 +1223,24 @@ scala\> df1.join(df2, df1("col1") === df2("col1"), "left\_semi").show
 
 就用法而言，因为不需要连接表达式，所以此连接类型是最简单的用法。它的行为可能会有些危险，因为它将左数据集中的每一行与右数据集中的每一行连接在一起。连接数据集的大小是两个数据集大小的乘积。例如，如果每个数据集的大小为1,024，则连接的数据集的大小将超过100万行。因此使用此连接类型的方法是在DataFrame中显式使用专用转换crossJoin，而不是将此连接类型指定为字符串。
 
-scala\> df1.crossJoin(df2).show
-
-\+----+----+----+-----+----+----+
-
+```scala
+scala> df1.crossJoin(df2).show
++----+----+----+-----+----+----+
 |col1|col2|col3| col1|col2|col4|
-
-\+----+----+----+-----+----+----+
-
++----+----+----+-----+----+----+
 |Ivan| 1| 2| Ivan| 2| 2|
-
 |Ivan| 1| 2| Tom| 3| 5|
-
 |Ivan| 1| 2| Jack| 3| 5|
-
 |Ivan| 1| 2| Tom| 4| 6|
-
 |Ivan| 1| 2| Rose| 1| 2|
-
 |Ivan| 1| 2| Ivan| 1| 5|
-
 |Ivan| 1| 2|Marry| 5| 6|
-
 | Tom| 3| 4| Ivan| 2| 2|
-
 | Tom| 3| 4| Tom| 3| 5|
-
 | Tom| 3| 4| Jack| 3| 5|
-
-\+----+----+----+-----+----+----+
-
++----+----+----+-----+----+----+
 only showing top 10 rows
+```
 
 代码 4‑34
 
@@ -1693,38 +1248,30 @@ only showing top 10 rows
 
 下面这个例子还是个等值连接，区别之前的等值连接是去调用两个表的重复列，就像自然连接一样：
 
-scala\> df1.join(df2, Seq("col1", "col2")).show
-
-\+----+----+----+----+
-
+```scala
+scala> df1.join(df2, Seq("col1", "col2")).show
++----+----+----+----+
 |col1|col2|col3|col4|
-
-\+----+----+----+----+
-
++----+----+----+----+
 |Ivan| 1| 2| 5|
-
 | Tom| 3| 4| 5|
-
 | Tom| 4| 6| 6|
-
-\+----+----+----+----+
++----+----+----+----+
+```
 
 代码 4‑35
 
 条件连接：
 
-scala\> df1.join(df2, df1("col1") === df2("col1") && df1("col2") \>
+```scala
+scala> df1.join(df2, df1("col1") === df2("col1") && df1("col2") >
 df2("col2")).show
-
-\+----+----+----+----+----+----+
-
++----+----+----+----+----+----+
 |col1|col2|col3|col1|col2|col4|
-
-\+----+----+----+----+----+----+
-
++----+----+----+----+----+----+
 | Tom| 4| 6| Tom| 3| 5|
-
-\+----+----+----+----+----+----+
++----+----+----+----+----+----+
+```
 
 代码 4‑36
 
@@ -1823,128 +1370,91 @@ df2("col2")).show
 
 首先修改一下上面的数据集。然后对DataSet进行一个简单的分组计数：
 
-scala\> val df = spark.createDataset(Seq(
-
+```scala
+scala> val df = spark.createDataset(Seq(
 | ("Ivan", 1, 2), ("Tom", 3, 4), ("Rose", 3, 5), ("Tom", 4, 6))
-
 | ).toDF("col1", "col2", "col3")
-
-df: org.apache.spark.sql.DataFrame = \[col1: string, col2: int ... 1
-more field\]
-
-scala\> df.groupBy("col1").count.show
-
-\+----+-----+
-
+df: org.apache.spark.sql.DataFrame = [col1: string, col2: int ... 1
+more field]
+scala> df.groupBy("col1").count.show
++----+-----+
 |col1|count|
-
-\+----+-----+
-
++----+-----+
 |Rose| 1|
-
 | Tom| 2|
-
 |Ivan| 1|
-
-\+----+-----+
++----+-----+
+```
 
 代码 4‑37
 
 代码 4‑37中的count是对groupBy的分组结果进行计数。这个结果col1的显示没有排序，在代码
 4‑38中，我们使用sort实现col1的两种排序：
 
-scala\> df.groupBy("col1").count.sort("col1").show
-
-\+----+-----+
-
+```scala
+scala> df.groupBy("col1").count.sort("col1").show
++----+-----+
 |col1|count|
-
-\+----+-----+
-
++----+-----+
 |Ivan| 1|
-
 |Rose| 1|
-
 | Tom| 2|
-
-\+----+-----+
-
-scala\> df.groupBy("col1").count.sort($"col1".desc).show
-
-\+----+-----+
-
++----+-----+
+scala> df.groupBy("col1").count.sort($"col1".desc).show
++----+-----+
 |col1|count|
-
-\+----+-----+
-
++----+-----+
 | Tom| 2|
-
 |Rose| 1|
-
 |Ivan| 1|
-
-\+----+-----+
++----+-----+
+```
 
 代码 4‑38
 
 代码 4‑39按分组计数大小的逆序排列：
 
-scala\> df.groupBy("col1").count.sort($"count".desc).show
-
-\+----+-----+
-
+```scala
+scala> df.groupBy("col1").count.sort($"count".desc).show
++----+-----+
 |col1|count|
-
-\+----+-----+
-
++----+-----+
 | Tom| 2|
-
 |Rose| 1|
-
 |Ivan| 1|
-
-\+----+-----+
++----+-----+
+```
 
 代码 4‑39
 
 代码 4‑40用withColumnRenamed函数给列重命名：
 
-scala\> df.groupBy("col1").count.withColumnRenamed("count",
+```scala
+scala> df.groupBy("col1").count.withColumnRenamed("count",
 "cnt").sort($"cnt".desc).show
-
-\+----+---+
-
++----+---+
 |col1|cnt|
-
-\+----+---+
-
++----+---+
 | Tom| 2|
-
 |Rose| 1|
-
 |Ivan| 1|
-
-\+----+---+
++----+---+
+```
 
 代码 4‑40
 
 代码 4‑41直接给出别名：
 
-scala\> df.groupBy("col1").agg(count("col1").as("cnt")).show
-
-\+----+---+
-
+```scala
+scala> df.groupBy("col1").agg(count("col1").as("cnt")).show
++----+---+
 |col1|cnt|
-
-\+----+---+
-
++----+---+
 |Rose| 1|
-
 | Tom| 2|
-
 |Ivan| 1|
-
-\+----+---+
++----+---+
+```
 
 代码 4‑41
 
@@ -1962,91 +1472,54 @@ scala\> df.groupBy("col1").agg(count("col1").as("cnt")).show
 
 下面用几个示例代码，注意区别Column类型参数和String类型参数：
 
-scala\> df.groupBy("col1").agg(count("col1"), max("col2"),
+```scala
+scala> df.groupBy("col1").agg(count("col1"), max("col2"),
 avg("col3")).show
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |col1|count(col1)|max(col2)|avg(col3)|
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |Rose| 1| 3| 5.0|
-
 | Tom| 2| 4| 5.0|
-
 |Ivan| 1| 1| 2.0|
-
-\+----+-----------+---------+---------+
-
-scala\> df.groupBy("col1").agg("col1" -\> "count", "col2" -\> "max",
-"col3" -\> "avg").show
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
+scala> df.groupBy("col1").agg("col1" -> "count", "col2" -> "max",
+"col3" -> "avg").show
++----+-----------+---------+---------+
 |col1|count(col1)|max(col2)|avg(col3)|
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |Rose| 1| 3| 5.0|
-
 | Tom| 2| 4| 5.0|
-
 |Ivan| 1| 1| 2.0|
-
-\+----+-----------+---------+---------+
-
-scala\> df.groupBy("col1").agg(Map(("col1", "count"), ("col2", "max"),
++----+-----------+---------+---------+
+scala> df.groupBy("col1").agg(Map(("col1", "count"), ("col2", "max"),
 ("col3", "avg"))).show
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |col1|count(col1)|max(col2)|avg(col3)|
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |Rose| 1| 3| 5.0|
-
 | Tom| 2| 4| 5.0|
-
 |Ivan| 1| 1| 2.0|
-
-\+----+-----------+---------+---------+
-
-scala\> df.groupBy("col1").agg(("col1", "count"), ("col2", "max"),
++----+-----------+---------+---------+
+scala> df.groupBy("col1").agg(("col1", "count"), ("col2", "max"),
 ("col3", "avg")).show
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |col1|count(col1)|max(col2)|avg(col3)|
-
-\+----+-----------+---------+---------+
-
++----+-----------+---------+---------+
 |Rose| 1| 3| 5.0|
-
 | Tom| 2| 4| 5.0|
-
 |Ivan| 1| 1| 2.0|
-
-\+----+-----------+---------+---------+
-
-scala\> df.groupBy("col1").agg(count("col1").as("cnt"),
-max("col2").as("max\_col2"), avg("col3").as("avg\_col3")).sort($"cnt",
-$"max\_col2".desc).show
-
-\+----+---+--------+--------+
-
-|col1|cnt|max\_col2|avg\_col3|
-
-\+----+---+--------+--------+
-
++----+-----------+---------+---------+
+scala> df.groupBy("col1").agg(count("col1").as("cnt"),
+max("col2").as("max_col2"), avg("col3").as("avg_col3")).sort($"cnt",
+$"max_col2".desc).show
++----+---+--------+--------+
+|col1|cnt|max_col2|avg_col3|
++----+---+--------+--------+
 |Rose| 1| 3| 5.0|
-
 |Ivan| 1| 1| 2.0|
-
 | Tom| 2| 4| 5.0|
-
-\+----+---+--------+--------+
++----+---+--------+--------+
+```
 
 代码 4‑42
 
@@ -2061,90 +1534,54 @@ Functions，UDF），并以与使用内置函数类似的方式在Spark数据处
 
 使用用户定义函数涉及三个步骤。第一个是编写一个函数并对其进行测试，第二步是通过将函数名称及其签名传递给Spark的udf()函数来向Spark注册该函数，最后一步是在DataFrame代码中或SQL语句查询时使用用户定义函数。在SQL查询中使用UDF时，注册过程略有不同。
 
-scala\> case class Student(name:String, score:Int)
-
+```scala
+scala> case class Student(name:String, score:Int)
 defined class Student
-
-scala\> val studentDF = Seq(Student("Joe", 85),Student("Jane",
+scala> val studentDF = Seq(Student("Joe", 85),Student("Jane",
 90),Student("Mary", 55)).toDF()
-
-studentDF: org.apache.spark.sql.DataFrame = \[name: string, score: int\]
-
-scala\> studentDF.createOrReplaceTempView("students")
-
-scala\> :paste
-
+studentDF: org.apache.spark.sql.DataFrame = [name: string, score: int]
+scala> studentDF.createOrReplaceTempView("students")
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 def letterGrade(score:Int) : String = {
-
 score match {
-
-case score if score \> 100 =\> "Cheating"
-
-case score if score \>= 90 =\> "A"
-
-case score if score \>= 80 =\> "B"
-
-case score if score \>= 70 =\> "C"
-
-case \_ =\> "F"
-
+case score if score > 100 => "Cheating"
+case score if score >= 90 => "A"
+case score if score >= 80 => "B"
+case score if score >= 70 => "C"
+case _ => "F"
 }
-
 }
-
 // Exiting paste mode, now interpreting.
-
 letterGrade: (score: Int)String
-
-scala\> val letterGradeUDF = udf(letterGrade(\_:Int):String)
-
+scala> val letterGradeUDF = udf(letterGrade(_:Int):String)
 letterGradeUDF: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,StringType,Some(List(IntegerType)))
-
-scala\>
+UserDefinedFunction(<function1>,StringType,Some(List(IntegerType)))
+scala>
 studentDF.select($"name",$"score",letterGradeUDF($"score").as("grade")).show
-
-\+----+-----+-----+
-
++----+-----+-----+
 |name|score|grade|
-
-\+----+-----+-----+
-
++----+-----+-----+
 | Joe| 85| B|
-
 |Jane| 90| A|
-
 |Mary| 55| F|
-
-\+----+-----+-----+
-
-scala\> spark.sqlContext.udf.register("letterGrade", letterGrade(\_:
++----+-----+-----+
+scala> spark.sqlContext.udf.register("letterGrade", letterGrade(_:
 Int): String)
-
 res16: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,StringType,Some(List(IntegerType)))
-
-scala\> spark.sql("select name, score, letterGrade(score) as grade from
+UserDefinedFunction(<function1>,StringType,Some(List(IntegerType)))
+scala> spark.sql("select name, score, letterGrade(score) as grade from
 students").show
-
-20/03/20 09:20:16 WARN ObjectStore: Failed to get database global\_temp,
+20/03/20 09:20:16 WARN ObjectStore: Failed to get database global_temp,
 returning NoSuchObjectException
-
-\+----+-----+-----+
-
++----+-----+-----+
 |name|score|grade|
-
-\+----+-----+-----+
-
++----+-----+-----+
 | Joe| 85| B|
-
 |Jane| 90| A|
-
 |Mary| 55| F|
-
-\+----+-----+-----+
++----+-----+-----+
+```
 
 ## 4.5 案例分析
 
@@ -2197,22 +1634,24 @@ SQL可以实现关系型数据操作和查询。创建DataFrame有两种方法�
 
 数据位于csv文件中，通过导入csv文件并在分隔符“，”上分割来创建基本RDD，在这个例子中正在使用SFPD数据。
 
-scala\> val sfpdRDD =
-sc.textFile("/data/sfpd.csv").map(inc=\>inc.split(","))
-
-sfpdRDD: org.apache.spark.rdd.RDD\[Array\[String\]\] =
-MapPartitionsRDD\[2\] at map at \<console\>:24
+```scala
+scala> val sfpdRDD =
+sc.textFile("/data/sfpd.csv").map(inc=>inc.split(","))
+sfpdRDD: org.apache.spark.rdd.RDD[Array[String]] =
+MapPartitionsRDD[2] at map at <console>:24
+```
 
 代码 4‑57
 
   - 定义案例类
 
-scala\> case class Incidents(incidentnum:String,
+```scala
+scala> case class Incidents(incidentnum:String,
 category:String,description:String, dayofweek:String, date:String,
 time:String,pddistrict:String, resolution:String, address:String,
 X:Float,Y:Float, pdid:String)
-
 defined class Incidents
+```
 
 代码 4‑58
 
@@ -2220,12 +1659,13 @@ defined class Incidents
 
 将输入RDD转换为案例类对象RDD(sfpdCase)，将map()转换应用于案例类，映射到RDD中的每个元素上。
 
-scala\> val
-sfpdCase=sfpdRDD.map(inc=\>Incidents(inc(0),inc(1),inc(2),inc(3),inc(4),inc(5),inc(6),inc(7),inc(8),inc(9).toFloat,inc(10).toFloat,
+```scala
+scala> val
+sfpdCase=sfpdRDD.map(inc=>Incidents(inc(0),inc(1),inc(2),inc(3),inc(4),inc(5),inc(6),inc(7),inc(8),inc(9).toFloat,inc(10).toFloat,
 inc(11)))
-
-sfpdCase: org.apache.spark.rdd.RDD\[Incidents\] = MapPartitionsRDD\[3\]
-at map at \<console\>:28
+sfpdCase: org.apache.spark.rdd.RDD[Incidents] = MapPartitionsRDD[3]
+at map at <console>:28
+```
 
 代码 4‑59
 
@@ -2233,10 +1673,11 @@ at map at \<console\>:28
 
 然后使用toDF方法将sfpdCase隐式转换为DataFrame，然后可以对sfpdDF应用关系型数据操作。
 
-scala\> val sfpdDF=sfpdCase.toDF()
-
-sfpdDF: org.apache.spark.sql.DataFrame = \[incidentnum: string,
-category: string ... 10 more fields\]
+```scala
+scala> val sfpdDF=sfpdCase.toDF()
+sfpdDF: org.apache.spark.sql.DataFrame = [incidentnum: string,
+category: string ... 10 more fields]
+```
 
 代码 4‑60
 
@@ -2244,7 +1685,9 @@ category: string ... 10 more fields\]
 
 将DataFrame注册为临时视图，以便可以使用SQL语言查询它，现在可以使用SQL查询临时视图sfpd。
 
-scala\> sfpdDF.createOrReplaceTempView("sfpd")
+```scala
+scala> sfpdDF.createOrReplaceTempView("sfpd")
+```
 
 代码 4‑61
 
@@ -2270,9 +1713,10 @@ scala\> sfpdDF.createOrReplaceTempView("sfpd")
 
   - 首先需要导入必要的类。
 
-scala\> import org.apache.spark.sql.types.\_
-
-import org.apache.spark.sql.types.\_
+```scala
+scala> import org.apache.spark.sql.types._
+import org.apache.spark.sql.types._
+```
 
 代码 4‑63
 
@@ -2280,20 +1724,17 @@ import org.apache.spark.sql.types.\_
 
 在此步骤中，将数据加载到RDD中，将map应用于空格分割，然后使用最后的map转换将该RDD转换为Row RDD。
 
-scala\> import org.apache.spark.sql.Row
-
+```scala
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
-
-scala\> val rowRDD =
-sc.textFile("/data/sfpd.csv").map(x=\>x.split(",")).map(p=\>Row(p(0),p(2),p(4)))
-
-rowRDD: org.apache.spark.rdd.RDD\[org.apache.spark.sql.Row\] =
-MapPartitionsRDD\[146\] at map at \<console\>:29
-
-scala\> rowRDD.first
-
+scala> val rowRDD =
+sc.textFile("/data/sfpd.csv").map(x=>x.split(",")).map(p=>Row(p(0),p(2),p(4)))
+rowRDD: org.apache.spark.rdd.RDD[org.apache.spark.sql.Row] =
+MapPartitionsRDD[146] at map at <console>:29
+scala> rowRDD.first
 res66: org.apache.spark.sql.Row =
-\[150599321,POSSESSION\_OF\_BURGLARY\_TOOLS,7/9/15\]
+[150599321,POSSESSION_OF_BURGLARY_TOOLS,7/9/15]
+```
 
 代码 4‑64
 
@@ -2303,15 +1744,16 @@ StructType对象定义了数据结构，需要一个StructField对象的数组�
 \[StructField\])；StructField采用以下参数(name: String, dataType: DataType,
 nullable: Boolean = true)。
 
-scala\> val testsch =
+```scala
+scala> val testsch =
 StructType(Array(StructField("IncNum",StringType,nullable =
 true),StructField("Date",StringType,nullable =
 true),StructField("District",StringType,nullable = true)))
-
 testsch: org.apache.spark.sql.types.StructType =
 StructType(StructField(IncNum,StringType,true),
 StructField(Date,StringType,true),
 StructField(District,StringType,true))
+```
 
 代码 4‑65
 
@@ -2321,92 +1763,58 @@ StructField(District,StringType,true))
 
   - 创建DataFrame
 
-scala\> val testDF = spark.createDataFrame(rowRDD,testsch)
-
-testDF: org.apache.spark.sql.DataFrame = \[IncNum: string, Date: string
-... 1 more field\]
-
-scala\> testDF.show
-
-\+---------+--------------------+--------+
-
+```scala
+scala> val testDF = spark.createDataFrame(rowRDD,testsch)
+testDF: org.apache.spark.sql.DataFrame = [IncNum: string, Date: string
+... 1 more field]
+scala> testDF.show
++---------+--------------------+--------+
 | IncNum| Date|District|
-
-\+---------+--------------------+--------+
-
-|150599321|POSSESSION\_OF\_BUR...| 7/9/15|
-
-|156168837|PETTY\_THEFT\_OF\_PR...| 7/9/15|
-
-|150599321|DRIVERS\_LICENSE/S...| 7/9/15|
-
-|150599224|DRIVERS\_LICENSE/S...| 7/9/15|
-
-|156169067|GRAND\_THEFT\_FROM\_...| 7/9/15|
-
-|150599230|MALICIOUS\_MISCHIE...| 7/9/15|
-
-|150599309|AGGRAVATED\_ASSAUL...| 7/9/15|
-
-|150599133|DRIVERS\_LICENSE/S...| 7/9/15|
-
-|150604629|GRAND\_THEFT\_FROM\_...| 7/9/15|
-
++---------+--------------------+--------+
+|150599321|POSSESSION_OF_BUR...| 7/9/15|
+|156168837|PETTY_THEFT_OF_PR...| 7/9/15|
+|150599321|DRIVERS_LICENSE/S...| 7/9/15|
+|150599224|DRIVERS_LICENSE/S...| 7/9/15|
+|156169067|GRAND_THEFT_FROM_...| 7/9/15|
+|150599230|MALICIOUS_MISCHIE...| 7/9/15|
+|150599309|AGGRAVATED_ASSAUL...| 7/9/15|
+|150599133|DRIVERS_LICENSE/S...| 7/9/15|
+|150604629|GRAND_THEFT_FROM_...| 7/9/15|
 |150604629| BATTERY| 7/9/15|
-
-|150599177|PROPERTY\_FOR\_IDEN...| 7/9/15|
-
-|150599177|DRIVERS\_LICENSE/S...| 7/9/15|
-
-|150599155|BATTERY/FORMER\_SP...| 7/9/15|
-
-|150599092|DRIVERS\_LICENSE/S...| 7/9/15|
-
-|150599183|VIOLATION\_OF\_REST...| 7/9/15|
-
-|150599183| DOMESTIC\_VIOLENCE| 7/9/15|
-
+|150599177|PROPERTY_FOR_IDEN...| 7/9/15|
+|150599177|DRIVERS_LICENSE/S...| 7/9/15|
+|150599155|BATTERY/FORMER_SP...| 7/9/15|
+|150599092|DRIVERS_LICENSE/S...| 7/9/15|
+|150599183|VIOLATION_OF_REST...| 7/9/15|
+|150599183| DOMESTIC_VIOLENCE| 7/9/15|
 |150599183| BATTERY| 7/9/15|
-
-|150599246|CHILD\_ABUSE\_(PHYS...| 7/9/15|
-
-|150599246| WARRANT\_ARREST| 7/9/15|
-
-|150599246|ENROUTE\_TO\_OUTSID...| 7/9/15|
-
-\+---------+--------------------+--------+
-
+|150599246|CHILD_ABUSE_(PHYS...| 7/9/15|
+|150599246| WARRANT_ARREST| 7/9/15|
+|150599246|ENROUTE_TO_OUTSID...| 7/9/15|
++---------+--------------------+--------+
 only showing top 20 rows
+```
 
 代码 4‑66
 
 通过将数据结构testsch应用于包含Row对象的RDD中，从而创建DataFrame。创建DataFrame后，可以将其注册为临时视图，并且可以使用SQL语句查询，如下所示。
 
-scala\> testDF.createOrReplaceTempView("test")
-
-scala\> val incs = sql("SELECT \* FROM test")
-
-20/03/20 01:22:49 WARN ObjectStore: Failed to get database global\_temp,
+```scala
+scala> testDF.createOrReplaceTempView("test")
+scala> val incs = sql("SELECT * FROM test")
+20/03/20 01:22:49 WARN ObjectStore: Failed to get database global_temp,
 returning NoSuchObjectException
-
-incs: org.apache.spark.sql.DataFrame = \[IncNum: string, Date: string
-... 1 more field\]
-
-scala\> incs.show(2)
-
-\+---------+--------------------+--------+
-
+incs: org.apache.spark.sql.DataFrame = [IncNum: string, Date: string
+... 1 more field]
+scala> incs.show(2)
++---------+--------------------+--------+
 | IncNum| Date|District|
-
-\+---------+--------------------+--------+
-
-|150599321|POSSESSION\_OF\_BUR...| 7/9/15|
-
-|156168837|PETTY\_THEFT\_OF\_PR...| 7/9/15|
-
-\+---------+--------------------+--------+
-
++---------+--------------------+--------+
+|150599321|POSSESSION_OF_BUR...| 7/9/15|
+|156168837|PETTY_THEFT_OF_PR...| 7/9/15|
++---------+--------------------+--------+
 only showing top 2 rows
+```
 
 代码 4‑67
 
@@ -2430,121 +1838,100 @@ only showing top 2 rows
 
   - > 1.按地址分组报案记录来创建DataFrame。
 
-scala\> val incByAdd = sfpdDF.groupBy("address")
-
+```scala
+scala> val incByAdd = sfpdDF.groupBy("address")
 incByAdd: org.apache.spark.sql.RelationalGroupedDataset =
-RelationalGroupedDataset: \[grouping expressions: \[address: string\],
-value: \[incidentnum: string, category: string ... 10 more fields\],
-type: GroupBy\]
+RelationalGroupedDataset: [grouping expressions: [address: string],
+value: [incidentnum: string, category: string ... 10 more fields],
+type: GroupBy]
+```
 
 代码 4‑68
 
   - > 2.计算每个地址的报案记录数
 
-scala\> val numAdd = incByAdd.count
-
-numAdd: org.apache.spark.sql.DataFrame = \[address: string, count:
-bigint\]
+```scala
+scala> val numAdd = incByAdd.count
+numAdd: org.apache.spark.sql.DataFrame = [address: string, count:
+bigint]
+```
 
 代码 4‑69
 
   - > 3.按降序排列上一步的结果
 
-scala\> val numAddDesc = numAdd.sort($"count".desc)
-
-numAddDesc: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[address: string, count: bigint\]
+```scala
+scala> val numAddDesc = numAdd.sort($"count".desc)
+numAddDesc: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[address: string, count: bigint]
+```
 
 代码 4‑70
 
   - > 4.显示前五名，找到发生报案记录最多的前五名。
 
-scala\> numAddDesc.show(5)
-
-\+--------------------+-----+
-
+```scala
+scala> numAddDesc.show(5)
++--------------------+-----+
 | address|count|
-
-\+--------------------+-----+
-
-|800\_Block\_of\_BRYA...|10852|
-
-|800\_Block\_of\_MARK...| 3671|
-
-|1000\_Block\_of\_POT...| 2027|
-
-|2000\_Block\_of\_MIS...| 1585|
-
-| 16TH\_ST/MISSION\_ST| 1512|
-
-\+--------------------+-----+
-
++--------------------+-----+
+|800_Block_of_BRYA...|10852|
+|800_Block_of_MARK...| 3671|
+|1000_Block_of_POT...| 2027|
+|2000_Block_of_MIS...| 1585|
+| 16TH_ST/MISSION_ST| 1512|
++--------------------+-----+
 only showing top 5 rows
-
 top5Add: Unit = ()
+```
 
 代码 4‑71
 
   - > 5.可以将上面的语句组合成一个语句，结果显示在这里。
 
-scala\> sfpdDF.groupBy("address").count.sort($"count".desc).show(5)
-
-\+--------------------+-----+
-
+```scala
+scala> sfpdDF.groupBy("address").count.sort($"count".desc).show(5)
++--------------------+-----+
 | address|count|
-
-\+--------------------+-----+
-
-|800\_Block\_of\_BRYA...|10852|
-
-|800\_Block\_of\_MARK...| 3671|
-
-|1000\_Block\_of\_POT...| 2027|
-
-|2000\_Block\_of\_MIS...| 1585|
-
-| 16TH\_ST/MISSION\_ST| 1512|
-
-\+--------------------+-----+
-
++--------------------+-----+
+|800_Block_of_BRYA...|10852|
+|800_Block_of_MARK...| 3671|
+|1000_Block_of_POT...| 2027|
+|2000_Block_of_MIS...| 1585|
+| 16TH_ST/MISSION_ST| 1512|
++--------------------+-----+
 only showing top 5 rows
+```
 
 代码 4‑72
 
   - > 6.可以使用SQL语句回答同样的问题，如下所示。
 
-scala\> sql("SELECT address, count(incidentnum) AS inccount FROM sfpd
+```scala
+scala> sql("SELECT address, count(incidentnum) AS inccount FROM sfpd
 GROUP BY address ORDER BY inccount DESC LIMIT 5").show
-
-\+--------------------+--------+
-
++--------------------+--------+
 | address|inccount|
-
-\+--------------------+--------+
-
-|800\_Block\_of\_BRYA...| 10852|
-
-|800\_Block\_of\_MARK...| 3671|
-
-|1000\_Block\_of\_POT...| 2027|
-
-|2000\_Block\_of\_MIS...| 1585|
-
-| 16TH\_ST/MISSION\_ST| 1512|
-
-\+--------------------+--------+
++--------------------+--------+
+|800_Block_of_BRYA...| 10852|
+|800_Block_of_MARK...| 3671|
+|1000_Block_of_POT...| 2027|
+|2000_Block_of_MIS...| 1585|
+| 16TH_ST/MISSION_ST| 1512|
++--------------------+--------+
+```
 
 代码 4‑73
 
 现在已经回答了一个问题，可以使用类似的方法来回答实例中其他问题。如果要保存查询结果，可以使用Spark的写操作将DataFrame保存到/data/top5Add.json文件中：
 
-scala\> val top5Add = numAddDesc.limit(5)
-
-top5Add: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[address: string, count: bigint\]
-
-scala\>
+```scala
+scala> val top5Add = numAddDesc.limit(5)
+top5Add: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[address: string, count: bigint]
+scala>
 top5Add.write.format("json").mode("overwrite").save("/data/top5Add.json")
+```
 
 代码 4‑75
 
@@ -2559,42 +1946,32 @@ SQL提供了像其他查询引擎一样创建用户定义函数的功能，并�
 
 （1）定义用户定义函数
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val getStr = udf((s:String)=\>{
-
+val getStr = udf((s:String)=>{
 val lastS = s.substring(s.lastIndexOf('/')+1)
-
 lastS
-
 })
-
 // Exiting paste mode, now interpreting.
-
 getStr: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,StringType,Some(List(StringType)))
+UserDefinedFunction(<function1>,StringType,Some(List(StringType)))
+```
 
 代码 4‑78
 
 （2）在DataFrame操作中使用用户定义函数
 
-scala\> sfpdDF.groupBy(getStr(sfpdDF("date"))).count.show
-
-\+---------+------+
-
+```scala
+scala> sfpdDF.groupBy(getStr(sfpdDF("date"))).count.show
++---------+------+
 |UDF(date)| count|
-
-\+---------+------+
-
++---------+------+
 | 15| 80760|
-
 | 13|152830|
-
 | 14|150185|
-
-\+---------+------+
++---------+------+
+```
 
 代码 4‑79
 
@@ -2610,46 +1987,35 @@ strAfter
 
 })
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-spark.sqlContext.udf.register("getStr", (s:String)=\>{
-
+spark.sqlContext.udf.register("getStr", (s:String)=>{
 val strAfter = s.substring(s.lastIndexOf('/')+1)
-
 strAfter
-
 })
-
 // Exiting paste mode, now interpreting.
-
 res4: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,StringType,Some(List(StringType)))
+UserDefinedFunction(<function1>,StringType,Some(List(StringType)))
+```
 
 代码 4‑51
 
 （2）在SQL语句中使用UDF
 
-scala\> sql("SELECT getStr(date), count(incidentnum) AS countByYear FROM
+```scala
+scala> sql("SELECT getStr(date), count(incidentnum) AS countByYear FROM
 sfpd GROUP BY getStr(date) ORDER BY countByYear DESC LIMIT 5").show
-
-20/03/20 11:55:51 WARN ObjectStore: Failed to get database global\_temp,
+20/03/20 11:55:51 WARN ObjectStore: Failed to get database global_temp,
 returning NoSuchObjectException
-
-\+----------------+-----------+
-
++----------------+-----------+
 |UDF:getStr(date)|countByYear|
-
-\+----------------+-----------+
-
++----------------+-----------+
 | 13| 152830|
-
 | 14| 150185|
-
 | 15| 80760|
-
-\+----------------+-----------+
++----------------+-----------+
+```
 
 代码 ‑83
 
@@ -2658,6 +2024,3 @@ returning NoSuchObjectException
 Spark SQL是用于结构化数据处理的Spark模块。与基本RDD API不同，Spark
 SQL的接口提供了更多有关数据结构和类型的信息，Spark
 SQL使用这些额外的信息来执行性能优化。DataFrame是分布式数据集合，是由命名列组织在一起的，实现了后台优化技术的关系型数据表。Spark提供了三种类型的数据结构抽象，其中包括：RDD、DataFrame和DataSet。无论DataFrame还是DataSet都是以RDD为底层进行了结构化的封装。本章我们已经知道如何创建DataFrame和Dataset，接下来的部分是学习如何使用提供的结构化操作来使用它们。
-
-
-

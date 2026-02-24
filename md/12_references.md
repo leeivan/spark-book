@@ -44,6 +44,3 @@
 16. <http://bigdatatn.blogspot.com/2017/05/spark-performance-optimization-shuffle.html>
 
 17. https://legacy.gitbook.com/@jaceklaskowski
-
-
-

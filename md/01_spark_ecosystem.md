@@ -580,7 +580,9 @@ Docker
 最佳实践的要求，容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化。所有的文件写入操作，都应该使用数据卷或者绑定主机目录，在这些位置的读写会跳过容器存储层，直接对主机（或网络存储）发生读写，其性能和稳定性更高。数据卷的生存周期独立于容器，容器消亡数据卷不会消亡。因此使用数据卷后，容器删除或者重新运行之后，数据却不会丢失。容器由其镜像以及在创建或启动时为其提供的任何配置选项定义。删除容器后，未存储在持久性存储中的状态更改将消失。下面通过示例docker
 run命令来讲解镜像和容器的关系。以下命令运行一个ubuntu容器，运行/bin/bash以交互方式附加到本地命令行会话。
 
+```bash
 $ docker run -i -t ubuntu /bin/bash
+```
 
 当运行此命令时，假设使用的是默认注册中心的配置会发生以下情况：
 
@@ -655,48 +657,55 @@ docker \[exec|info|version\]
 Hub的个人公共库，而如果类似于regsistory.example.com:5000/repos\_name，则表示的是私服。IMAGE
 ID列其实是缩写，要显示完整则带上--no-trunc选项
 
-\# docker images
-
+```bash
+# docker images
 REPOSITORY TAG IMAGE ID CREATED VIRTUAL SIZE
-
 ubuntu 14.10 2185fd50e2ca 13 days ago 236.9 MB
-
 …
+```
 
 命令 1.1
 
 （2）在Docker Hub中搜索镜像，搜索的范围是官方镜像和所有个人公共镜像，在NAME列中/后面是仓库的名字。
 
-\# docker search spark-lab-env
-
+```bash
+# docker search spark-lab-env
 NAME DESCRIPTION STARS OFFICIAL AUTOMATED
-
 leeivan/spark-lab-env Spark Lab Enviroment 0 0
+```
 
 命令 1.2
 
 （3）从公共注册中心中下拉镜像。
 
-\# docker pull centos
+```bash
+# docker pull centos
+```
 
 命令 1.3
 
 上面的命令需要注意，从V1.3开始只会下载标签为latest的镜像，也可以明确指定具体的镜像。
 
-\# docker pull centos:centos6
+```bash
+# docker pull centos:centos6
+```
 
 命令 1.4
 
 当然也可以从个人的公共仓库（包括自己是私人仓库）拉取，格式为docker pull
 username/repository\<:tag\_name\> ：
 
-\# docker pull leeivan/spark-lab-env:4.1.1
+```bash
+# docker pull leeivan/spark-lab-env:4.1.1
+```
 
 命令 1.5
 
 （4）推送镜像或仓库到注册中心，与上面的pull对应，可以推送到公共注册中心。
 
-\# docker push leeivan/spark-lab-env
+```bash
+# docker push leeivan/spark-lab-env
+```
 
 命令 1.7
 
@@ -707,54 +716,49 @@ start命令来启动它。停止的容器可以重新启动并保留原来的修
 来创建容器时，首先检查本地是否存在指定的镜像，不存在就从公有仓库下载，利用镜像创建并启动一个容器，然后分配一个文件系统，并在只读的镜像层外面挂载一层可读写层，从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中去，从地址池配置一个
 ip 地址给容器，执行用户指定的应用程序，执行完毕后容器被终止，使用镜像创建容器并执行相应命令：
 
-\# docker run ubuntu echo "hello world"
-
+```bash
+# docker run ubuntu echo "hello world"
 Unable to find image 'ubuntu:latest' locally
-
 latest: Pulling from library/ubuntu
-
 5c939e3a4d10: Pull complete
-
 c63719cdbe7a: Pull complete
-
 19a861ea6baf: Pull complete
-
 651c9d2d6c4f: Pull complete
-
 Digest:
 sha256:8d31dad0c58f552e890d68bbfb735588b6b820a46e459672d96e585871acc110
-
 Status: Downloaded newer image for ubuntu:latest
-
 hello world
+```
 
 命令 1.8
 
 这是最简单的方式，跟在本地直接执行echo 'hello world'
 几乎感觉不出任何区别，而实际上它会从本地ubuntu:latest镜像启动到一个容器，并执行打印命令后退出，可以通过命令查看创建的容器。
 
-\# docker ps -l
-
+```bash
+# docker ps -l
 CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
-
 f520084a16a4 ubuntu "echo 'hello world'" 14 minutes ago Exited (0) 14
-minutes ago flamboyant\_mendel
+minutes ago flamboyant_mendel
+```
 
 需要注意的是，默认有一个--rm=true参数，即完成操作后停止容器并从文件系统移除。因为Docker的容器实在太轻量级了，很多时候用户都是随时删除和创建容器。容器启动后会自动随机生成一个CONTAINER
 ID，这个ID在后面commit命令后可以变为IMAGE ID。使用镜像创建容器并进入交互模式。
 
-\# docker run -i -t --name spark leeivan/spark-lab-env /bin/bash
-
-root@spark:/\#
+```bash
+# docker run -i -t --name spark leeivan/spark-lab-env /bin/bash
+root@spark:/#
+```
 
 命令 1.9
 
 这个命令会启动一个伪终端，上面的--name参数可以指定启动后的容器名字，如果不指定则会自动生成一个名字。通过ps或top命令却只能看到一两个进程，因为容器的核心是所执行的应用程序，所需要的资源都是应用程序运行所必需的，除此之外并没有其它的资源，可见Docker对资源的利用率极高。此时使用exit或Ctrl+D退出后，这个容器也就消失了。运行出一个容器放到后台运行：
 
-\# docker run -d ubuntu /bin/sh -c "while true; do echo hello world;
+```bash
+# docker run -d ubuntu /bin/sh -c "while true; do echo hello world;
 sleep 2; done"
-
 0d6e40aa8791faae795029f219fba1e95cfa5420eaef6c88ad70623745fb3ac4
+```
 
 命令 1.10
 
@@ -770,12 +774,12 @@ docker exec eede6d35b47d /bin/ping localhost
 
 docker exec可用来进入容器内，然后在容器中执行指令，例如：
 
-\# docker exec -it spark bash
-
-root@spark:/\# ls
-
+```bash
+# docker exec -it spark bash
+root@spark:/# ls
 bin boot data dev etc home lib lib64 media mnt opt proc root run sbin
 spark srv sys tmp usr var
+```
 
 在使用Docker指令时，有些动作是可以用run或exec来完成的，那么两者有什么不同呢？其实docker
 run适合在没有容器的情况下使用，就可以为建立和启动一个容器，并执行命令；docker
@@ -793,78 +797,87 @@ ip:hostPort:containerPort | ip::containerPort | hostPort:containerPort
 
 一、将容器暴露的所有端口都随机映射到宿主机上，例如：（不推荐使用）
 
-\# docker run -P -it ubuntu /bin/bash
+```bash
+# docker run -P -it ubuntu /bin/bash
+```
 
 二、将容器指定端口随机映射到宿主机一个端口上，例如：
 
-\# docker run -P 80 -it ubuntu /bin/bash
+```bash
+# docker run -P 80 -it ubuntu /bin/bash
+```
 
 以上指令会将容器的80端口随机映射到宿主机的一个端口上。
 
 三、将容器指定端口映射到宿主机的一个指定端口上，例如：
 
-\# docker run -p 8000:80 -it ubuntu /bin/bash
+```bash
+# docker run -p 8000:80 -it ubuntu /bin/bash
+```
 
 以上指令会将容器的80端口映射到宿主机的8000端口上。
 
 四、绑定外部的ip和随机端口到容器的指定端口（宿主机ip是10.168.2.141）
 
-\# docker run -p 192.168.0.100::80 -it ubuntu /bin/bash
-
-\# docker ps
-
+```bash
+# docker run -p 192.168.0.100::80 -it ubuntu /bin/bash
+# docker ps
 CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
-
 e9584d29f978 ubuntu "/bin/bash" 35 seconds ago Up 34 seconds
-10.168.2.141:32768-\>80/tcp eager\_albattani
+10.168.2.141:32768->80/tcp eager_albattani
+```
 
 以上指令会将宿主机的ip10.168.2.141和随机指定端口32768映射到容器的指定80端口。
 
 五、绑定外部的ip和指定端口到容器的指定端口（宿主机ip是10.168.2.141）
 
-\# docker run -p 10.168.2.141:8000:80 -it ubuntu /bin/bash
+```bash
+# docker run -p 10.168.2.141:8000:80 -it ubuntu /bin/bash
+```
 
 以上指令会将宿主机的ip10.168.2.141和指定端口8000映射到容器的指定80端口。
 
 六、查看容器绑定和映射的端口及Ip地址
 
-\# docker port spark
-
-4040/tcp -\> 0.0.0.0:4040
-
-8080/tcp -\> 0.0.0.0:8080
-
-8081/tcp -\> 0.0.0.0:8081
-
-\# docker inspect spark|grep IPAddress
-
+```bash
+# docker port spark
+4040/tcp -> 0.0.0.0:4040
+8080/tcp -> 0.0.0.0:8080
+8081/tcp -> 0.0.0.0:8081
+# docker inspect spark|grep IPAddress
 "SecondaryIPAddresses": null,
-
 "IPAddress": "172.17.0.2",
-
 "IPAddress": "172.17.0.2",
+```
 
 七、目录映射其实是绑定挂载主机的路径到容器的目录，这对于内外传送文件比较方便。为了避免容器停止以后保存的镜像不被删除，就要把提交的镜像保存到挂载的主机目录下，使用比较简单，-v
 \<host\_path:container\_path\>，绑定多个目录时再加-v。
 
-\# docker run -it -v /home/dock/Downloads:/usr/Downloads ubuntu64
+```bash
+# docker run -it -v /home/dock/Downloads:/usr/Downloads ubuntu64
 /bin/bash
+```
 
 通过-v参数，冒号前为宿主机目录，必须为绝对路径，冒号后为镜像内挂载的路径。现在镜像内就可以共享宿主机里的文件了。默认挂载的路径权限为读写。如果指定为只读可以用ro：
 
-\# docker run -it -v /home/dock/Downloads:/usr/Downloads:ro ubuntu64
+```bash
+# docker run -it -v /home/dock/Downloads:/usr/Downloads:ro ubuntu64
 /bin/bash
+```
 
 docker还提供了一种高级的用法，叫数据卷。数据卷其实就是一个正常的容器，专门用来提供数据卷供其它容器挂载的，感觉像是由一个容器定义的一个数据挂载信息，其他的容器启动可以直接挂载数据卷容器中定义的挂载信息，例如：
 
-\# docker run -v /home/dock/Downloads:/usr/Downloads --name dataVol
+```bash
+# docker run -v /home/dock/Downloads:/usr/Downloads --name dataVol
 ubuntu64 /bin/bash
+```
 
 创建一个普通的容器。用--name给他指定了一个名（不指定的话会生成一个随机的名子）。再创建一个新的容器，来使用这个数据卷：
 
-\# docker run -it --volumes-from dataVol ubuntu64 /bin/bash
-
-\--volumes-from用来指定要从哪个数据卷来挂载数据。
+```bash
+# docker run -it --volumes-from dataVol ubuntu64 /bin/bash
+--volumes-from用来指定要从哪个数据卷来挂载数据。
+```
 
 （7）开启/停止/重启容器（start/stop/restart）
 
@@ -881,26 +894,23 @@ docker restart重启容器
 如果运行docker run时，使用 -d 参数容器启动后会进入后台执行，某些时候需要进入容器进行操作，有很多种方法可以完成这样的操作，包括使用
 docker attach 或docker exec命令等。docker exec 是内建的命令，下面示范如何使用该命令：
 
-\# docker run -idt ubuntu
-
+```bash
+# docker run -idt ubuntu
 243c32535da7d142fb0e6df616a3c3ada0b8ab417937c853a9e1c251f499f550
-
-\# docker ps
-
+# docker ps
 CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
-
 243c32535da7 ubuntu:latest "/bin/bash" 18 seconds ago Up 17 seconds
-nostalgic\_hypatia
-
-\# docker exec -ti nostalgic\_hypatia bash
-
-root@243c32535da7:/\#
+nostalgic_hypatia
+# docker exec -ti nostalgic_hypatia bash
+root@243c32535da7:/#
+```
 
 docker attach 也是内建的命令，下面示例如何使用该命令：
 
-\# docker attach nostalgic\_hypatia
-
-root@243c32535da7:/\#
+```bash
+# docker attach nostalgic_hypatia
+root@243c32535da7:/#
+```
 
 按下 ctrl + P 然后 ctrl + Q 跳离容器，让它继续在背景执行。但是使用 attach
 命令有时候并不方便，当多个窗口同时进入到同一个容器的时候，所有窗口都会同步显示。当某个窗口因命令阻塞时，其他窗口也无法执行操作了。
@@ -1691,9 +1701,3 @@ git clone <https://github.com/leeivan/spark-app>
 ## 1.9 小结
 
 本章介绍了Spark的生态环境，其中包括关键技术、Spark技术特征、编程语言，还介绍了Docker虚拟环境和HBase的使用，并且提供了实际的操作方法，这部分技术和知识是使用实验环境平台的基础，为后续的Spark学习提供帮助。
-
-
-
-
-
-

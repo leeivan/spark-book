@@ -137,227 +137,142 @@ checkpointInterval：用于检查点节点ID缓存RDD的频率。设置得太低
 下面的示例演示如何加载
 LIBSVM数据文件，将其解析为RDD，LabeledPoint然后使用决策树（以Gini杂质作为杂质度量且最大树深度为5）进行分类。计算测试误差以测量算法准确性。
 
-scala\> import org.apache.spark.mllib.tree.DecisionTree
-
+```scala
+scala> import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.DecisionTree
-
-scala\> import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
+scala> import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
-
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[6\] at map at MLUtils.scala:86
-
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[6] at map at MLUtils.scala:86
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[7\] at randomSplit at \<console\>:28,
-MapPartitionsRDD\[8\] at randomSplit at \<console\>:28)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[7] at randomSplit at <console>:28,
+MapPartitionsRDD[8] at randomSplit at <console>:28)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[7\] at randomSplit at \<console\>:28
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[7] at randomSplit at <console>:28
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[8\] at randomSplit at \<console\>:28
-
-scala\> val numClasses = 2
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[8] at randomSplit at <console>:28
+scala> val numClasses = 2
 numClasses: Int = 2
-
-scala\> val categoricalFeaturesInfo = Map\[Int, Int\]()
-
-categoricalFeaturesInfo: scala.collection.immutable.Map\[Int,Int\] =
+scala> val categoricalFeaturesInfo = Map[Int, Int]()
+categoricalFeaturesInfo: scala.collection.immutable.Map[Int,Int] =
 Map()
-
-scala\> val impurity = "gini"
-
+scala> val impurity = "gini"
 impurity: String = gini
-
-scala\> val maxDepth = 5
-
+scala> val maxDepth = 5
 maxDepth: Int = 5
-
-scala\> val maxBins = 32
-
+scala> val maxBins = 32
 maxBins: Int = 32
-
-scala\> val model = DecisionTree.trainClassifier(trainingData,
+scala> val model = DecisionTree.trainClassifier(trainingData,
 numClasses, categoricalFeaturesInfo,
-
 | impurity, maxDepth, maxBins)
-
 model: org.apache.spark.mllib.tree.model.DecisionTreeModel =
 DecisionTreeModel classifier of depth 2 with 5 nodes
-
-scala\> val labelAndPreds = testData.map { point =\>
-
+scala> val labelAndPreds = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelAndPreds: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[24\] at map at \<console\>:30
-
-scala\> val testErr = labelAndPreds.filter(r =\> r.\_1 \!=
-r.\_2).count().toDouble / testData.count()
-
+labelAndPreds: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[24] at map at <console>:30
+scala> val testErr = labelAndPreds.filter(r => r._1 !=
+r._2).count().toDouble / testData.count()
 testErr: Double = 0.0
-
-scala\> println(s"Test Error = $testErr")
-
+scala> println(s"Test Error = $testErr")
 Test Error = 0.0
-
-scala\> println(s"Learned classification tree model:\\n
+scala> println(s"Learned classification tree model:\n
 ${model.toDebugString}")
-
 Learned classification tree model:
-
 DecisionTreeModel classifier of depth 2 with 5 nodes
-
-If (feature 434 \<= 70.5)
-
-If (feature 100 \<= 193.5)
-
+If (feature 434 <= 70.5)
+If (feature 100 <= 193.5)
 Predict: 0.0
-
-Else (feature 100 \> 193.5)
-
+Else (feature 100 > 193.5)
 Predict: 1.0
-
-Else (feature 434 \> 70.5)
-
+Else (feature 434 > 70.5)
 Predict: 1.0
-
-scala\> model.save(sc, "/tmp/myDecisionTreeClassificationModel")
-
-scala\> val sameModel = DecisionTreeModel.load(sc,
+scala> model.save(sc, "/tmp/myDecisionTreeClassificationModel")
+scala> val sameModel = DecisionTreeModel.load(sc,
 "/tmp/myDecisionTreeClassificationModel")
-
 sameModel: org.apache.spark.mllib.tree.model.DecisionTreeModel =
 DecisionTreeModel classifier of depth 2 with 5 nodes
+```
 
 下面的示例演示如何加载
 LIBSVM数据文件，将其解析为RDD，LabeledPoint然后使用决策树执行回归，并以方差作为杂质度量，最大树深度为5。计算均方误差（MSE）的方法是最后评估
 拟合优度。
 
-scala\> import org.apache.spark.mllib.tree.DecisionTree
-
+```scala
+scala> import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.DecisionTree
-
-scala\> import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
+scala> import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
-
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[53\] at map at MLUtils.scala:86
-
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[53] at map at MLUtils.scala:86
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[54\] at randomSplit at \<console\>:32,
-MapPartitionsRDD\[55\] at randomSplit at \<console\>:32)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[54] at randomSplit at <console>:32,
+MapPartitionsRDD[55] at randomSplit at <console>:32)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[54\] at randomSplit at \<console\>:32
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[54] at randomSplit at <console>:32
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[55\] at randomSplit at \<console\>:32
-
-scala\> val categoricalFeaturesInfo = Map\[Int, Int\]()
-
-categoricalFeaturesInfo: scala.collection.immutable.Map\[Int,Int\] =
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[55] at randomSplit at <console>:32
+scala> val categoricalFeaturesInfo = Map[Int, Int]()
+categoricalFeaturesInfo: scala.collection.immutable.Map[Int,Int] =
 Map()
-
-scala\> val impurity = "variance"
-
+scala> val impurity = "variance"
 impurity: String = variance
-
-scala\> val maxDepth = 5
-
+scala> val maxDepth = 5
 maxDepth: Int = 5
-
-scala\> val maxBins = 32
-
+scala> val maxBins = 32
 maxBins: Int = 32
-
-scala\> val model = DecisionTree.trainRegressor(trainingData,
+scala> val model = DecisionTree.trainRegressor(trainingData,
 categoricalFeaturesInfo, impurity,
-
 | maxDepth, maxBins)
-
 model: org.apache.spark.mllib.tree.model.DecisionTreeModel =
 DecisionTreeModel regressor of depth 1 with 3 nodes
-
-scala\> val labelsAndPredictions = testData.map { point =\>
-
+scala> val labelsAndPredictions = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelsAndPredictions: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[68\] at map at \<console\>:34
-
-scala\> val testMSE = labelsAndPredictions.map{ case (v, p) =\>
+labelsAndPredictions: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[68] at map at <console>:34
+scala> val testMSE = labelsAndPredictions.map{ case (v, p) =>
 math.pow(v - p, 2) }.mean()
-
 testMSE: Double = 0.03846153846153847
-
-scala\> println(s"Test Mean Squared Error = $testMSE")
-
+scala> println(s"Test Mean Squared Error = $testMSE")
 Test Mean Squared Error = 0.03846153846153847
-
-scala\> println(s"Learned regression tree model:\\n
+scala> println(s"Learned regression tree model:\n
 ${model.toDebugString}")
-
 Learned regression tree model:
-
 DecisionTreeModel regressor of depth 1 with 3 nodes
-
-If (feature 434 \<= 70.5)
-
+If (feature 434 <= 70.5)
 Predict: 0.0
-
-Else (feature 434 \> 70.5)
-
+Else (feature 434 > 70.5)
 Predict: 1.0
-
-scala\> model.save(sc, "/tmp/myDecisionTreeRegressionModel")
-
-scala\> val sameModel = DecisionTreeModel.load(sc,
+scala> model.save(sc, "/tmp/myDecisionTreeRegressionModel")
+scala> val sameModel = DecisionTreeModel.load(sc,
 "/tmp/myDecisionTreeRegressionModel")
-
 sameModel: org.apache.spark.mllib.tree.model.DecisionTreeModel =
 DecisionTreeModel regressor of depth 1 with 3 nodes
+```
 
 ### 9.3.2 集成树
 
@@ -454,343 +369,238 @@ featureSubsetStrategy：用作在每个树节点处分割的候选特征的数�
 
 下面的示例演示如何加载 LIBSVM数据文件，将其解析为LabeledPoint，然后使用随机森林进行分类，计算测试误差以测量算法准确性。
 
-scala\> import org.apache.spark.mllib.tree.RandomForest
-
+```scala
+scala> import org.apache.spark.mllib.tree.RandomForest
 import org.apache.spark.mllib.tree.RandomForest
-
-scala\> import org.apache.spark.mllib.tree.model.RandomForestModel
-
+scala> import org.apache.spark.mllib.tree.model.RandomForestModel
 import org.apache.spark.mllib.tree.model.RandomForestModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
+```
 
   - 加载数据
 
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+```scala
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[18\] at map at MLUtils.scala:86
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[18] at map at MLUtils.scala:86
+```
 
   - 将数据按比例分成训练集（0.7）和测试集（0.3）
 
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+```scala
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[19\] at randomSplit at \<console\>:28,
-MapPartitionsRDD\[20\] at randomSplit at \<console\>:28)
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[19] at randomSplit at <console>:28,
+MapPartitionsRDD[20] at randomSplit at <console>:28)
+```
 
   - 训练模型，categoricalFeaturesInfo为空表明所有特征为连续值
 
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+```scala
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[19\] at randomSplit at \<console\>:28
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[19] at randomSplit at <console>:28
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[20\] at randomSplit at \<console\>:28
-
-scala\> val numClasses = 2
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[20] at randomSplit at <console>:28
+scala> val numClasses = 2
 numClasses: Int = 2
-
-scala\> val categoricalFeaturesInfo = Map\[Int, Int\]()
-
-categoricalFeaturesInfo: scala.collection.immutable.Map\[Int,Int\] =
+scala> val categoricalFeaturesInfo = Map[Int, Int]()
+categoricalFeaturesInfo: scala.collection.immutable.Map[Int,Int] =
 Map()
-
-scala\> val numTrees = 3 // Use more in practice.
-
+scala> val numTrees = 3 // Use more in practice.
 numTrees: Int = 3
-
-scala\> val featureSubsetStrategy = "auto" // Let the algorithm choose.
-
+scala> val featureSubsetStrategy = "auto" // Let the algorithm choose.
 featureSubsetStrategy: String = auto
-
-scala\> val impurity = "gini"
-
+scala> val impurity = "gini"
 impurity: String = gini
-
-scala\> val maxDepth = 4
-
+scala> val maxDepth = 4
 maxDepth: Int = 4
-
-scala\> val maxBins = 32
-
+scala> val maxBins = 32
 maxBins: Int = 32
-
-scala\> val model = RandomForest.trainClassifier(trainingData,
+scala> val model = RandomForest.trainClassifier(trainingData,
 numClasses, categoricalFeaturesInfo,
-
 | numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
-
 model: org.apache.spark.mllib.tree.model.RandomForestModel =
-
 TreeEnsembleModel classifier with 3 trees
+```
 
   - 在测试实例上评估模型并计算测试错误
 
-scala\> val labelAndPreds = testData.map { point =\>
-
+```scala
+scala> val labelAndPreds = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelAndPreds: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[39\] at map at \<console\>:30
-
-scala\> val testErr = labelAndPreds.filter(r =\> r.\_1 \!=
-r.\_2).count.toDouble / testData.count()
-
+labelAndPreds: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[39] at map at <console>:30
+scala> val testErr = labelAndPreds.filter(r => r._1 !=
+r._2).count.toDouble / testData.count()
 testErr: Double = 0.041666666666666664
-
-scala\> println(s"Test Error = $testErr")
-
+scala> println(s"Test Error = $testErr")
 Test Error = 0.041666666666666664
-
-scala\> println(s"Learned classification forest model:\\n
+scala> println(s"Learned classification forest model:\n
 ${model.toDebugString}")
-
 Learned classification forest model:
-
 TreeEnsembleModel classifier with 3 trees
-
 Tree 0:
-
-If (feature 386 \<= 15.5)
-
-If (feature 303 \<= 4.5)
-
-If (feature 434 \<= 79.5)
-
+If (feature 386 <= 15.5)
+If (feature 303 <= 4.5)
+If (feature 434 <= 79.5)
 Predict: 0.0
-
-Else (feature 434 \> 79.5)
-
+Else (feature 434 > 79.5)
 Predict: 1.0
-
-Else (feature 303 \> 4.5)
-
+Else (feature 303 > 4.5)
 Predict: 0.0
-
-Else (feature 386 \> 15.5)
-
+Else (feature 386 > 15.5)
 Predict: 0.0
-
 Tree 1:
-
-If (feature 351 \<= 36.0)
-
+If (feature 351 <= 36.0)
 Predict: 0.0
-
-Else (feature 351 \> 36.0)
-
+Else (feature 351 > 36.0)
 Predict: 1.0
-
 Tree 2:
-
-If (feature 405 \<= 21.0)
-
-If (feature 298 \<= 253.5)
-
+If (feature 405 <= 21.0)
+If (feature 298 <= 253.5)
 Predict: 0.0
-
-Else (feature 298 \> 253.5)
-
+Else (feature 298 > 253.5)
 Predict: 1.0
-
-Else (feature 405 \> 21.0)
-
+Else (feature 405 > 21.0)
 Predict: 1.0
+```
 
   - 保存和加载模型
 
-scala\> model.save(sc, "/tmp/myRandomForestClassificationModel")
-
-scala\> val sameModel = RandomForestModel.load(sc,
+```scala
+scala> model.save(sc, "/tmp/myRandomForestClassificationModel")
+scala> val sameModel = RandomForestModel.load(sc,
 "/tmp/myRandomForestClassificationModel")
-
 sameModel: org.apache.spark.mllib.tree.model.RandomForestModel =
-
 TreeEnsembleModel classifier with 3 trees
+```
 
 下面的示例演示如何加载LIBSVM数据文件，将其解析为LabeledPoint，然后使用随机森林执行回归，最后计算均方误差（MSE）以评估拟合度。
 
-scala\> import org.apache.spark.mllib.tree.RandomForest
-
+```scala
+scala> import org.apache.spark.mllib.tree.RandomForest
 import org.apache.spark.mllib.tree.RandomForest
-
-scala\> import org.apache.spark.mllib.tree.model.RandomForestModel
-
+scala> import org.apache.spark.mllib.tree.model.RandomForestModel
 import org.apache.spark.mllib.tree.model.RandomForestModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
+```
 
   - 加载数据
 
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+```scala
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[68\] at map at MLUtils.scala:86
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[68] at map at MLUtils.scala:86
+```
 
   - 将数据按比例分成训练集（0.7）和测试集（0.3）
 
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+```scala
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[69\] at randomSplit at \<console\>:32,
-MapPartitionsRDD\[70\] at randomSplit at \<console\>:32)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[69] at randomSplit at <console>:32,
+MapPartitionsRDD[70] at randomSplit at <console>:32)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[69\] at randomSplit at \<console\>:32
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[69] at randomSplit at <console>:32
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[70\] at randomSplit at \<console\>:32
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[70] at randomSplit at <console>:32
+```
 
   - 训练模型，categoricalFeaturesInfo为空表明所有特征为连续值
 
-scala\> val numClasses = 2
-
+```scala
+scala> val numClasses = 2
 numClasses: Int = 2
-
-scala\> val categoricalFeaturesInfo = Map\[Int, Int\]()
-
-categoricalFeaturesInfo: scala.collection.immutable.Map\[Int,Int\] =
+scala> val categoricalFeaturesInfo = Map[Int, Int]()
+categoricalFeaturesInfo: scala.collection.immutable.Map[Int,Int] =
 Map()
-
-scala\> val numTrees = 3 // Use more in practice.
-
+scala> val numTrees = 3 // Use more in practice.
 numTrees: Int = 3
-
-scala\> val featureSubsetStrategy = "auto" // Let the algorithm choose.
-
+scala> val featureSubsetStrategy = "auto" // Let the algorithm choose.
 featureSubsetStrategy: String = auto
-
-scala\> val impurity = "variance"
-
+scala> val impurity = "variance"
 impurity: String = variance
-
-scala\> val maxDepth = 4
-
+scala> val maxDepth = 4
 maxDepth: Int = 4
-
-scala\> val maxBins = 32
-
+scala> val maxBins = 32
 maxBins: Int = 32
-
-scala\> val model = RandomForest.trainRegressor(trainingData,
+scala> val model = RandomForest.trainRegressor(trainingData,
 categoricalFeaturesInfo,
-
 | numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
-
 model: org.apache.spark.mllib.tree.model.RandomForestModel =
-
 TreeEnsembleModel regressor with 3 trees
+```
 
   - 在测试实例上评估模型并计算测试错误
 
-scala\> val labelsAndPredictions = testData.map { point =\>
-
+```scala
+scala> val labelsAndPredictions = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelsAndPredictions: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[86\] at map at \<console\>:34
-
-scala\> val testMSE = labelsAndPredictions.map{ case(v, p) =\>
+labelsAndPredictions: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[86] at map at <console>:34
+scala> val testMSE = labelsAndPredictions.map{ case(v, p) =>
 math.pow((v - p), 2)}.mean()
-
 20/04/27 07:18:00 WARN BLAS: Failed to load implementation from:
 com.github.fommil.netlib.NativeSystemBLAS
-
 20/04/27 07:18:00 WARN BLAS: Failed to load implementation from:
 com.github.fommil.netlib.NativeRefBLAS
-
 testMSE: Double = 0.0
-
-scala\> println(s"Test Mean Squared Error = $testMSE")
-
+scala> println(s"Test Mean Squared Error = $testMSE")
 Test Mean Squared Error = 0.0
-
-scala\> println(s"Learned regression forest model:\\n
+scala> println(s"Learned regression forest model:\n
 ${model.toDebugString}")
-
 Learned regression forest model:
-
 TreeEnsembleModel regressor with 3 trees
-
 Tree 0:
-
-If (feature 490 \<= 43.0)
-
+If (feature 490 <= 43.0)
 Predict: 0.0
-
-Else (feature 490 \> 43.0)
-
+Else (feature 490 > 43.0)
 Predict: 1.0
-
 Tree 1:
-
-If (feature 406 \<= 9.5)
-
+If (feature 406 <= 9.5)
 Predict: 0.0
-
-Else (feature 406 \> 9.5)
-
-If (feature 327 \<= 81.0)
-
+Else (feature 406 > 9.5)
+If (feature 327 <= 81.0)
 Predict: 1.0
-
-Else (feature 327 \> 81.0)
-
+Else (feature 327 > 81.0)
 Predict: 0.0
-
 Tree 2:
-
-If (feature 512 \<= 1.5)
-
-If (feature 511 \<= 1.5)
-
+If (feature 512 <= 1.5)
+If (feature 511 <= 1.5)
 Predict: 1.0
-
-Else (feature 511 \> 1.5)
-
+Else (feature 511 > 1.5)
 Predict: 0.0
-
-Else (feature 512 \> 1.5)
-
+Else (feature 512 > 1.5)
 Predict: 0.0
+```
 
   - 保存和加载模型
 
-scala\> model.save(sc, "/tmp/myRandomForestRegressionModel")
-
-scala\> val sameModel = RandomForestModel.load(sc,
+```scala
+scala> model.save(sc, "/tmp/myRandomForestRegressionModel")
+scala> val sameModel = RandomForestModel.load(sc,
 "/tmp/myRandomForestRegressionModel")
-
 sameModel: org.apache.spark.mllib.tree.model.RandomForestModel =
-
 TreeEnsembleModel regressor with 3 trees
+```
 
 梯度提升树是决策树的集成，是以最小化损失函数为代价迭代地训练决策树。像决策树一样，梯度提升树处理类别特征，扩展到多分类设置，不需要特征缩放，并且能够捕获非线性和特征之间相互关系。spark.mllib支持使用连续和类别特征进行二元分类和回归的梯度提升树，使用现有的决策树来实现。梯度提升树尚不支持多类分类，对于多类问题请使用决策树或随机森林，参阅决策树指南以获取有关树的更多信息。
 
@@ -824,367 +634,261 @@ algo：使用树\[Strategy\]参数设置算法或任务。
 下面的示例演示如何加载
 LIBSVM数据文件，将其解析为LabeledPoint，然后使用带有对数损失函数的梯度增强树进行分类，计算测试误差以测量算法准确性。
 
-scala\> import org.apache.spark.mllib.tree.GradientBoostedTrees
-
+```scala
+scala> import org.apache.spark.mllib.tree.GradientBoostedTrees
 import org.apache.spark.mllib.tree.GradientBoostedTrees
-
-scala\> import
+scala> import
 org.apache.spark.mllib.tree.configuration.BoostingStrategy
-
 import org.apache.spark.mllib.tree.configuration.BoostingStrategy
-
-scala\> import
+scala> import
 org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-
 import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
+```
 
   - 加载数据
 
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+```scala
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[6\] at map at MLUtils.scala:86
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[6] at map at MLUtils.scala:86
+```
 
   - 将数据按比例分成训练集（0.7）和测试集（0.3）
 
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+```scala
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[7\] at randomSplit at \<console\>:29,
-MapPartitionsRDD\[8\] at randomSplit at \<console\>:29)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[7] at randomSplit at <console>:29,
+MapPartitionsRDD[8] at randomSplit at <console>:29)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[7\] at randomSplit at \<console\>:29
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[7] at randomSplit at <console>:29
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[8\] at randomSplit at \<console\>:29
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[8] at randomSplit at <console>:29
+```
 
   - 训练GradientBoostedTrees模型，分类任务缺省使用对数损失函数
 
-scala\> val boostingStrategy =
+```scala
+scala> val boostingStrategy =
 BoostingStrategy.defaultParams("Classification")
-
 boostingStrategy:
 org.apache.spark.mllib.tree.configuration.BoostingStrategy =
 BoostingStrategy(org.apache.spark.mllib.tree.configuration.Strategy@298eca94,org.apache.spark.mllib.tree.loss.LogLoss$@6a51a39d,100,0.1,0.001)
-
-scala\> boostingStrategy.numIterations = 3 // Note: Use more iterations
+scala> boostingStrategy.numIterations = 3 // Note: Use more iterations
 in practice.
-
 boostingStrategy.numIterations: Int = 3
-
-scala\> boostingStrategy.treeStrategy.numClasses = 2
-
+scala> boostingStrategy.treeStrategy.numClasses = 2
 boostingStrategy.treeStrategy.numClasses: Int = 2
-
-scala\> boostingStrategy.treeStrategy.maxDepth = 5
-
+scala> boostingStrategy.treeStrategy.maxDepth = 5
 boostingStrategy.treeStrategy.maxDepth: Int = 5
+```
 
   - 空的categoricalFeaturesInfo表示所有特征都是连续的。
 
-scala\> boostingStrategy.treeStrategy.categoricalFeaturesInfo =
-Map\[Int, Int\]()
-
-boostingStrategy.treeStrategy.categoricalFeaturesInfo: Map\[Int,Int\] =
+```scala
+scala> boostingStrategy.treeStrategy.categoricalFeaturesInfo =
+Map[Int, Int]()
+boostingStrategy.treeStrategy.categoricalFeaturesInfo: Map[Int,Int] =
 Map()
-
-scala\> val model = GradientBoostedTrees.train(trainingData,
+scala> val model = GradientBoostedTrees.train(trainingData,
 boostingStrategy)
-
 model: org.apache.spark.mllib.tree.model.GradientBoostedTreesModel =
-
 TreeEnsembleModel classifier with 3 trees
+```
 
   - 在测试实例上评估模型并计算测试错误
 
-scala\> val labelAndPreds = testData.map { point =\>
-
+```scala
+scala> val labelAndPreds = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelAndPreds: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[78\] at map at \<console\>:31
-
-scala\> val testErr = labelAndPreds.filter(r =\> r.\_1 \!=
-r.\_2).count.toDouble / testData.count()
-
+labelAndPreds: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[78] at map at <console>:31
+scala> val testErr = labelAndPreds.filter(r => r._1 !=
+r._2).count.toDouble / testData.count()
 20/04/27 15:40:48 WARN BLAS: Failed to load implementation from:
 com.github.fommil.netlib.NativeSystemBLAS
-
 20/04/27 15:40:48 WARN BLAS: Failed to load implementation from:
 com.github.fommil.netlib.NativeRefBLAS
-
 testErr: Double = 0.07692307692307693
-
-scala\> println(s"Test Error = $testErr")
-
+scala> println(s"Test Error = $testErr")
 Test Error = 0.07692307692307693
-
-scala\> println(s"Learned classification GBT model:\\n
+scala> println(s"Learned classification GBT model:\n
 ${model.toDebugString}")
-
 Learned classification GBT model:
-
 TreeEnsembleModel classifier with 3 trees
-
 Tree 0:
-
-If (feature 405 \<= 21.0)
-
-If (feature 100 \<= 193.5)
-
+If (feature 405 <= 21.0)
+If (feature 100 <= 193.5)
 Predict: -1.0
-
-Else (feature 100 \> 193.5)
-
+Else (feature 100 > 193.5)
 Predict: 1.0
-
-Else (feature 405 \> 21.0)
-
+Else (feature 405 > 21.0)
 Predict: 1.0
-
 Tree 1:
-
-If (feature 490 \<= 43.0)
-
-If (feature 435 \<= 32.5)
-
-If (feature 155 \<= 230.5)
-
+If (feature 490 <= 43.0)
+If (feature 435 <= 32.5)
+If (feature 155 <= 230.5)
 Predict: -0.4768116880884702
-
-Else (feature 155 \> 230.5)
-
+Else (feature 155 > 230.5)
 Predict: -0.47681168808847035
-
-Else (feature 435 \> 32.5)
-
+Else (feature 435 > 32.5)
 Predict: 0.4768116880884694
-
-Else (feature 490 \> 43.0)
-
-If (feature 241 \<= 169.5)
-
-If (feature 124 \<= 49.5)
-
-If (feature 155 \<= 59.0)
-
+Else (feature 490 > 43.0)
+If (feature 241 <= 169.5)
+If (feature 124 <= 49.5)
+If (feature 155 <= 59.0)
 Predict: 0.4768116880884702
-
-Else (feature 155 \> 59.0)
-
+Else (feature 155 > 59.0)
 Predict: 0.4768116880884703
-
-Else (feature 124 \> 49.5)
-
+Else (feature 124 > 49.5)
 Predict: 0.4768116880884703
-
-Else (feature 241 \> 169.5)
-
+Else (feature 241 > 169.5)
 Predict: 0.47681168808847035
-
 Tree 2:
-
-If (feature 406 \<= 140.5)
-
-If (feature 435 \<= 32.5)
-
-If (feature 329 \<= 154.0)
-
+If (feature 406 <= 140.5)
+If (feature 435 <= 32.5)
+If (feature 329 <= 154.0)
 Predict: -0.43819358104272055
-
-Else (feature 329 \> 154.0)
-
+Else (feature 329 > 154.0)
 Predict: -0.43819358104272066
-
-Else (feature 435 \> 32.5)
-
+Else (feature 435 > 32.5)
 Predict: 0.43819358104271977
-
-Else (feature 406 \> 140.5)
-
-If (feature 245 \<= 1.5)
-
-If (feature 490 \<= 153.5)
-
+Else (feature 406 > 140.5)
+If (feature 245 <= 1.5)
+If (feature 490 <= 153.5)
 Predict: 0.4381935810427206
-
-Else (feature 490 \> 153.5)
-
+Else (feature 490 > 153.5)
 Predict: 0.43819358104272066
-
-Else (feature 245 \> 1.5)
-
+Else (feature 245 > 1.5)
 Predict: 0.43819358104272066
+```
 
   - 保存和加载模型
 
-scala\> model.save(sc, "/tmp/myGradientBoostingClassificationModel")
-
-scala\> val sameModel =
+```scala
+scala> model.save(sc, "/tmp/myGradientBoostingClassificationModel")
+scala> val sameModel =
 GradientBoostedTreesModel.load(sc,"/tmp/myGradientBoostingClassificationModel")
-
 sameModel: org.apache.spark.mllib.tree.model.GradientBoostedTreesModel =
-
 TreeEnsembleModel classifier with 3 trees
+```
 
 下面的示例演示如何加载LIBSVM数据文件，将其解析为LabeledPoint、，然后使用以平方误差为损失函数的梯度增强树执行回归，最后计算均方误差（MSE）以评估拟合度。
 
-scala\> import org.apache.spark.mllib.tree.GradientBoostedTrees
-
+```scala
+scala> import org.apache.spark.mllib.tree.GradientBoostedTrees
 import org.apache.spark.mllib.tree.GradientBoostedTrees
-
-scala\> import
+scala> import
 org.apache.spark.mllib.tree.configuration.BoostingStrategy
-
 import org.apache.spark.mllib.tree.configuration.BoostingStrategy
-
-scala\> import
+scala> import
 org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-
 import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
+```
 
   - 加载数据
 
-scala\> val data = MLUtils.loadLibSVMFile(sc,
-"/spark/data/mllib/sample\_libsvm\_data.txt")
-
+```scala
+scala> val data = MLUtils.loadLibSVMFile(sc,
+"/spark/data/mllib/sample_libsvm_data.txt")
 data:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[115\] at map at MLUtils.scala:86
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[115] at map at MLUtils.scala:86
+```
 
   - 将数据按比例分成训练集（0.7）和测试集（0.3）
 
-scala\> val splits = data.randomSplit(Array(0.7, 0.3))
-
+```scala
+scala> val splits = data.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[116\] at randomSplit at \<console\>:34,
-MapPartitionsRDD\[117\] at randomSplit at \<console\>:34)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[116] at randomSplit at <console>:34,
+MapPartitionsRDD[117] at randomSplit at <console>:34)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[116\] at randomSplit at \<console\>:34
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[116] at randomSplit at <console>:34
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[117\] at randomSplit at \<console\>:34
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[117] at randomSplit at <console>:34
+```
 
   - 训练GradientBoostedTrees模型，回归任务缺省使用平方误差损失函数
 
-scala\> val boostingStrategy =
+```scala
+scala> val boostingStrategy =
 BoostingStrategy.defaultParams("Regression")
-
 boostingStrategy:
 org.apache.spark.mllib.tree.configuration.BoostingStrategy =
 BoostingStrategy(org.apache.spark.mllib.tree.configuration.Strategy@25cc8a11,org.apache.spark.mllib.tree.loss.SquaredError$@29fccb14,100,0.1,0.001)
-
-scala\> boostingStrategy.numIterations = 3 // Note: Use more iterations
+scala> boostingStrategy.numIterations = 3 // Note: Use more iterations
 in practice.
-
 boostingStrategy.numIterations: Int = 3
-
-scala\> boostingStrategy.treeStrategy.maxDepth = 5
-
+scala> boostingStrategy.treeStrategy.maxDepth = 5
 boostingStrategy.treeStrategy.maxDepth: Int = 5
-
-scala\> boostingStrategy.treeStrategy.categoricalFeaturesInfo =
-Map\[Int, Int\]()
-
-boostingStrategy.treeStrategy.categoricalFeaturesInfo: Map\[Int,Int\] =
+scala> boostingStrategy.treeStrategy.categoricalFeaturesInfo =
+Map[Int, Int]()
+boostingStrategy.treeStrategy.categoricalFeaturesInfo: Map[Int,Int] =
 Map()
-
-scala\> val model = GradientBoostedTrees.train(trainingData,
+scala> val model = GradientBoostedTrees.train(trainingData,
 boostingStrategy)
-
 model: org.apache.spark.mllib.tree.model.GradientBoostedTreesModel =
-
 TreeEnsembleModel regressor with 3 trees
+```
 
   - 在测试实例上评估模型并计算测试错误
 
-scala\> val labelsAndPredictions = testData.map { point =\>
-
+```scala
+scala> val labelsAndPredictions = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelsAndPredictions: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[165\] at map at \<console\>:36
-
-scala\> val testMSE = labelsAndPredictions.map{ case(v, p) =\>
+labelsAndPredictions: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[165] at map at <console>:36
+scala> val testMSE = labelsAndPredictions.map{ case(v, p) =>
 math.pow((v - p), 2)}.mean()
-
 testMSE: Double = 0.058823529411764705
-
-scala\> println(s"Test Mean Squared Error = $testMSE")
-
+scala> println(s"Test Mean Squared Error = $testMSE")
 Test Mean Squared Error = 0.058823529411764705
-
-scala\> println(s"Learned regression GBT model:\\n
+scala> println(s"Learned regression GBT model:\n
 ${model.toDebugString}")
-
 Learned regression GBT model:
-
 TreeEnsembleModel regressor with 3 trees
-
 Tree 0:
-
-If (feature 406 \<= 22.0)
-
-If (feature 99 \<= 35.0)
-
+If (feature 406 <= 22.0)
+If (feature 99 <= 35.0)
 Predict: 0.0
-
-Else (feature 99 \> 35.0)
-
+Else (feature 99 > 35.0)
 Predict: 1.0
-
-Else (feature 406 \> 22.0)
-
+Else (feature 406 > 22.0)
 Predict: 1.0
-
 Tree 1:
-
 Predict: 0.0
-
 Tree 2:
-
 Predict: 0.0
+```
 
   - 保存和加载模型
 
-scala\> model.save(sc, "/tmp/myGradientBoostingRegressionModel")
-
-scala\> val sameModel =
+```scala
+scala> model.save(sc, "/tmp/myGradientBoostingRegressionModel")
+scala> val sameModel =
 GradientBoostedTreesModel.load(sc,"/tmp/myGradientBoostingRegressionModel")
-
 sameModel: org.apache.spark.mllib.tree.model.GradientBoostedTreesModel =
-
 TreeEnsembleModel regressor with 3 trees
+```
 
 ## 9.4 分类和回归
 
@@ -1272,113 +976,93 @@ $$f(z) = \frac{1}{1 + e^{- z}}$$
 
 二元逻辑回归可以推广到多项逻辑回归来训练和预测多类分类问题。例如，对于 $K$ 可能的结果，可以选择其中一个结果作为“支点”，其他 $K - 1$ 结果可以分别与枢纽结果进行回归。在spark.mllib中，第一类 $0$ 被选为“支点”类。对于多元分类问题，该算法将输出一个多项逻辑回归模型，其中包含对第一类进行回归的 $K - 1$ 二元逻辑回归模型。给定一个新的数据点，$\ K - 1$ 模型将被运行，最大概率的类被选择作为预测类。Spark实现了两种算法来解决逻辑回归：小批量梯度下降和L-BFGS。Spark推荐使用L-BFGS而优于小批量梯度下降，以加速收敛。下面的例子显示了如何训练的二项模型和为二元分类使用弹性净正则化的多项逻辑回归模型。elasticNetParam对应于 $\alpha$，regParam对应于 $\lambda$。
 
-scala\> import org.apache.spark.ml.classification.LogisticRegression
-
+```scala
+scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
+```
 
 代码 4‑1
 
   - 加载训练数据
 
-scala\> val training =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-training: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> val lr = new
+```scala
+scala> val training =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+training: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> val lr = new
 LogisticRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8)
-
 lr: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_8f4d315ead25
-
-scala\>
+logreg_8f4d315ead25
+scala>
+```
 
 代码 4‑2
 
   - 拟合模型
 
-scala\> val lrModel = lr.fit(training)
-
+```scala
+scala> val lrModel = lr.fit(training)
 lrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
-logreg\_8f4d315ead25
+logreg_8f4d315ead25
+```
 
 代码 4‑3
 
   - 打印逻辑回归的系数和截距
 
-scala\> println(s"Coefficients: ${lrModel.coefficients} Intercept:
+```scala
+scala> println(s"Coefficients: ${lrModel.coefficients} Intercept:
 ${lrModel.intercept}")
-
 Coefficients:
-(692,\[244,263,272,300,301,328,350,351,378,379,405,406,407,428,433,434,455,456,461,462,483,484,489,490,496,511,512,517,539,540,568\],\[-7.353983524188197E-5,-9.102738505589466E-5,-1.9467430546904298E-4,-2.0300642473486668E-4,-3.1476183314863995E-5,-6.842977602660743E-5,1.5883626898239883E-5,1.4023497091372047E-5,3.5432047524968605E-4,1.1443272898171087E-4,1.0016712383666666E-4,6.014109303795481E-4,2.840248179122762E-4,-1.1541084736508837E-4,3.85996886312906E-4,6.35019557424107E-4,-1.1506412384575676E-4,-1.5271865864986808E-4,2.804933808994214E-4,6.070117471191634E-4,-2.008459663247437E-4,-1.421075579290126E-4,2.739010341160883E-4,2.7730456244968115E-4,-9.838027027269332E-5,-3.808522443517704E-4,-2.5315198008555033E-4,2.7747714770754307E-4,-2.443619763919199E-4,-0.0015394744687597765,-2.3073328411331293E-4\])
+(692,[244,263,272,300,301,328,350,351,378,379,405,406,407,428,433,434,455,456,461,462,483,484,489,490,496,511,512,517,539,540,568],[-7.353983524188197E-5,-9.102738505589466E-5,-1.9467430546904298E-4,-2.0300642473486668E-4,-3.1476183314863995E-5,-6.842977602660743E-5,1.5883626898239883E-5,1.4023497091372047E-5,3.5432047524968605E-4,1.1443272898171087E-4,1.0016712383666666E-4,6.014109303795481E-4,2.840248179122762E-4,-1.1541084736508837E-4,3.85996886312906E-4,6.35019557424107E-4,-1.1506412384575676E-4,-1.5271865864986808E-4,2.804933808994214E-4,6.070117471191634E-4,-2.008459663247437E-4,-1.421075579290126E-4,2.739010341160883E-4,2.7730456244968115E-4,-9.838027027269332E-5,-3.808522443517704E-4,-2.5315198008555033E-4,2.7747714770754307E-4,-2.443619763919199E-4,-0.0015394744687597765,-2.3073328411331293E-4])
 Intercept: 0.22456315961250325
+```
 
 代码 4‑4
 
   - 为二元分类设置family为multinomial
 
-scala\> val mlr = new
+```scala
+scala> val mlr = new
 LogisticRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8).setFamily("multinomial")
-
 mlr: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_2c2e16eac30e
-
-scala\> val mlrModel = mlr.fit(training)
-
+logreg_2c2e16eac30e
+scala> val mlrModel = mlr.fit(training)
 mlrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
-logreg\_2c2e16eac30e
+logreg_2c2e16eac30e
+```
 
 代码 4‑5
 
   - 打印逻辑回归的系数和截距
 
-scala\> println(s"Multinomial coefficients:
+```scala
+scala> println(s"Multinomial coefficients:
 ${mlrModel.coefficientMatrix}")
-
 Multinomial coefficients: 2 x 692 CSCMatrix
-
 (0,244) 4.290365458958277E-5
-
 (1,244) -4.290365458958294E-5
-
 (0,263) 6.488313287833108E-5
-
 (1,263) -6.488313287833092E-5
-
 (0,272) 1.2140666790834663E-4
-
 (1,272) -1.2140666790834657E-4
-
 (0,300) 1.3231861518665612E-4
-
 (1,300) -1.3231861518665607E-4
-
 (0,350) -6.775444746760509E-7
-
 (1,350) 6.775444746761932E-7
-
 (0,351) -4.899237909429297E-7
-
 (1,351) 4.899237909430322E-7
-
 (0,378) -3.5812102770679596E-5
-
 (1,378) 3.581210277067968E-5
-
 (0,379) -2.3539704331222065E-5
-
 (1,379) 2.353970433122204E-5
-
 (0,405) -1.90295199030314E-5
-
 (1,405) 1.90295199030314E-5
-
 ……
-
-scala\> println(s"Multinomial intercepts: ${mlrModel.interceptVector}")
-
-Multinomial intercepts: \[-0.12065879445860686,0.12065879445860686\]
+scala> println(s"Multinomial intercepts: ${mlrModel.interceptVector}")
+Multinomial intercepts: [-0.12065879445860686,0.12065879445860686]
+```
 
 代码 4‑6
 
@@ -1386,159 +1070,117 @@ Multinomial intercepts: \[-0.12065879445860686,0.12065879445860686\]
 
 LogisticRegressionTrainingSummary提供了LogisticRegressionModel的摘要。目前，仅支持二元分类，并且必须将摘要明确地转换为BinaryLogisticRegressionTrainingSummary。当支持多类别分类时，这可能会改变，继续前面的例子：
 
-scala\> import
+```scala
+scala> import
 org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary,
 LogisticRegression}
-
 import
 org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary,
 LogisticRegression}
+```
 
 代码 4‑7
 
   - 从上例训练的LogisticRegressionModel抽取摘要
 
-scala\> val trainingSummary = lrModel.summary
-
+```scala
+scala> val trainingSummary = lrModel.summary
 trainingSummary:
 org.apache.spark.ml.classification.LogisticRegressionTrainingSummary =
 <org.apache.spark.ml.classification.BinaryLogisticRegressionTrainingSummary@305a362a>
+```
 
 代码 4‑8
 
   - 获得每个迭代的目标
 
-scala\> val objectiveHistory = trainingSummary.objectiveHistory
-
-objectiveHistory: Array\[Double\] = Array(0.6833149135741672,
+```scala
+scala> val objectiveHistory = trainingSummary.objectiveHistory
+objectiveHistory: Array[Double] = Array(0.6833149135741672,
 0.6662875751473734, 0.6217068546034618, 0.6127265245887887,
 0.6060347986802873, 0.6031750687571562, 0.5969621534836274,
 0.5940743031983118, 0.5906089243339022, 0.5894724576491042,
 0.5882187775729587)
-
-scala\> println("objectiveHistory:")
-
+scala> println("objectiveHistory:")
 objectiveHistory:
-
-scala\> objectiveHistory.foreach(loss =\> println(loss))
-
+scala> objectiveHistory.foreach(loss => println(loss))
 0.6833149135741672
-
 0.6662875751473734
-
 0.6217068546034618
-
 0.6127265245887887
-
 0.6060347986802873
-
 0.6031750687571562
-
 0.5969621534836274
-
 0.5940743031983118
-
 0.5906089243339022
-
 0.5894724576491042
-
 0.5882187775729587
+```
 
 代码 ‑9
 
   - 获得度量用来在测试数据上判断性能，转换总结为BinaryLogisticRegressionSummary
 
-scala\> val binarySummary =
-trainingSummary.asInstanceOf\[BinaryLogisticRegressionSummary\]
-
+```scala
+scala> val binarySummary =
+trainingSummary.asInstanceOf[BinaryLogisticRegressionSummary]
 binarySummary:
 org.apache.spark.ml.classification.BinaryLogisticRegressionSummary =
 org.apache.spark.ml.classification.BinaryLogisticRegressionTrainingSummary@305a362a
+```
 
   - 获得ROCDataFrame和areaUnderROC.
 
-scala\> val roc = binarySummary.roc
-
-roc: org.apache.spark.sql.DataFrame = \[FPR: double, TPR: double\]
-
-scala\> roc.show()
-
-\+---+--------------------+
-
+```scala
+scala> val roc = binarySummary.roc
+roc: org.apache.spark.sql.DataFrame = [FPR: double, TPR: double]
+scala> roc.show()
++---+--------------------+
 |FPR| TPR|
-
-\+---+--------------------+
-
++---+--------------------+
 |0.0| 0.0|
-
 |0.0|0.017543859649122806|
-
 |0.0| 0.03508771929824561|
-
 |0.0| 0.05263157894736842|
-
 |0.0| 0.07017543859649122|
-
 |0.0| 0.08771929824561403|
-
 |0.0| 0.10526315789473684|
-
 |0.0| 0.12280701754385964|
-
 |0.0| 0.14035087719298245|
-
 |0.0| 0.15789473684210525|
-
 |0.0| 0.17543859649122806|
-
 |0.0| 0.19298245614035087|
-
 |0.0| 0.21052631578947367|
-
 |0.0| 0.22807017543859648|
-
 |0.0| 0.24561403508771928|
-
 |0.0| 0.2631578947368421|
-
 |0.0| 0.2807017543859649|
-
 |0.0| 0.2982456140350877|
-
 |0.0| 0.3157894736842105|
-
 |0.0| 0.3333333333333333|
-
-\+---+--------------------+
-
++---+--------------------+
 only showing top 20 rows
-
-scala\> println(s"areaUnderROC: ${binarySummary.areaUnderROC}")
-
+scala> println(s"areaUnderROC: ${binarySummary.areaUnderROC}")
 areaUnderROC: 1.0
+```
 
 代码 4‑10
 
   - 设置模型阈值最大化F-Measure
 
-scala\> val fMeasure = binarySummary.fMeasureByThreshold
-
-fMeasure: org.apache.spark.sql.DataFrame = \[threshold: double,
-F-Measure: double\]
-
-scala\> val maxFMeasure =
+```scala
+scala> val fMeasure = binarySummary.fMeasureByThreshold
+fMeasure: org.apache.spark.sql.DataFrame = [threshold: double,
+F-Measure: double]
+scala> val maxFMeasure =
 fMeasure.select(max("F-Measure")).head().getDouble(0)
-
 maxFMeasure: Double = 1.0
-
-scala\> val bestThreshold = fMeasure.where($"F-Measure" ===
+scala> val bestThreshold = fMeasure.where($"F-Measure" ===
 maxFMeasure).select("threshold").head().getDouble(0)
-
 bestThreshold: Double = 0.5585022394278357
-
-scala\> lrModel.setThreshold(bestThreshold)
-
-res7: lrModel.type = logreg\_8f4d315ead25
+scala> lrModel.setThreshold(bestThreshold)
+res7: lrModel.type = logreg_8f4d315ead25
+```
 
 代码 4‑11
 
@@ -1571,55 +1213,51 @@ $$
 
 下面的例子展示了如何训练具有弹性网络正则化的多类逻辑回归模型。
 
-scala\> import org.apache.spark.ml.classification.LogisticRegression
-
+```scala
+scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
+```
 
 代码 4‑12
 
   - 加载训练数据
 
-scala\> val training =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_multiclass\_classification\_data.txt")
-
-training: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> val lr = new
+```scala
+scala> val training =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_multiclass_classification_data.txt")
+training: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> val lr = new
 LogisticRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8)
-
 lr: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_45c92230da22
+logreg_45c92230da22
+```
 
 代码 ‑13
 
   - 拟合模型
 
-scala\> val lrModel = lr.fit(training)
-
+```scala
+scala> val lrModel = lr.fit(training)
 lrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
-logreg\_45c92230da22
+logreg_45c92230da22
+```
 
 代码 ‑14
 
   - 打印多元逻辑回归系数和截距
 
-scala\> println(s"Coefficients: \\n${lrModel.coefficientMatrix}")
-
+```scala
+scala> println(s"Coefficients: \n${lrModel.coefficientMatrix}")
 Coefficients:
-
 3 x 4 CSCMatrix
-
 (1,2) -0.7803943459681859
-
 (0,3) 0.3176483191238039
-
 (1,3) -0.3769611423403096
-
-scala\> println(s"Intercepts: ${lrModel.interceptVector}")
-
+scala> println(s"Intercepts: ${lrModel.interceptVector}")
 Intercepts:
-\[0.05165231659832854,-0.12391224990853622,0.07225993331020768\]
+[0.05165231659832854,-0.12391224990853622,0.07225993331020768]
+```
 
 代码 4‑15
 
@@ -1627,195 +1265,173 @@ Intercepts:
 
 决策树是一种流行的分类和回归方法。以下示例以LibSVM格式加载数据集，将其分解为训练集和测试集，在第一个数据集上训练，然后在保留的测试集上进行评估。Spark使用两个特征转换器来准备数据；这些帮助索引标签和分类特征的类别，将元数据添加到决策树算法可以识别的DataFrame中。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import
+scala> import
 org.apache.spark.ml.classification.DecisionTreeClassificationModel
-
 import
 org.apache.spark.ml.classification.DecisionTreeClassificationModel
-
-scala\> import org.apache.spark.ml.classification.DecisionTreeClassifier
-
+scala> import org.apache.spark.ml.classification.DecisionTreeClassifier
 import org.apache.spark.ml.classification.DecisionTreeClassifier
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
-scala\> import org.apache.spark.ml.feature.{IndexToString,
+scala> import org.apache.spark.ml.feature.{IndexToString,
 StringIndexer, VectorIndexer}
-
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
+```
 
 代码 4‑16
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 ‑17
 
   - 索引标签，增加元数据到标签列，拟合整个数据集在索引中包含所有标签
 
-scala\> val labelIndexer = new
+```scala
+scala> val labelIndexer = new
 StringIndexer().setInputCol("label").setOutputCol("indexedLabel").fit(data)
-
 labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
-strIdx\_d251401baba6
+strIdx_d251401baba6
+```
 
 代码 4‑18
 
   - 自动识别分类特征和索引，具有\>4个不同值的特征被作为连续值处理
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_0d7150e8751b
+vecIdx_0d7150e8751b
+```
 
 代码 ‑19
 
   - 分割数据为训练和测试（30%为测试数据）
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑20
 
   - 训练决策树模型
 
-scala\> val dt = new
+```scala
+scala> val dt = new
 DecisionTreeClassifier().setLabelCol("indexedLabel").setFeaturesCol("indexedFeatures")
-
 dt: org.apache.spark.ml.classification.DecisionTreeClassifier =
-dtc\_e50420acd179
+dtc_e50420acd179
+```
 
 代码 4‑21
 
   - 将索引标签转换成原始标签
 
-scala\> val labelConverter = new
+```scala
+scala> val labelConverter = new
 IndexToString().setInputCol("prediction").setOutputCol("predictedLabel").setLabels(labelIndexer.labels)
-
 labelConverter: org.apache.spark.ml.feature.IndexToString =
-idxToStr\_c466772ec170
+idxToStr_c466772ec170
+```
 
 代码 ‑22
 
   - 链接索引和树到一个管道中
 
-scala\> val pipeline = new Pipeline().setStages(Array(labelIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(labelIndexer,
 featureIndexer, dt, labelConverter))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_44d35fa1ad84
+pipeline: org.apache.spark.ml.Pipeline = pipeline_44d35fa1ad84
+```
 
 代码 4‑23
 
   - 训练模型
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_44d35fa1ad84
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_44d35fa1ad84
+```
 
 代码 4‑24
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 6 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 6 more fields]
+```
 
 代码 4‑25
 
   - 选择示例行显示
 
-scala\> predictions.select("predictedLabel", "label",
+```scala
+scala> predictions.select("predictedLabel", "label",
 "features").show(5)
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
 |predictedLabel|label| features|
-
-\+--------------+-----+--------------------+
-
-| 0.0| 0.0|(692,\[122,123,148...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
+| 0.0| 0.0|(692,[122,123,148...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.0| 0.0|(692,[124,125,126...|
+| 0.0| 0.0|(692,[124,125,126...|
+| 0.0| 0.0|(692,[124,125,126...|
++--------------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 4‑26
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setLabelCol("indexedLabel").setPredictionCol("prediction").setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_ec0435d1da2b
-
-scala\> val accuracy = evaluator.evaluate(predictions)
-
+mcEval_ec0435d1da2b
+scala> val accuracy = evaluator.evaluate(predictions)
 accuracy: Double = 0.9583333333333334
-
-scala\> println("Test Error = " + (1.0 - accuracy))
-
+scala> println("Test Error = " + (1.0 - accuracy))
 Test Error = 0.04166666666666663
-
-scala\> val treeModel =
-model.stages(2).asInstanceOf\[DecisionTreeClassificationModel\]
-
+scala> val treeModel =
+model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
 treeModel:
 org.apache.spark.ml.classification.DecisionTreeClassificationModel =
-DecisionTreeClassificationModel (uid=dtc\_e50420acd179) of depth 2 with
+DecisionTreeClassificationModel (uid=dtc_e50420acd179) of depth 2 with
 5 nodes
-
-scala\> println("Learned classification tree model:\\n" +
+scala> println("Learned classification tree model:\n" +
 treeModel.toDebugString)
-
 Learned classification tree model:
-
-DecisionTreeClassificationModel (uid=dtc\_e50420acd179) of depth 2 with
+DecisionTreeClassificationModel (uid=dtc_e50420acd179) of depth 2 with
 5 nodes
-
-If (feature 406 \<= 20.0)
-
+If (feature 406 <= 20.0)
 If (feature 99 in {2.0})
-
 Predict: 0.0
-
 Else (feature 99 not in {2.0})
-
 Predict: 1.0
-
-Else (feature 406 \> 20.0)
-
+Else (feature 406 > 20.0)
 Predict: 0.0
+```
 
 代码 4‑27
 
@@ -1823,223 +1439,187 @@ Predict: 0.0
 
 随机森林是一种流行的分类和回归方法。以下示例以LibSVM格式加载数据集，将其分解为训练集和测试集，在第一个数据集上训练，然后在保留的测试集上进行评估。Spark使用两个特征转换器来准备数据；这些帮助索引标签和分类特征的类别，将元数据添加到决策树算法可以识别的DataFrame中。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import
+scala> import
 org.apache.spark.ml.classification.{RandomForestClassificationModel,
 RandomForestClassifier}
-
 import
 org.apache.spark.ml.classification.{RandomForestClassificationModel,
 RandomForestClassifier}
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
-scala\> import org.apache.spark.ml.feature.{IndexToString,
+scala> import org.apache.spark.ml.feature.{IndexToString,
 StringIndexer, VectorIndexer}
-
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
+```
 
 代码 4‑28
 
   - 加载和解析数据文件，将其转换为DataFrame
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑29
 
   - 索引标签，增加元数据到标签列中，拟合所有数据集，在索引中包含所有标签
 
-scala\> val labelIndexer = new
+```scala
+scala> val labelIndexer = new
 StringIndexer().setInputCol("label").setOutputCol("indexedLabel").fit(data)
-
 labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
-strIdx\_551d33dd5566
+strIdx_551d33dd5566
+```
 
 代码 4‑30
 
   - 自动识别分类特征和索引，设置maxCategories，具有\>4个不同值的特征被作为连续值处理
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_8e95643a494d
+vecIdx_8e95643a494d
+```
 
 代码 ‑31
 
   - 分割数据为训练和测试（30%为测试数据）
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑32
 
   - 训练RandomForest模型.
 
-scala\> val rf = new
+```scala
+scala> val rf = new
 RandomForestClassifier().setLabelCol("indexedLabel").setFeaturesCol("indexedFeatures").setNumTrees(10)
-
 rf: org.apache.spark.ml.classification.RandomForestClassifier =
-rfc\_319e21d14e79
+rfc_319e21d14e79
+```
 
 代码 4‑33
 
   - 将索引标签转换成原始标签
 
-scala\> val labelConverter = new
+```scala
+scala> val labelConverter = new
 IndexToString().setInputCol("prediction").setOutputCol("predictedLabel").setLabels(labelIndexer.labels)
-
 labelConverter: org.apache.spark.ml.feature.IndexToString =
-idxToStr\_b8fdfba32f0e
+idxToStr_b8fdfba32f0e
+```
 
 代码 4‑34
 
   - 链接索引和树到一个管道中
 
-scala\> val pipeline = new Pipeline().setStages(Array(labelIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(labelIndexer,
 featureIndexer, rf, labelConverter))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_745f2ee48c2b
+pipeline: org.apache.spark.ml.Pipeline = pipeline_745f2ee48c2b
+```
 
 代码 4‑35
 
   - 训练模型
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_745f2ee48c2b
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_745f2ee48c2b
+```
 
 代码 4‑36
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 6 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 6 more fields]
+```
 
 代码 4‑37
 
   - 选择示例行显示
 
-scala\> predictions.select("predictedLabel", "label",
+```scala
+scala> predictions.select("predictedLabel", "label",
 "features").show(5)
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
 |predictedLabel|label| features|
-
-\+--------------+-----+--------------------+
-
-| 0.0| 0.0|(692,\[95,96,97,12...|
-
-| 1.0| 0.0|(692,\[100,101,102...|
-
-| 0.0| 0.0|(692,\[121,122,123...|
-
-| 0.0| 0.0|(692,\[122,123,124...|
-
-| 0.0| 0.0|(692,\[122,123,148...|
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
+| 0.0| 0.0|(692,[95,96,97,12...|
+| 1.0| 0.0|(692,[100,101,102...|
+| 0.0| 0.0|(692,[121,122,123...|
+| 0.0| 0.0|(692,[122,123,124...|
+| 0.0| 0.0|(692,[122,123,148...|
++--------------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 ‑38
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setLabelCol("indexedLabel").setPredictionCol("prediction").setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_3f0dda1404bf
-
-scala\> val accuracy = evaluator.evaluate(predictions)
-
+mcEval_3f0dda1404bf
+scala> val accuracy = evaluator.evaluate(predictions)
 accuracy: Double = 0.9666666666666667
-
-scala\> println("Test Error = " + (1.0 - accuracy))
-
+scala> println("Test Error = " + (1.0 - accuracy))
 Test Error = 0.033333333333333326
-
-scala\> val rfModel =
-model.stages(2).asInstanceOf\[RandomForestClassificationModel\]
-
+scala> val rfModel =
+model.stages(2).asInstanceOf[RandomForestClassificationModel]
 rfModel:
 org.apache.spark.ml.classification.RandomForestClassificationModel =
-RandomForestClassificationModel (uid=rfc\_319e21d14e79) with 10 trees
-
-scala\> println("Learned classification forest model:\\n" +
+RandomForestClassificationModel (uid=rfc_319e21d14e79) with 10 trees
+scala> println("Learned classification forest model:\n" +
 rfModel.toDebugString)
-
 Learned classification forest model:
-
-RandomForestClassificationModel (uid=rfc\_319e21d14e79) with 10 trees
-
+RandomForestClassificationModel (uid=rfc_319e21d14e79) with 10 trees
 Tree 0 (weight 1.0):
-
-If (feature 552 \<= 0.0)
-
-If (feature 550 \<= 43.0)
-
+If (feature 552 <= 0.0)
+If (feature 550 <= 43.0)
 Predict: 0.0
-
-Else (feature 550 \> 43.0)
-
+Else (feature 550 > 43.0)
 Predict: 1.0
-
-Else (feature 552 \> 0.0)
-
-If (feature 605 \<= 0.0)
-
+Else (feature 552 > 0.0)
+If (feature 605 <= 0.0)
 Predict: 0.0
-
-Else (feature 605 \> 0.0)
-
+Else (feature 605 > 0.0)
 Predict: 1.0
-
 Tree 1 (weight 1.0):
-
-If (feature 463 \<= 0.0)
-
-If (feature 317 \<= 0.0)
-
-If (feature 651 \<= 0.0)
-
+If (feature 463 <= 0.0)
+If (feature 317 <= 0.0)
+If (feature 651 <= 0.0)
 Predict: 0.0
-
-Else (feature 651 \> 0.0)
-
+Else (feature 651 > 0.0)
 Predict: 1.0
-
-Else (feature 317 \> 0.0)
-
+Else (feature 317 > 0.0)
 Predict: 1.0
-
-Else (feature 463 \> 0.0)
-
+Else (feature 463 > 0.0)
 Predict: 0.0
-
 ……
+```
 
 代码 4‑39
 
@@ -2049,215 +1629,182 @@ Predict: 0.0
 
 以下示例以LibSVM格式加载数据集，将其分解为训练集和测试集，在第一个数据集上训练，然后在保留的测试集上进行评估。Spark使用两个特征转换器来准备数据；这些帮助索引标签和分类特征的类别，将元数据添加到决策树算法可以识别的DataFrame中。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import
+scala> import
 org.apache.spark.ml.classification.{GBTClassificationModel,
 GBTClassifier}
-
 import org.apache.spark.ml.classification.{GBTClassificationModel,
 GBTClassifier}
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
-scala\> import org.apache.spark.ml.feature.{IndexToString,
+scala> import org.apache.spark.ml.feature.{IndexToString,
 StringIndexer, VectorIndexer}
-
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
+```
 
 代码 ‑40
 
   - 加载和解析数据文件
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 ‑41
 
   - 索引标签，增加元数据到标签列，拟合整个数据集，在索引中包含所有的标签
 
-scala\> val labelIndexer = new
+```scala
+scala> val labelIndexer = new
 StringIndexer().setInputCol("label").setOutputCol("indexedLabel").fit(data)
-
 labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
-strIdx\_4d85d1d41d81
+strIdx_4d85d1d41d81
+```
 
 代码 4‑42
 
   - 自动识别分类特征和索引，设置maxCategories，具有\>4个不同值的特征被作为连续值处理
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_31283371a256
+vecIdx_31283371a256
+```
 
 代码 ‑43
 
   - 分割数据为训练和测试（30%为测试数据）
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑44
 
   - 训练GBT模型
 
-scala\> val gbt = new
+```scala
+scala> val gbt = new
 GBTClassifier().setLabelCol("indexedLabel").setFeaturesCol("indexedFeatures").setMaxIter(10)
-
 gbt: org.apache.spark.ml.classification.GBTClassifier =
-gbtc\_928d4fc65752
+gbtc_928d4fc65752
+```
 
 代码 4‑45
 
   - 将索引标签转换成原始标签
 
-scala\> val labelConverter = new
+```scala
+scala> val labelConverter = new
 IndexToString().setInputCol("prediction").setOutputCol("predictedLabel").setLabels(labelIndexer.labels)
-
 labelConverter: org.apache.spark.ml.feature.IndexToString =
-idxToStr\_0c8538c39ade
+idxToStr_0c8538c39ade
+```
 
 代码 ‑46
 
   - 连接索引和GBT到管道中
 
-scala\> val pipeline = new Pipeline().setStages(Array(labelIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(labelIndexer,
 featureIndexer, gbt, labelConverter))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_014b373f021b
+pipeline: org.apache.spark.ml.Pipeline = pipeline_014b373f021b
+```
 
 代码 4‑47
 
   - 训练模型
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_014b373f021b
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_014b373f021b
+```
 
 代码 4‑48
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 6 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 6 more fields]
+```
 
 代码 4‑49
 
   - 选择示例行显示
 
-scala\> predictions.select("predictedLabel", "label",
+```scala
+scala> predictions.select("predictedLabel", "label",
 "features").show(5)
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
 |predictedLabel|label| features|
-
-\+--------------+-----+--------------------+
-
-| 0.0| 0.0|(692,\[122,123,124...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-| 0.0| 0.0|(692,\[126,127,128...|
-
-| 0.0| 0.0|(692,\[150,151,152...|
-
-\+--------------+-----+--------------------+
-
++--------------+-----+--------------------+
+| 0.0| 0.0|(692,[122,123,124...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.0| 0.0|(692,[124,125,126...|
+| 0.0| 0.0|(692,[126,127,128...|
+| 0.0| 0.0|(692,[150,151,152...|
++--------------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 4‑50
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setLabelCol("indexedLabel").setPredictionCol("prediction").setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_c2066bd15b35
-
-scala\> val accuracy = evaluator.evaluate(predictions)
-
+mcEval_c2066bd15b35
+scala> val accuracy = evaluator.evaluate(predictions)
 accuracy: Double = 1.0
-
-scala\> println("Test Error = " + (1.0 - accuracy))
-
+scala> println("Test Error = " + (1.0 - accuracy))
 Test Error = 0.0
-
-scala\> val gbtModel =
-model.stages(2).asInstanceOf\[GBTClassificationModel\]
-
+scala> val gbtModel =
+model.stages(2).asInstanceOf[GBTClassificationModel]
 gbtModel: org.apache.spark.ml.classification.GBTClassificationModel =
-GBTClassificationModel (uid=gbtc\_928d4fc65752) with 10 trees
-
-scala\> println("Learned classification GBT model:\\n" +
+GBTClassificationModel (uid=gbtc_928d4fc65752) with 10 trees
+scala> println("Learned classification GBT model:\n" +
 gbtModel.toDebugString)
-
 Learned classification GBT model:
-
-GBTClassificationModel (uid=gbtc\_928d4fc65752) with 10 trees
-
+GBTClassificationModel (uid=gbtc_928d4fc65752) with 10 trees
 Tree 0 (weight 1.0):
-
-If (feature 434 \<= 0.0)
-
+If (feature 434 <= 0.0)
 If (feature 99 in {2.0})
-
 Predict: -1.0
-
 Else (feature 99 not in {2.0})
-
 Predict: 1.0
-
-Else (feature 434 \> 0.0)
-
+Else (feature 434 > 0.0)
 Predict: -1.0
-
 Tree 1 (weight 0.1):
-
-If (feature 434 \<= 0.0)
-
-If (feature 545 \<= 222.0)
-
+If (feature 434 <= 0.0)
+If (feature 545 <= 222.0)
 Predict: 0.47681168808847
-
-Else (feature 545 \> 222.0)
-
+Else (feature 545 > 222.0)
 Predict: -0.4768116880884712
-
-Else (feature 434 \> 0.0)
-
-If (feature 459 \<= 151.0)
-
+Else (feature 434 > 0.0)
+If (feature 459 <= 151.0)
 Predict: -0.4768116880884701
-
-Else (feature 459 \> 151.0)
-
+Else (feature 459 > 151.0)
 Predict: -0.4768116880884712
-
 ……
+```
 
 代码 4‑51
 
@@ -2286,101 +1833,96 @@ $N$ 节点的数量在输出层中对应于类的数量。
 
 MLPC采用反向传播学习模型。Spark使用逻辑损失函数进行优化和L-BFGS作为优化程序。
 
-scala\> import
+```scala
+scala> import
 org.apache.spark.ml.classification.MultilayerPerceptronClassifier
-
 import org.apache.spark.ml.classification.MultilayerPerceptronClassifier
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+```
 
 代码 4‑52
 
   - 加载和解析数据文件
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_multiclass\_classification\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_multiclass_classification_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑53
 
   - 分割数据为训练和测试
 
-scala\> val splits = data.randomSplit(Array(0.6, 0.4), seed = 1234L)
-
+```scala
+scala> val splits = data.randomSplit(Array(0.6, 0.4), seed = 1234L)
 splits:
-Array\[org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\]\] =
-Array(\[label: double, features: vector\], \[label: double, features:
-vector\])
-
-scala\> val train = splits(0)
-
-train: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-scala\> val test = splits(1)
-
-test: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+Array[org.apache.spark.sql.Dataset[org.apache.spark.sql.Row]] =
+Array([label: double, features: vector], [label: double, features:
+vector])
+scala> val train = splits(0)
+train: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+scala> val test = splits(1)
+test: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑54
 
   - 指定神经网络层，大小为4的输入层，两个大小为5和4的中间层，大小为3的输出层
 
-scala\> val layers = Array\[Int\](4, 5, 4, 3)
-
-layers: Array\[Int\] = Array(4, 5, 4, 3)
+```scala
+scala> val layers = Array[Int](4, 5, 4, 3)
+layers: Array[Int] = Array(4, 5, 4, 3)
+```
 
 代码 4‑55
 
   - 创建训练器，设置参数
 
-scala\> val trainer = new
+```scala
+scala> val trainer = new
 MultilayerPerceptronClassifier().setLayers(layers).setBlockSize(128).setSeed(1234L).setMaxIter(100)
-
 trainer:
 org.apache.spark.ml.classification.MultilayerPerceptronClassifier =
-mlpc\_66690265bc2c
+mlpc_66690265bc2c
+```
 
 代码 4‑56
 
   - 训练模型
 
-scala\> val model = trainer.fit(train)
-
+```scala
+scala> val model = trainer.fit(train)
 model:
 org.apache.spark.ml.classification.MultilayerPerceptronClassificationModel
-= mlpc\_66690265bc2c
+= mlpc_66690265bc2c
+```
 
 代码 4‑57
 
   - 在测试集上计算精度
 
-scala\> val result = model.transform(test)
-
-result: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 1 more field\]
-
-scala\> val predictionAndLabels = result.select("prediction", "label")
-
-predictionAndLabels: org.apache.spark.sql.DataFrame = \[prediction:
-double, label: double\]
-
-scala\> val evaluator = new
+```scala
+scala> val result = model.transform(test)
+result: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 1 more field]
+scala> val predictionAndLabels = result.select("prediction", "label")
+predictionAndLabels: org.apache.spark.sql.DataFrame = [prediction:
+double, label: double]
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_5e61181600fd
-
-scala\> println("Test set accuracy = " +
+mcEval_5e61181600fd
+scala> println("Test set accuracy = " +
 evaluator.evaluate(predictionAndLabels))
-
 Test set accuracy = 0.8627450980392157
+```
 
 代码 4‑58
 
@@ -2389,43 +1931,45 @@ Test set accuracy = 0.8627450980392157
 支持向量机在高维或无限维空间中构建一个超平面或超平面集合，该空间可用于分类、回归或其他任务。直观地，一个良好的分离是由超平面完成，其具有到任何类的最接近训练数据点的最大距离，所谓的功能余量。因为通常余量越大，分类器的泛化误差越低。LinearSVC在Spark
 ML中支持具有线性支持向量机的二元分类，使用OWLQN优化器优化了铰链损耗。
 
-scala\> import org.apache.spark.ml.classification.LinearSVC
-
+```scala
+scala> import org.apache.spark.ml.classification.LinearSVC
 import org.apache.spark.ml.classification.LinearSVC
+```
 
 代码 ‑59
 
   - 加载训练数据
 
-scala\> val training =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-training: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> val lsvc = new LinearSVC().setMaxIter(10).setRegParam(0.1)
-
+```scala
+scala> val training =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+training: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> val lsvc = new LinearSVC().setMaxIter(10).setRegParam(0.1)
 lsvc: org.apache.spark.ml.classification.LinearSVC =
-linearsvc\_3534f59606d8
+linearsvc_3534f59606d8
+```
 
 代码 ‑60
 
   - 拟合模型
 
-scala\> val lsvcModel = lsvc.fit(training)
-
+```scala
+scala> val lsvcModel = lsvc.fit(training)
 lsvcModel: org.apache.spark.ml.classification.LinearSVCModel =
-linearsvc\_3534f59606d8
+linearsvc_3534f59606d8
+```
 
 代码 4‑61
 
   - 打印线性SVC的系数和截距
 
-scala\> println(s"Coefficients: ${lsvcModel.coefficients} Intercept:
+```scala
+scala> println(s"Coefficients: ${lsvcModel.coefficients} Intercept:
 ${lsvcModel.intercept}")
-
 Coefficients:
-\[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-5.170630317473439E-4,-1.172288654973735E-4,-8.882754836918948E-5,8.522360710187464E-5,0.0,0.0,-1.3436361263314267E-5,3.729569801338091E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,8.888949552633658E-4,2.9864059761812683E-4,3.793378816193159E-4,-1.762328898254081E-4,0.0,1.5028489269747836E-6,1.8056041144946687E-6,1.8028763260398597E-6,-3.3843713506473646E-6,-4.041580184807502E-6,2.0965017727015125E-6,8.536111642989494E-5,2.2064177429604464E-4,2.1677599940575452E-4,-5.472401396558763E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,9.21415502407147E-4,3.1351066886882195E-4,2.481984318412822E-4,0.0,-4.147738197636148E-5,-3.6832150384497175E-5,0.0,-3.9652366184583814E-6,-5.1569169804965594E-5,-6.624697287084958E-5,-2.182148650424713E-5,1.163442969067449E-5,-1.1535211416971104E-6,3.8138960488857075E-5,1.5823711634321492E-6,-4.784013432336632E-5,-9.386493224111833E-5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,4.3174897827077767E-4,1.7055492867397665E-4,0.0,-2.7978204136148868E-5,-5.88745220385208E-5,-4.1858794529775E-5,-3.740692964881002E-5,-3.9787939304887E-5,-5.545881895011037E-5,-4.505015598421474E-5,-3.214002494749943E-6,-1.6561868808274739E-6,-4.416063987619447E-6,-7.9986183315327E-6,-4.729962112535003E-5,-2.516595625914463E-5,-3……
+[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-5.170630317473439E-4,-1.172288654973735E-4,-8.882754836918948E-5,8.522360710187464E-5,0.0,0.0,-1.3436361263314267E-5,3.729569801338091E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,8.888949552633658E-4,2.9864059761812683E-4,3.793378816193159E-4,-1.762328898254081E-4,0.0,1.5028489269747836E-6,1.8056041144946687E-6,1.8028763260398597E-6,-3.3843713506473646E-6,-4.041580184807502E-6,2.0965017727015125E-6,8.536111642989494E-5,2.2064177429604464E-4,2.1677599940575452E-4,-5.472401396558763E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,9.21415502407147E-4,3.1351066886882195E-4,2.481984318412822E-4,0.0,-4.147738197636148E-5,-3.6832150384497175E-5,0.0,-3.9652366184583814E-6,-5.1569169804965594E-5,-6.624697287084958E-5,-2.182148650424713E-5,1.163442969067449E-5,-1.1535211416971104E-6,3.8138960488857075E-5,1.5823711634321492E-6,-4.784013432336632E-5,-9.386493224111833E-5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,4.3174897827077767E-4,1.7055492867397665E-4,0.0,-2.7978204136148868E-5,-5.88745220385208E-5,-4.1858794529775E-5,-3.740692964881002E-5,-3.9787939304887E-5,-5.545881895011037E-5,-4.505015598421474E-5,-3.214002494749943E-6,-1.6561868808274739E-6,-4.416063987619447E-6,-7.9986183315327E-6,-4.729962112535003E-5,-2.516595625914463E-5,-3……
+```
 
 代码 4‑62
 
@@ -2433,96 +1977,100 @@ Coefficients:
 
 OneVsRest将一个给定的二分类算法有效地扩展到多分类问题应用中，也被称为“One-vs-All”。OneVsRest被实现为一个估算器，其获得分类器实例，并且为多分类的每个创建二元分类问题，第i类的分类器被训练来预测标签是否是i或不是，区分i类与所有其他。预测是通过评估每个二元分类进行，将置信度最高的分类索引作为标签输出。下面的例子演示如何加载鸢尾属植物数据集，解析为一个DataFrame，并使用执行多类分类OneVsRest。测试误差被计算，测量算法的精确度。
 
-scala\> import org.apache.spark.ml.classification.{LogisticRegression,
+```scala
+scala> import org.apache.spark.ml.classification.{LogisticRegression,
 OneVsRest}
-
 import org.apache.spark.ml.classification.{LogisticRegression,
 OneVsRest}
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+```
 
 代码 4‑63
 
   - 加载数据文件
 
-scala\> val inputData =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_multiclass\_classification\_data.txt")
-
-inputData: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val inputData =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_multiclass_classification_data.txt")
+inputData: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑64
 
   - 产生训练和测试数据
 
-scala\> val Array(train, test) = inputData.randomSplit(Array(0.8, 0.2))
-
-train: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-test: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+```scala
+scala> val Array(train, test) = inputData.randomSplit(Array(0.8, 0.2))
+train: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+test: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑65
 
   - 初始化基本分类器
 
-scala\> val classifier = new
+```scala
+scala> val classifier = new
 LogisticRegression().setMaxIter(10).setTol(1E-6).setFitIntercept(true)
-
 classifier: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_4ab3ec576ece
+logreg_4ab3ec576ece
+```
 
 代码 4‑66
 
   - 初始化One Vs Rest分类器
 
-scala\> val ovr = new OneVsRest().setClassifier(classifier)
-
+```scala
+scala> val ovr = new OneVsRest().setClassifier(classifier)
 ovr: org.apache.spark.ml.classification.OneVsRest =
-oneVsRest\_18cdbd6163d0
+oneVsRest_18cdbd6163d0
+```
 
 代码 4‑67
 
   - 训练多分类模型
 
-scala\> val ovrModel = ovr.fit(train)
-
+```scala
+scala> val ovrModel = ovr.fit(train)
 ovrModel: org.apache.spark.ml.classification.OneVsRestModel =
-oneVsRest\_18cdbd6163d0
+oneVsRest_18cdbd6163d0
+```
 
   - 在测试数据上为模型打分
 
-scala\> val predictions = ovrModel.transform(test)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 1 more field\]
+```scala
+scala> val predictions = ovrModel.transform(test)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 1 more field]
+```
 
 代码 4‑68
 
   - 获得评估器
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_d0b6ab78ccdb
+mcEval_d0b6ab78ccdb
+```
 
 代码 4‑69
 
   - 在测试数据上计算分类错误
 
-scala\> val accuracy = evaluator.evaluate(predictions)
-
+```scala
+scala> val accuracy = evaluator.evaluate(predictions)
 accuracy: Double = 0.896551724137931
-
-scala\> println(s"Test Error = ${1 - accuracy}")
-
+scala> println(s"Test Error = ${1 - accuracy}")
 Test Error = 0.10344827586206895
+```
 
 代码 4‑70
 
@@ -2530,124 +2078,93 @@ Test Error = 0.10344827586206895
 
 朴素贝叶斯分类器是一个概率分类器的家族，基于特征之间的强独立性假定应用贝叶斯定理，spark.ml实现目前支持多元朴素贝叶斯和伯努利朴素贝叶斯。
 
-scala\> import org.apache.spark.ml.classification.NaiveBayes
-
+```scala
+scala> import org.apache.spark.ml.classification.NaiveBayes
 import org.apache.spark.ml.classification.NaiveBayes
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+```
 
 代码 4‑71
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑72
 
   - 分割数据为训练和测试（30%为测试数据）
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3), seed = 1234L)
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑73
 
   - 训练NaiveBayes模型
 
-scala\> val model = new NaiveBayes().fit(trainingData)
-
+```scala
+scala> val model = new NaiveBayes().fit(trainingData)
 model: org.apache.spark.ml.classification.NaiveBayesModel =
-NaiveBayesModel (uid=nb\_cce70f29bc75) with 2 classes
+NaiveBayesModel (uid=nb_cce70f29bc75) with 2 classes
+```
 
 代码 4‑74
 
   - 选择示例行显示
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 3 more fields\]
-
-scala\> predictions.show()
-
-\+-----+--------------------+--------------------+-----------+----------+
-
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 3 more fields]
+scala> predictions.show()
++-----+--------------------+--------------------+-----------+----------+
 |label| features| rawPrediction|probability|prediction|
-
-\+-----+--------------------+--------------------+-----------+----------+
-
-| 0.0|(692,\[95,96,97,12...|\[-173678.60946628...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[98,99,100,1...|\[-178107.24302988...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[100,101,102...|\[-100020.80519087...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[124,125,126...|\[-183521.85526462...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[127,128,129...|\[-183004.12461660...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[128,129,130...|\[-246722.96394714...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[152,153,154...|\[-208696.01108598...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[153,154,155...|\[-261509.59951302...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[154,155,156...|\[-217654.71748256...| \[1.0,0.0\]| 0.0|
-
-| 0.0|(692,\[181,182,183...|\[-155287.07585335...| \[1.0,0.0\]| 0.0|
-
-| 1.0|(692,\[99,100,101,...|\[-145981.83877498...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[100,101,102...|\[-147685.13694275...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[123,124,125...|\[-139521.98499849...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[124,125,126...|\[-129375.46702012...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[126,127,128...|\[-145809.08230799...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[127,128,129...|\[-132670.15737290...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[128,129,130...|\[-100206.72054749...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[129,130,131...|\[-129639.09694930...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[129,130,131...|\[-143628.65574273...| \[0.0,1.0\]| 1.0|
-
-| 1.0|(692,\[129,130,131...|\[-129238.74023248...| \[0.0,1.0\]| 1.0|
-
-\+-----+--------------------+--------------------+-----------+----------+
-
++-----+--------------------+--------------------+-----------+----------+
+| 0.0|(692,[95,96,97,12...|[-173678.60946628...| [1.0,0.0]| 0.0|
+| 0.0|(692,[98,99,100,1...|[-178107.24302988...| [1.0,0.0]| 0.0|
+| 0.0|(692,[100,101,102...|[-100020.80519087...| [1.0,0.0]| 0.0|
+| 0.0|(692,[124,125,126...|[-183521.85526462...| [1.0,0.0]| 0.0|
+| 0.0|(692,[127,128,129...|[-183004.12461660...| [1.0,0.0]| 0.0|
+| 0.0|(692,[128,129,130...|[-246722.96394714...| [1.0,0.0]| 0.0|
+| 0.0|(692,[152,153,154...|[-208696.01108598...| [1.0,0.0]| 0.0|
+| 0.0|(692,[153,154,155...|[-261509.59951302...| [1.0,0.0]| 0.0|
+| 0.0|(692,[154,155,156...|[-217654.71748256...| [1.0,0.0]| 0.0|
+| 0.0|(692,[181,182,183...|[-155287.07585335...| [1.0,0.0]| 0.0|
+| 1.0|(692,[99,100,101,...|[-145981.83877498...| [0.0,1.0]| 1.0|
+| 1.0|(692,[100,101,102...|[-147685.13694275...| [0.0,1.0]| 1.0|
+| 1.0|(692,[123,124,125...|[-139521.98499849...| [0.0,1.0]| 1.0|
+| 1.0|(692,[124,125,126...|[-129375.46702012...| [0.0,1.0]| 1.0|
+| 1.0|(692,[126,127,128...|[-145809.08230799...| [0.0,1.0]| 1.0|
+| 1.0|(692,[127,128,129...|[-132670.15737290...| [0.0,1.0]| 1.0|
+| 1.0|(692,[128,129,130...|[-100206.72054749...| [0.0,1.0]| 1.0|
+| 1.0|(692,[129,130,131...|[-129639.09694930...| [0.0,1.0]| 1.0|
+| 1.0|(692,[129,130,131...|[-143628.65574273...| [0.0,1.0]| 1.0|
+| 1.0|(692,[129,130,131...|[-129238.74023248...| [0.0,1.0]| 1.0|
++-----+--------------------+--------------------+-----------+----------+
 only showing top 20 rows
-
-scala\> // Select (prediction, true label) and compute test error
-
-scala\> val evaluator = new
+scala> // Select (prediction, true label) and compute test error
+scala> val evaluator = new
 MulticlassClassificationEvaluator().setLabelCol("label").setPredictionCol("prediction").setMetricName("accuracy")
-
 evaluator:
 org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
-mcEval\_0a46fb9d7c4b
-
-scala\> val accuracy = evaluator.evaluate(predictions)
-
+mcEval_0a46fb9d7c4b
+scala> val accuracy = evaluator.evaluate(predictions)
 accuracy: Double = 1.0
-
-scala\> println("Test set accuracy = " + accuracy)
-
+scala> println("Test set accuracy = " + accuracy)
 Test set accuracy = 1.0
+```
 
 代码 4‑75
 
@@ -2657,125 +2174,94 @@ Test set accuracy = 1.0
 
 使用线性回归模型和模型总结工作的接口类似于逻辑回归的情况，下面的例子演示了训练弹性网络正规化线性回归模型，提取模型汇总统计。
 
-scala\> import org.apache.spark.ml.regression.LinearRegression
-
+```scala
+scala> import org.apache.spark.ml.regression.LinearRegression
 import org.apache.spark.ml.regression.LinearRegression
+```
 
 代码 4‑76
 
   - 加载训练数据
 
-scala\> val training =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_linear\_regression\_data.txt")
-
-training: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> val lr = new
+```scala
+scala> val training =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_linear_regression_data.txt")
+training: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> val lr = new
 LinearRegression().setMaxIter(10).setRegParam(0.3).setElasticNetParam(0.8)
-
 lr: org.apache.spark.ml.regression.LinearRegression =
-linReg\_d95b427bfd2c
+linReg_d95b427bfd2c
+```
 
 代码 4‑77
 
   - 拟合模型
 
-scala\> val lrModel = lr.fit(training)
-
+```scala
+scala> val lrModel = lr.fit(training)
 lrModel: org.apache.spark.ml.regression.LinearRegressionModel =
-linReg\_d95b427bfd2c
+linReg_d95b427bfd2c
+```
 
 代码 4‑78
 
   - 输出线性回归的系数和截距
 
-scala\> println(s"Coefficients: ${lrModel.coefficients} Intercept:
+```scala
+scala> println(s"Coefficients: ${lrModel.coefficients} Intercept:
 ${lrModel.intercept}")
-
 Coefficients:
-\[0.0,0.32292516677405936,-0.3438548034562218,1.9156017023458414,0.05288058680386263,0.765962720459771,0.0,-0.15105392669186682,-0.21587930360904642,0.22025369188813426\]
+[0.0,0.32292516677405936,-0.3438548034562218,1.9156017023458414,0.05288058680386263,0.765962720459771,0.0,-0.15105392669186682,-0.21587930360904642,0.22025369188813426]
 Intercept: 0.1598936844239736
+```
 
 代码 4‑79
 
   - 在训练集合上总结模型，输出一些度量
 
-scala\> val trainingSummary = lrModel.summary
-
+```scala
+scala> val trainingSummary = lrModel.summary
 trainingSummary:
 org.apache.spark.ml.regression.LinearRegressionTrainingSummary =
 org.apache.spark.ml.regression.LinearRegressionTrainingSummary@75078835
-
-scala\> println(s"numIterations: ${trainingSummary.totalIterations}")
-
+scala> println(s"numIterations: ${trainingSummary.totalIterations}")
 numIterations: 7
-
-scala\> println(s"objectiveHistory:
-\[${trainingSummary.objectiveHistory.mkString(",")}\]")
-
+scala> println(s"objectiveHistory:
+[${trainingSummary.objectiveHistory.mkString(",")}]")
 objectiveHistory:
-\[0.49999999999999994,0.4967620357443381,0.4936361664340463,0.4936351537897608,0.4936351214177871,0.49363512062528014,0.4936351206216114\]
-
-scala\> trainingSummary.residuals.show()
-
-\+--------------------+
-
+[0.49999999999999994,0.4967620357443381,0.4936361664340463,0.4936351537897608,0.4936351214177871,0.49363512062528014,0.4936351206216114]
+scala> trainingSummary.residuals.show()
++--------------------+
 | residuals|
-
-\+--------------------+
-
++--------------------+
 | -9.889232683103197|
-
 | 0.5533794340053554|
-
 | -5.204019455758823|
-
 | -20.566686715507508|
-
 | -9.4497405180564|
-
 | -6.909112502719486|
-
 | -10.00431602969873|
-
 | 2.062397807050484|
-
 | 3.1117508432954772|
-
 | -15.893608229419382|
-
 | -5.036284254673026|
-
 | 6.483215876994333|
-
 | 12.429497299109002|
-
 | -20.32003219007654|
-
 | -2.0049838218725005|
-
 | -17.867901734183793|
-
 | 7.646455887420495|
-
 | -2.2653482182417406|
-
 |-0.10308920436195645|
-
 | -1.380034070385301|
-
-\+--------------------+
-
++--------------------+
 only showing top 20 rows
-
-scala\> println(s"RMSE: ${trainingSummary.rootMeanSquaredError}")
-
+scala> println(s"RMSE: ${trainingSummary.rootMeanSquaredError}")
 RMSE: 10.189077167598475
-
-scala\> println(s"r2: ${trainingSummary.r2}")
-
+scala> println(s"r2: ${trainingSummary.r2}")
 r2: 0.022861466913958184
+```
 
 代码 4‑80
 
@@ -2856,157 +2342,112 @@ Criterion）和其他。
 
 下面的例子演示了训练广义线性模型与高斯响应，标识链接功能和提取模型汇总统计。
 
-scala\> import
+```scala
+scala> import
 org.apache.spark.ml.regression.GeneralizedLinearRegression
-
 import org.apache.spark.ml.regression.GeneralizedLinearRegression
+```
 
 代码 4‑81
 
   - 加载训练数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_linear\_regression\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> val glr = new
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_linear_regression_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> val glr = new
 GeneralizedLinearRegression().setFamily("gaussian").setLink("identity").setMaxIter(10).setRegParam(0.3)
-
 glr: org.apache.spark.ml.regression.GeneralizedLinearRegression =
-glm\_57277c689abf
+glm_57277c689abf
+```
 
 代码 4‑82
 
   - 拟合模型
 
-scala\> val model = glr.fit(dataset)
-
+```scala
+scala> val model = glr.fit(dataset)
 model: org.apache.spark.ml.regression.GeneralizedLinearRegressionModel =
-glm\_57277c689abf
+glm_57277c689abf
+```
 
 代码 4‑83
 
   - 输出广义线性回归的系数和截距
 
-scala\> println(s"Coefficients: ${model.coefficients}")
-
+```scala
+scala> println(s"Coefficients: ${model.coefficients}")
 Coefficients:
-\[0.010541828081257216,0.8003253100560949,-0.7845165541420371,2.3679887171421914,0.5010002089857577,1.1222351159753026,-0.2926824398623296,-0.49837174323213035,-0.6035797180675657,0.6725550067187461\]
-
-scala\> println(s"Intercept: ${model.intercept}")
-
+[0.010541828081257216,0.8003253100560949,-0.7845165541420371,2.3679887171421914,0.5010002089857577,1.1222351159753026,-0.2926824398623296,-0.49837174323213035,-0.6035797180675657,0.6725550067187461]
+scala> println(s"Intercept: ${model.intercept}")
 Intercept: 0.14592176145232041
+```
 
 代码 4‑84
 
   - 在训练集上总结模型和输出一些度量
 
-scala\> val summary = model.summary
-
+```scala
+scala> val summary = model.summary
 summary:
 org.apache.spark.ml.regression.GeneralizedLinearRegressionTrainingSummary
 =
 org.apache.spark.ml.regression.GeneralizedLinearRegressionTrainingSummary@31143d5b
-
-scala\> println(s"Coefficient Standard Errors:
+scala> println(s"Coefficient Standard Errors:
 ${summary.coefficientStandardErrors.mkString(",")}")
-
 Coefficient Standard Errors:
 0.7950428434287478,0.8049713176546897,0.7975916824772489,0.8312649247659919,0.7945436200517938,0.8118992572197593,0.7919506385542777,0.7973378214726764,0.8300714999626418,0.7771333489686802,0.463930109648428
-
-scala\> println(s"T Values: ${summary.tValues.mkString(",")}")
-
+scala> println(s"T Values: ${summary.tValues.mkString(",")}")
 T Values:
 0.013259446542269243,0.9942283563442594,-0.9836067393599172,2.848657084633759,0.6305509179635714,1.382234441029355,-0.3695715687490668,-0.6250446546128238,-0.7271418403049983,0.8654306337661122,0.31453393176593286
-
-scala\> println(s"P Values: ${summary.pValues.mkString(",")}")
-
+scala> println(s"P Values: ${summary.pValues.mkString(",")}")
 P Values:
 0.989426199114056,0.32060241580811044,0.3257943227369877,0.004575078538306521,0.5286281628105467,0.16752945248679119,0.7118614002322872,0.5322327097421431,0.467486325282384,0.3872259825794293,0.753249430501097
-
-scala\> println(s"Dispersion: ${summary.dispersion}")
-
+scala> println(s"Dispersion: ${summary.dispersion}")
 Dispersion: 105.60988356821714
-
-scala\> println(s"Null Deviance: ${summary.nullDeviance}")
-
+scala> println(s"Null Deviance: ${summary.nullDeviance}")
 Null Deviance: 53229.3654338832
-
-scala\> println(s"Residual Degree Of Freedom Null:
+scala> println(s"Residual Degree Of Freedom Null:
 ${summary.residualDegreeOfFreedomNull}")
-
 Residual Degree Of Freedom Null: 500
-
-scala\> println(s"Deviance: ${summary.deviance}")
-
+scala> println(s"Deviance: ${summary.deviance}")
 Deviance: 51748.8429484264
-
-scala\> println(s"Residual Degree Of Freedom:
+scala> println(s"Residual Degree Of Freedom:
 ${summary.residualDegreeOfFreedom}")
-
 Residual Degree Of Freedom: 490
-
-scala\> println(s"AIC: ${summary.aic}")
-
+scala> println(s"AIC: ${summary.aic}")
 AIC: 3769.1895871765314
-
-scala\> println("Deviance Residuals: ")
-
+scala> println("Deviance Residuals: ")
 Deviance Residuals:
-
-scala\> summary.residuals().show()
-
-\+-------------------+
-
+scala> summary.residuals().show()
++-------------------+
 | devianceResiduals|
-
-\+-------------------+
-
++-------------------+
 |-10.974359174246889|
-
 | 0.8872320138420559|
-
 | -4.596541837478908|
-
 |-20.411667435019638|
-
 |-10.270419345342642|
-
 |-6.0156058956799905|
-
 |-10.663939415849267|
-
 | 2.1153960525024713|
-
 | 3.9807132379137675|
-
 |-17.225218272069533|
-
 | -4.611647633532147|
-
 | 6.4176669407698546|
-
 | 11.407137945300537|
-
 | -20.70176540467664|
-
 | -2.683748540510967|
-
 |-16.755494794232536|
-
 | 8.154668342638725|
-
 |-1.4355057987358848|
-
 |-0.6435058688185704|
-
 | -1.13802589316832|
-
-\+-------------------+
-
++-------------------+
 only showing top 20 rows
+```
 
 代码 4‑85
 
@@ -3018,36 +2459,30 @@ only showing top 20 rows
 
 决策树是受欢迎的分类和回归方法系列。有关更多信息，spark.ml实现可进一步在找到决策树节。下面例子中，加载LIBSVM格式的数据集，将其分成训练集和测试集，训练在第一数据集，然后在留存的测试集上评估。Spark使用特征转换器索引类别特征，添加元数据到该决策树算法可以识别的DataFrame。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import org.apache.spark.ml.evaluation.RegressionEvaluator
-
+scala> import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.evaluation.RegressionEvaluator
-
-scala\> import org.apache.spark.ml.feature.VectorIndexer
-
+scala> import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.feature.VectorIndexer
-
-scala\> import
+scala> import
 org.apache.spark.ml.regression.DecisionTreeRegressionModel
-
 import org.apache.spark.ml.regression.DecisionTreeRegressionModel
-
-scala\> import org.apache.spark.ml.regression.DecisionTreeRegressor
-
+scala> import org.apache.spark.ml.regression.DecisionTreeRegressor
 import org.apache.spark.ml.regression.DecisionTreeRegressor
+```
 
 代码 4‑86
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑87
 
@@ -3055,127 +2490,112 @@ vector\]
 
   - 将具有\>4不同值的特征作为连续的
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_22ea6e264a28
+vecIdx_22ea6e264a28
+```
 
 代码 4‑88
 
   - 分割数据为训练和测试（30%为测试数据）
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑89
 
   - 训练DecisionTree模型
 
-scala\> val dt = new
+```scala
+scala> val dt = new
 DecisionTreeRegressor().setLabelCol("label").setFeaturesCol("indexedFeatures")
-
 dt: org.apache.spark.ml.regression.DecisionTreeRegressor =
-dtr\_d8e21b9502e1
+dtr_d8e21b9502e1
+```
 
 代码 4‑90
 
   - 链接索引和树到一个管道中
 
-scala\> val pipeline = new Pipeline().setStages(Array(featureIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(featureIndexer,
 dt))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_c396dbb1f2f7
+pipeline: org.apache.spark.ml.Pipeline = pipeline_c396dbb1f2f7
+```
 
 代码 4‑91
 
   - 训练模型，运行索引
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_c396dbb1f2f7
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_c396dbb1f2f7
+```
 
 代码 4‑92
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 2 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 2 more fields]
+```
 
 代码 4‑93
 
   - 选择示例行显示
 
-scala\> predictions.select("prediction", "label", "features").show(5)
-
-\+----------+-----+--------------------+
-
+```scala
+scala> predictions.select("prediction", "label", "features").show(5)
++----------+-----+--------------------+
 |prediction|label| features|
-
-\+----------+-----+--------------------+
-
-| 0.0| 0.0|(692,\[98,99,100,1...|
-
-| 0.0| 0.0|(692,\[122,123,148...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-\+----------+-----+--------------------+
-
++----------+-----+--------------------+
+| 0.0| 0.0|(692,[98,99,100,1...|
+| 0.0| 0.0|(692,[122,123,148...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.0| 0.0|(692,[124,125,126...|
++----------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 4‑94
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 RegressionEvaluator().setLabelCol("label").setPredictionCol("prediction").setMetricName("rmse")
-
 evaluator: org.apache.spark.ml.evaluation.RegressionEvaluator =
-regEval\_5550a21b1674
-
-scala\> val rmse = evaluator.evaluate(predictions)
-
+regEval_5550a21b1674
+scala> val rmse = evaluator.evaluate(predictions)
 rmse: Double = 0.19245008972987526
-
-scala\> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
-
+scala> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
 Root Mean Squared Error (RMSE) on test data = 0.19245008972987526
-
-scala\> val treeModel =
-model.stages(1).asInstanceOf\[DecisionTreeRegressionModel\]
-
+scala> val treeModel =
+model.stages(1).asInstanceOf[DecisionTreeRegressionModel]
 treeModel: org.apache.spark.ml.regression.DecisionTreeRegressionModel =
-DecisionTreeRegressionModel (uid=dtr\_d8e21b9502e1) of depth 1 with 3
+DecisionTreeRegressionModel (uid=dtr_d8e21b9502e1) of depth 1 with 3
 nodes
-
-scala\> println("Learned regression tree model:\\n" +
+scala> println("Learned regression tree model:\n" +
 treeModel.toDebugString)
-
 Learned regression tree model:
-
-DecisionTreeRegressionModel (uid=dtr\_d8e21b9502e1) of depth 1 with 3
+DecisionTreeRegressionModel (uid=dtr_d8e21b9502e1) of depth 1 with 3
 nodes
-
-If (feature 434 \<= 0.0)
-
+If (feature 434 <= 0.0)
 Predict: 0.0
-
-Else (feature 434 \> 0.0)
-
+Else (feature 434 > 0.0)
 Predict: 1.0
+```
 
 代码 4‑95
 
@@ -3183,184 +2603,151 @@ Predict: 1.0
 
 随机森林是受欢迎的分类和回归方法系列。下面例子中，加载LIBSVM格式的数据集，将其分成训练集和测试集，训练在第一数据集，然后在留存的测试集上评估。Spark使用特征转换器索引类别特征，添加元数据到该基于树算法可以识别的DataFrame。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import org.apache.spark.ml.evaluation.RegressionEvaluator
-
+scala> import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.evaluation.RegressionEvaluator
-
-scala\> import org.apache.spark.ml.feature.VectorIndexer
-
+scala> import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.feature.VectorIndexer
-
-scala\> import
+scala> import
 org.apache.spark.ml.regression.{RandomForestRegressionModel,
 RandomForestRegressor}
-
 import org.apache.spark.ml.regression.{RandomForestRegressionModel,
 RandomForestRegressor}
+```
 
 代码 4‑96
 
   - 加载和解析数据文件，将其转换为DataFrame
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑97
 
   - 自动识别分类特征，并且索引，设置maxCategories，将具有\>4不同值的特征作为连续的
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_8686fd13bc82
+vecIdx_8686fd13bc82
+```
 
 代码 4‑98
 
   - 分割数据到训练和测试集(30% 留存为测试)
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑99
 
   - 训练RandomForest模型
 
-scala\> val rf = new
+```scala
+scala> val rf = new
 RandomForestRegressor().setLabelCol("label").setFeaturesCol("indexedFeatures")
-
 rf: org.apache.spark.ml.regression.RandomForestRegressor =
-rfr\_8b3d97e58278
+rfr_8b3d97e58278
+```
 
 代码 4‑100
 
   - 链接索引和树到一个管道中
 
-scala\> val pipeline = new Pipeline().setStages(Array(featureIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(featureIndexer,
 rf))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_a2a6e45d0f75
+pipeline: org.apache.spark.ml.Pipeline = pipeline_a2a6e45d0f75
+```
 
   - 训练模型，返回索引
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_a2a6e45d0f75
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_a2a6e45d0f75
+```
 
 代码 4‑101
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 2 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 2 more fields]
+```
 
 代码 4‑102
 
   - 选择示例行显示
 
-scala\> predictions.select("prediction", "label", "features").show(5)
-
-\+----------+-----+--------------------+
-
+```scala
+scala> predictions.select("prediction", "label", "features").show(5)
++----------+-----+--------------------+
 |prediction|label| features|
-
-\+----------+-----+--------------------+
-
-| 0.05| 0.0|(692,\[121,122,123...|
-
-| 0.0| 0.0|(692,\[122,123,124...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.0| 0.0|(692,\[123,124,125...|
-
-| 0.05| 0.0|(692,\[125,126,127...|
-
-\+----------+-----+--------------------+
-
++----------+-----+--------------------+
+| 0.05| 0.0|(692,[121,122,123...|
+| 0.0| 0.0|(692,[122,123,124...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.0| 0.0|(692,[123,124,125...|
+| 0.05| 0.0|(692,[125,126,127...|
++----------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 4‑103
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 RegressionEvaluator().setLabelCol("label").setPredictionCol("prediction").setMetricName("rmse")
-
 evaluator: org.apache.spark.ml.evaluation.RegressionEvaluator =
-regEval\_ab1417ac176f
-
-scala\> val rmse = evaluator.evaluate(predictions)
-
+regEval_ab1417ac176f
+scala> val rmse = evaluator.evaluate(predictions)
 rmse: Double = 0.06565321642986129
-
-scala\> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
-
+scala> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
 Root Mean Squared Error (RMSE) on test data = 0.06565321642986129
-
-scala\> val rfModel =
-model.stages(1).asInstanceOf\[RandomForestRegressionModel\]
-
+scala> val rfModel =
+model.stages(1).asInstanceOf[RandomForestRegressionModel]
 rfModel: org.apache.spark.ml.regression.RandomForestRegressionModel =
-RandomForestRegressionModel (uid=rfr\_8b3d97e58278) with 20 trees
-
-scala\> println("Learned regression forest model:\\n" +
+RandomForestRegressionModel (uid=rfr_8b3d97e58278) with 20 trees
+scala> println("Learned regression forest model:\n" +
 rfModel.toDebugString)
-
 Learned regression forest model:
-
-RandomForestRegressionModel (uid=rfr\_8b3d97e58278) with 20 trees
-
+RandomForestRegressionModel (uid=rfr_8b3d97e58278) with 20 trees
 Tree 0 (weight 1.0):
-
-If (feature 435 \<= 0.0)
-
-If (feature 545 \<= 252.0)
-
+If (feature 435 <= 0.0)
+If (feature 545 <= 252.0)
 Predict: 0.0
-
-Else (feature 545 \> 252.0)
-
+Else (feature 545 > 252.0)
 Predict: 1.0
-
-Else (feature 435 \> 0.0)
-
+Else (feature 435 > 0.0)
 Predict: 1.0
-
 Tree 1 (weight 1.0):
-
-If (feature 490 \<= 0.0)
-
+If (feature 490 <= 0.0)
 Predict: 0.0
-
-Else (feature 490 \> 0.0)
-
+Else (feature 490 > 0.0)
 Predict: 1.0
-
 Tree 2 (weight 1.0):
-
-If (feature 290 \<= 0.0)
-
+If (feature 290 <= 0.0)
 Predict: 1.0
-
-Else (feature 290 \> 0.0)
-
+Else (feature 290 > 0.0)
 ……
+```
 
 代码 4‑104
 
@@ -3368,199 +2755,158 @@ Else (feature 290 \> 0.0)
 
 梯度提升树是流行的利用决策树集成的回归方法。在这个例子中数据集，GBTRegressor实际上只需要1次迭代，但一般不会。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import org.apache.spark.ml.evaluation.RegressionEvaluator
-
+scala> import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.evaluation.RegressionEvaluator
-
-scala\> import org.apache.spark.ml.feature.VectorIndexer
-
+scala> import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.feature.VectorIndexer
-
-scala\> import org.apache.spark.ml.regression.{GBTRegressionModel,
+scala> import org.apache.spark.ml.regression.{GBTRegressionModel,
 GBTRegressor}
-
 import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor}
+```
 
 代码 4‑105
 
   - 加载和解析数据文件，将其转换为DataFrame
 
-scala\> val data =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑106
 
   - 自动识别分类特征，并且索引，设置maxCategories，将具有\>4不同值的特征作为连续的
 
-scala\> val featureIndexer = new
+```scala
+scala> val featureIndexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(4).fit(data)
-
 featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_2dc5f8c212c1
+vecIdx_2dc5f8c212c1
+```
 
 代码 4‑107
 
   - 分割数据到训练和测试集(30% 留存为测试).
 
-scala\> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
+```scala
+scala> val Array(trainingData, testData) = data.randomSplit(Array(0.7,
 0.3))
-
-trainingData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-testData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
+trainingData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+```
 
 代码 4‑108
 
   - 训练梯度提升树模型
 
-scala\> val gbt = new
+```scala
+scala> val gbt = new
 GBTRegressor().setLabelCol("label").setFeaturesCol("indexedFeatures").setMaxIter(10)
-
-gbt: org.apache.spark.ml.regression.GBTRegressor = gbtr\_307ad34e9fcd
+gbt: org.apache.spark.ml.regression.GBTRegressor = gbtr_307ad34e9fcd
+```
 
 代码 4‑109
 
   - 在管道中链接索引器和梯度提升树
 
-scala\> val pipeline = new Pipeline().setStages(Array(featureIndexer,
+```scala
+scala> val pipeline = new Pipeline().setStages(Array(featureIndexer,
 gbt))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_9462b17b4b09
+pipeline: org.apache.spark.ml.Pipeline = pipeline_9462b17b4b09
+```
 
 代码 4‑110
 
   - 训练模型，运行索引器
 
-scala\> val model = pipeline.fit(trainingData)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_9462b17b4b09
+```scala
+scala> val model = pipeline.fit(trainingData)
+model: org.apache.spark.ml.PipelineModel = pipeline_9462b17b4b09
+```
 
 代码 4‑111
 
   - 进行预测
 
-scala\> val predictions = model.transform(testData)
-
-predictions: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 2 more fields\]
+```scala
+scala> val predictions = model.transform(testData)
+predictions: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 2 more fields]
+```
 
 代码 4‑112
 
   - 选择示例行显示
 
-scala\> predictions.select("prediction", "label", "features").show(5)
-
-\+----------+-----+--------------------+
-
+```scala
+scala> predictions.select("prediction", "label", "features").show(5)
++----------+-----+--------------------+
 |prediction|label| features|
-
-\+----------+-----+--------------------+
-
-| 0.0| 0.0|(692,\[95,96,97,12...|
-
-| 0.0| 0.0|(692,\[122,123,148...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-| 0.0| 0.0|(692,\[124,125,126...|
-
-| 0.0| 0.0|(692,\[126,127,128...|
-
-\+----------+-----+--------------------+
-
++----------+-----+--------------------+
+| 0.0| 0.0|(692,[95,96,97,12...|
+| 0.0| 0.0|(692,[122,123,148...|
+| 0.0| 0.0|(692,[124,125,126...|
+| 0.0| 0.0|(692,[124,125,126...|
+| 0.0| 0.0|(692,[126,127,128...|
++----------+-----+--------------------+
 only showing top 5 rows
+```
 
 代码 4‑113
 
   - 选择预测和真标签，计算测试错误
 
-scala\> val evaluator = new
+```scala
+scala> val evaluator = new
 RegressionEvaluator().setLabelCol("label").setPredictionCol("prediction").setMetricName("rmse")
-
 evaluator: org.apache.spark.ml.evaluation.RegressionEvaluator =
-regEval\_f3a7f3b952b3
-
-scala\> val rmse = evaluator.evaluate(predictions)
-
+regEval_f3a7f3b952b3
+scala> val rmse = evaluator.evaluate(predictions)
 rmse: Double = 0.0
-
-scala\> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
-
+scala> println("Root Mean Squared Error (RMSE) on test data = " + rmse)
 Root Mean Squared Error (RMSE) on test data = 0.0
-
-scala\> val gbtModel =
-model.stages(1).asInstanceOf\[GBTRegressionModel\]
-
+scala> val gbtModel =
+model.stages(1).asInstanceOf[GBTRegressionModel]
 gbtModel: org.apache.spark.ml.regression.GBTRegressionModel =
-GBTRegressionModel (uid=gbtr\_307ad34e9fcd) with 10 trees
-
-scala\> println("Learned regression GBT model:\\n" +
+GBTRegressionModel (uid=gbtr_307ad34e9fcd) with 10 trees
+scala> println("Learned regression GBT model:\n" +
 gbtModel.toDebugString)
-
 Learned regression GBT model:
-
-GBTRegressionModel (uid=gbtr\_307ad34e9fcd) with 10 trees
-
+GBTRegressionModel (uid=gbtr_307ad34e9fcd) with 10 trees
 Tree 0 (weight 1.0):
-
-If (feature 434 \<= 0.0)
-
+If (feature 434 <= 0.0)
 If (feature 99 in {0.0,3.0})
-
 Predict: 0.0
-
 Else (feature 99 not in {0.0,3.0})
-
 Predict: 1.0
-
-Else (feature 434 \> 0.0)
-
+Else (feature 434 > 0.0)
 Predict: 1.0
-
 Tree 1 (weight 0.1):
-
 Predict: 0.0
-
 Tree 2 (weight 0.1):
-
 Predict: 0.0
-
 Tree 3 (weight 0.1):
-
 Predict: 0.0
-
 Tree 4 (weight 0.1):
-
 Predict: 0.0
-
 Tree 5 (weight 0.1):
-
 Predict: 0.0
-
 Tree 6 (weight 0.1):
-
 Predict: 0.0
-
 Tree 7 (weight 0.1):
-
 Predict: 0.0
-
 Tree 8 (weight 0.1):
-
 Predict: 0.0
-
 Tree 9 (weight 0.1):
-
 Predict: 0.0
+```
 
 代码 4‑114
 
@@ -3627,85 +2973,53 @@ $$
 
 AFT模型可以被表述为凸优化问题，即根据系数向量 $\beta$ 和尺度参数对数 $\log\sigma$ 寻找凸函数 $- \iota(\beta,\sigma)$ 最小值的任务。底层实现的优化算法是L-BFGS。该实现与R的生存函数survreg的结果相匹配。
 
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+```scala
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> import org.apache.spark.ml.regression.AFTSurvivalRegression
-
+scala> import org.apache.spark.ml.regression.AFTSurvivalRegression
 import org.apache.spark.ml.regression.AFTSurvivalRegression
-
-scala\> val training = spark.createDataFrame(Seq(
-
+scala> val training = spark.createDataFrame(Seq(
 | (1.218, 1.0, Vectors.dense(1.560, -0.605)),
-
 | (2.949, 0.0, Vectors.dense(0.346, 2.158)),
-
 | (3.627, 0.0, Vectors.dense(1.380, 0.231)),
-
 | (0.273, 1.0, Vectors.dense(0.520, 1.151)),
-
 | (4.199, 0.0, Vectors.dense(0.795, -0.226))
-
 | )).toDF("label", "censor", "features")
-
-training: org.apache.spark.sql.DataFrame = \[label: double, censor:
-double ... 1 more field\]
-
-scala\> val quantileProbabilities = Array(0.3, 0.6)
-
-quantileProbabilities: Array\[Double\] = Array(0.3, 0.6)
-
-scala\> val aft = new
+training: org.apache.spark.sql.DataFrame = [label: double, censor:
+double ... 1 more field]
+scala> val quantileProbabilities = Array(0.3, 0.6)
+quantileProbabilities: Array[Double] = Array(0.3, 0.6)
+scala> val aft = new
 AFTSurvivalRegression().setQuantileProbabilities(quantileProbabilities).setQuantilesCol("quantiles")
-
 aft: org.apache.spark.ml.regression.AFTSurvivalRegression =
-aftSurvReg\_e19697fe4c07
-
-scala\> val model = aft.fit(training)
-
+aftSurvReg_e19697fe4c07
+scala> val model = aft.fit(training)
 model: org.apache.spark.ml.regression.AFTSurvivalRegressionModel =
-aftSurvReg\_e19697fe4c07
-
-scala\> // Print the coefficients, intercept and scale parameter for AFT
+aftSurvReg_e19697fe4c07
+scala> // Print the coefficients, intercept and scale parameter for AFT
 survival regression
-
-scala\> println(s"Coefficients: ${model.coefficients}")
-
-Coefficients: \[-0.49630441105311934,0.19845217252922745\]
-
-scala\> println(s"Intercept: ${model.intercept}")
-
+scala> println(s"Coefficients: ${model.coefficients}")
+Coefficients: [-0.49630441105311934,0.19845217252922745]
+scala> println(s"Intercept: ${model.intercept}")
 Intercept: 2.638089896305637
-
-scala\> println(s"Scale: ${model.scale}")
-
+scala> println(s"Scale: ${model.scale}")
 Scale: 1.5472363533632303
-
-scala\> model.transform(training).show(false)
-
-\+-----+------+--------------+------------------+---------------------------------------+
-
+scala> model.transform(training).show(false)
++-----+------+--------------+------------------+---------------------------------------+
 |label|censor|features |prediction |quantiles |
-
-\+-----+------+--------------+------------------+---------------------------------------+
-
-|1.218|1.0 |\[1.56,-0.605\] |5.718985621018948
-|\[1.160322990805951,4.99546058340675\] |
-
-|2.949|0.0 |\[0.346,2.158\] |18.07678210850554
-|\[3.6675919944963185,15.789837303662035\]|
-
-|3.627|0.0 |\[1.38,0.231\] |7.381908879359957
-|\[1.4977129086101564,6.448002719505488\] |
-
-|0.273|1.0 |\[0.52,1.151\]
-|13.577717814884515|\[2.754778414791514,11.859962351993207\] |
-
-|4.199|0.0 |\[0.795,-0.226\]|9.013087597344821
-|\[1.82866218773319,7.8728164067854935\] |
-
-\+-----+------+--------------+------------------+---------------------------------------+
++-----+------+--------------+------------------+---------------------------------------+
+|1.218|1.0 |[1.56,-0.605] |5.718985621018948
+|[1.160322990805951,4.99546058340675] |
+|2.949|0.0 |[0.346,2.158] |18.07678210850554
+|[3.6675919944963185,15.789837303662035]|
+|3.627|0.0 |[1.38,0.231] |7.381908879359957
+|[1.4977129086101564,6.448002719505488] |
+|0.273|1.0 |[0.52,1.151]
+|13.577717814884515|[2.754778414791514,11.859962351993207] |
+|4.199|0.0 |[0.795,-0.226]|9.013087597344821
+|[1.82866218773319,7.8728164067854935] |
++-----+------+--------------+------------------+---------------------------------------+
+```
 
 代码 4‑115
 
@@ -3731,101 +3045,75 @@ Spark实现了一个池相邻违法者算法，这是一种方法来并行保序
 
 （3）如果预测的输入落在两个训练特征之间，则预测将被视为分段线性函数，并且内插的值是从最近的两个特征预测计算。在情况下，存在相同的特征具有多个值，那么与先前相同的规则被用。
 
-scala\> import org.apache.spark.ml.regression.IsotonicRegression
-
+```scala
+scala> import org.apache.spark.ml.regression.IsotonicRegression
 import org.apache.spark.ml.regression.IsotonicRegression
+```
 
 代码 4‑116
 
   - 加载数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_isotonic\_regression\_libsvm\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_isotonic_regression_libsvm_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑117
 
   - 训练保序回归模型
 
-scala\> val ir = new IsotonicRegression()
-
+```scala
+scala> val ir = new IsotonicRegression()
 ir: org.apache.spark.ml.regression.IsotonicRegression =
-isoReg\_78794f99af75
-
-scala\> val model = ir.fit(dataset)
-
+isoReg_78794f99af75
+scala> val model = ir.fit(dataset)
 model: org.apache.spark.ml.regression.IsotonicRegressionModel =
-isoReg\_78794f99af75
-
-scala\> println(s"Boundaries in increasing order:
-${model.boundaries}\\n")
-
+isoReg_78794f99af75
+scala> println(s"Boundaries in increasing order:
+${model.boundaries}\n")
 Boundaries in increasing order:
-\[0.01,0.17,0.18,0.27,0.28,0.29,0.3,0.31,0.34,0.35,0.36,0.41,0.42,0.71,0.72,0.74,0.75,0.76,0.77,0.78,0.79,0.8,0.81,0.82,0.83,0.84,0.85,0.86,0.87,0.88,0.89,1.0\]
-
-scala\> println(s"Predictions associated with the boundaries:
-${model.predictions}\\n")
-
+[0.01,0.17,0.18,0.27,0.28,0.29,0.3,0.31,0.34,0.35,0.36,0.41,0.42,0.71,0.72,0.74,0.75,0.76,0.77,0.78,0.79,0.8,0.81,0.82,0.83,0.84,0.85,0.86,0.87,0.88,0.89,1.0]
+scala> println(s"Predictions associated with the boundaries:
+${model.predictions}\n")
 Predictions associated with the boundaries:
-\[0.15715271294117644,0.15715271294117644,0.189138196,0.189138196,0.20040796,0.29576747,0.43396226,0.5081591025000001,0.5081591025000001,0.54156043,0.5504844466666667,0.5504844466666667,0.563929967,0.563929967,0.5660377366666667,0.5660377366666667,0.56603774,0.57929628,0.64762876,0.66241713,0.67210607,0.67210607,0.674655785,0.674655785,0.73890872,0.73992861,0.84242733,0.89673636,0.89673636,0.90719021,0.9272055075,0.9272055075\]
+[0.15715271294117644,0.15715271294117644,0.189138196,0.189138196,0.20040796,0.29576747,0.43396226,0.5081591025000001,0.5081591025000001,0.54156043,0.5504844466666667,0.5504844466666667,0.563929967,0.563929967,0.5660377366666667,0.5660377366666667,0.56603774,0.57929628,0.64762876,0.66241713,0.67210607,0.67210607,0.674655785,0.674655785,0.73890872,0.73992861,0.84242733,0.89673636,0.89673636,0.90719021,0.9272055075,0.9272055075]
+```
 
 代码 4‑118
 
   - 进行预测
 
-scala\> model.transform(dataset).show()
-
-\+----------+--------------+-------------------+
-
+```scala
+scala> model.transform(dataset).show()
++----------+--------------+-------------------+
 | label| features| prediction|
-
-\+----------+--------------+-------------------+
-
-|0.24579296|(1,\[0\],\[0.01\])|0.15715271294117644|
-
-|0.28505864|(1,\[0\],\[0.02\])|0.15715271294117644|
-
-|0.31208567|(1,\[0\],\[0.03\])|0.15715271294117644|
-
-|0.35900051|(1,\[0\],\[0.04\])|0.15715271294117644|
-
-|0.35747068|(1,\[0\],\[0.05\])|0.15715271294117644|
-
-|0.16675166|(1,\[0\],\[0.06\])|0.15715271294117644|
-
-|0.17491076|(1,\[0\],\[0.07\])|0.15715271294117644|
-
-| 0.0418154|(1,\[0\],\[0.08\])|0.15715271294117644|
-
-|0.04793473|(1,\[0\],\[0.09\])|0.15715271294117644|
-
-|0.03926568| (1,\[0\],\[0.1\])|0.15715271294117644|
-
-|0.12952575|(1,\[0\],\[0.11\])|0.15715271294117644|
-
-| 0.0|(1,\[0\],\[0.12\])|0.15715271294117644|
-
-|0.01376849|(1,\[0\],\[0.13\])|0.15715271294117644|
-
-|0.13105558|(1,\[0\],\[0.14\])|0.15715271294117644|
-
-|0.08873024|(1,\[0\],\[0.15\])|0.15715271294117644|
-
-|0.12595614|(1,\[0\],\[0.16\])|0.15715271294117644|
-
-|0.15247323|(1,\[0\],\[0.17\])|0.15715271294117644|
-
-|0.25956145|(1,\[0\],\[0.18\])| 0.189138196|
-
-|0.20040796|(1,\[0\],\[0.19\])| 0.189138196|
-
-|0.19581846| (1,\[0\],\[0.2\])| 0.189138196|
-
-\+----------+--------------+-------------------+
-
++----------+--------------+-------------------+
+|0.24579296|(1,[0],[0.01])|0.15715271294117644|
+|0.28505864|(1,[0],[0.02])|0.15715271294117644|
+|0.31208567|(1,[0],[0.03])|0.15715271294117644|
+|0.35900051|(1,[0],[0.04])|0.15715271294117644|
+|0.35747068|(1,[0],[0.05])|0.15715271294117644|
+|0.16675166|(1,[0],[0.06])|0.15715271294117644|
+|0.17491076|(1,[0],[0.07])|0.15715271294117644|
+| 0.0418154|(1,[0],[0.08])|0.15715271294117644|
+|0.04793473|(1,[0],[0.09])|0.15715271294117644|
+|0.03926568| (1,[0],[0.1])|0.15715271294117644|
+|0.12952575|(1,[0],[0.11])|0.15715271294117644|
+| 0.0|(1,[0],[0.12])|0.15715271294117644|
+|0.01376849|(1,[0],[0.13])|0.15715271294117644|
+|0.13105558|(1,[0],[0.14])|0.15715271294117644|
+|0.08873024|(1,[0],[0.15])|0.15715271294117644|
+|0.12595614|(1,[0],[0.16])|0.15715271294117644|
+|0.15247323|(1,[0],[0.17])|0.15715271294117644|
+|0.25956145|(1,[0],[0.18])| 0.189138196|
+|0.20040796|(1,[0],[0.19])| 0.189138196|
+|0.19581846| (1,[0],[0.2])| 0.189138196|
++----------+--------------+-------------------+
 only showing top 20 rows
+```
 
 代码 4‑119
 
@@ -3854,55 +3142,53 @@ K均值（k-means）是最常用的聚类算法之一，它将数据点聚类成
 
 代码如下：
 
-scala\> import org.apache.spark.ml.clustering.KMeans
-
+```scala
+scala> import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.clustering.KMeans
+```
 
 代码 4‑120
 
   - 加载数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_kmeans\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_kmeans_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
   - 训练K均值模型
 
-scala\> val kmeans = new KMeans().setK(2).setSeed(1L)
-
-kmeans: org.apache.spark.ml.clustering.KMeans = kmeans\_1e6e4f712555
-
-scala\> val model = kmeans.fit(dataset)
-
-model: org.apache.spark.ml.clustering.KMeansModel = kmeans\_1e6e4f712555
+```scala
+scala> val kmeans = new KMeans().setK(2).setSeed(1L)
+kmeans: org.apache.spark.ml.clustering.KMeans = kmeans_1e6e4f712555
+scala> val model = kmeans.fit(dataset)
+model: org.apache.spark.ml.clustering.KMeansModel = kmeans_1e6e4f712555
+```
 
 代码 4‑121
 
   - 通过在平方误差的集合中计算评估聚类
 
-scala\> val WSSSE = model.computeCost(dataset)
-
+```scala
+scala> val WSSSE = model.computeCost(dataset)
 WSSSE: Double = 0.11999999999994547
-
-scala\> println(s"Within Set Sum of Squared Errors = $WSSSE")
-
+scala> println(s"Within Set Sum of Squared Errors = $WSSSE")
 Within Set Sum of Squared Errors = 0.11999999999994547
+```
 
 代码 4‑122
 
   - 显示结果
 
-scala\> println("Cluster Centers: ")
-
+```scala
+scala> println("Cluster Centers: ")
 Cluster Centers:
-
-scala\> model.clusterCenters.foreach(println)
-
-\[0.1,0.1,0.1\]
-
-\[9.1,9.1,9.1\]
+scala> model.clusterCenters.foreach(println)
+[0.1,0.1,0.1]
+[9.1,9.1,9.1]
+```
 
 代码 4‑123
 
@@ -3910,131 +3196,101 @@ scala\> model.clusterCenters.foreach(println)
 
 LDA作为支持EMLDAOptimizer和OnlineLDAOptimizer的估算器实现，并生成LDAModel作为基础模型。如果需要，专家用户可以将由EMLDAOptimizer生成的LDAModel转换为DistributedLDAModel。
 
-scala\> import org.apache.spark.ml.clustering.LDA
-
+```scala
+scala> import org.apache.spark.ml.clustering.LDA
 import org.apache.spark.ml.clustering.LDA
+```
 
 代码 4‑124
 
   - 加载数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_lda\_libsvm\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_lda_libsvm_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑125
 
   - 训练LDA模型
 
-scala\> val lda = new LDA().setK(10).setMaxIter(10)
-
-lda: org.apache.spark.ml.clustering.LDA = lda\_0c24c3ec3bab
-
-scala\> val model = lda.fit(dataset)
-
-model: org.apache.spark.ml.clustering.LDAModel = lda\_0c24c3ec3bab
-
-scala\> val ll = model.logLikelihood(dataset)
-
+```scala
+scala> val lda = new LDA().setK(10).setMaxIter(10)
+lda: org.apache.spark.ml.clustering.LDA = lda_0c24c3ec3bab
+scala> val model = lda.fit(dataset)
+model: org.apache.spark.ml.clustering.LDAModel = lda_0c24c3ec3bab
+scala> val ll = model.logLikelihood(dataset)
 ll: Double = -842.4862800491514
-
-scala\> val lp = model.logPerplexity(dataset)
-
+scala> val lp = model.logPerplexity(dataset)
 lp: Double = 3.2385774464305963
-
-scala\> println(s"The lower bound on the log likelihood of the entire
+scala> println(s"The lower bound on the log likelihood of the entire
 corpus: $ll")
-
 The lower bound on the log likelihood of the entire corpus:
 -842.4862800491514
-
-scala\> println(s"The upper bound on perplexity: $lp")
-
+scala> println(s"The upper bound on perplexity: $lp")
 The upper bound on perplexity: 3.2385774464305963
+```
 
 代码 4‑126
 
   - 描述主题
 
-scala\> val topics = model.describeTopics(3)
-
-topics: org.apache.spark.sql.DataFrame = \[topic: int, termIndices:
-array\<int\> ... 1 more field\]
-
-scala\> println("The topics described by their top-weighted terms:")
-
+```scala
+scala> val topics = model.describeTopics(3)
+topics: org.apache.spark.sql.DataFrame = [topic: int, termIndices:
+array<int> ... 1 more field]
+scala> println("The topics described by their top-weighted terms:")
 The topics described by their top-weighted terms:
-
-scala\> topics.show(false)
-
-\+-----+-----------+---------------------------------------------------------------+
-
+scala> topics.show(false)
++-----+-----------+---------------------------------------------------------------+
 |topic|termIndices|termWeights |
-
-\+-----+-----------+---------------------------------------------------------------+
-
-|0 |\[2, 5, 7\] |\[0.10606441785146535, 0.10570106737280574,
-0.1043039017910825\] |
-
-|1 |\[1, 6, 2\] |\[0.10185078330694743, 0.09816924136544754,
-0.09632455347714897\]|
-
-|2 |\[1, 9, 4\] |\[0.10597705576734423, 0.09750947025544646,
-0.09654669262128844\]|
-
-|3 |\[0, 4, 8\] |\[0.102706983773961, 0.09842850171937594,
-0.09815664111403606\] |
-
-|4 |\[9, 6, 4\] |\[0.10452968226922606, 0.10414903762686416,
-0.10103989135293562\]|
-
-|5 |\[10, 6, 9\] |\[0.21878768117572409, 0.14074681597413502,
-0.1276739943161934\] |
-
-|6 |\[3, 7, 4\] |\[0.11638316021438284, 0.09901763897381445,
-0.09795374111255549\]|
-
-|7 |\[4, 0, 2\] |\[0.10855455833990776, 0.10334271299447938,
-0.10034944281883779\]|
-
-|8 |\[0, 7, 8\] |\[0.11008004098527444, 0.09919724236284332,
-0.09810905351448598\]|
-
-|9 |\[9, 6, 8\] |\[0.10106113658487842, 0.10013291564891967,
-0.09769280655833748\]|
-
-\+-----+-----------+---------------------------------------------------------------+
-
-scala\>
++-----+-----------+---------------------------------------------------------------+
+|0 |[2, 5, 7] |[0.10606441785146535, 0.10570106737280574,
+0.1043039017910825] |
+|1 |[1, 6, 2] |[0.10185078330694743, 0.09816924136544754,
+0.09632455347714897]|
+|2 |[1, 9, 4] |[0.10597705576734423, 0.09750947025544646,
+0.09654669262128844]|
+|3 |[0, 4, 8] |[0.102706983773961, 0.09842850171937594,
+0.09815664111403606] |
+|4 |[9, 6, 4] |[0.10452968226922606, 0.10414903762686416,
+0.10103989135293562]|
+|5 |[10, 6, 9] |[0.21878768117572409, 0.14074681597413502,
+0.1276739943161934] |
+|6 |[3, 7, 4] |[0.11638316021438284, 0.09901763897381445,
+0.09795374111255549]|
+|7 |[4, 0, 2] |[0.10855455833990776, 0.10334271299447938,
+0.10034944281883779]|
+|8 |[0, 7, 8] |[0.11008004098527444, 0.09919724236284332,
+0.09810905351448598]|
+|9 |[9, 6, 8] |[0.10106113658487842, 0.10013291564891967,
+0.09769280655833748]|
++-----+-----------+---------------------------------------------------------------+
+scala>
+```
 
 代码 4‑127
 
   - 显示结果
 
-scala\> val transformed = model.transform(dataset)
-
-transformed: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 1 more field\]
-
-scala\> transformed.show(false)
-
-\+-----+---------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
+```scala
+scala> val transformed = model.transform(dataset)
+transformed: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 1 more field]
+scala> transformed.show(false)
++-----+---------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 |label|features |topicDistribution |
-
-\+-----+---------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-|0.0 |(11,\[0,1,2,4,5,6,7,10\],\[1.0,2.0,6.0,2.0,3.0,1.0,1.0,3.0\])
-|\[0.6990501464826979,0.004825989296507445,0.004825964734431469,0.004825959078413314,0.0048259276001261136,0.26234221206965436,0.004825955202628511,0.004826025945501356,0.004825893404537412,0.0048259261855020845\]
++-----+---------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|0.0 |(11,[0,1,2,4,5,6,7,10],[1.0,2.0,6.0,2.0,3.0,1.0,1.0,3.0])
+|[0.6990501464826979,0.004825989296507445,0.004825964734431469,0.004825959078413314,0.0048259276001261136,0.26234221206965436,0.004825955202628511,0.004826025945501356,0.004825893404537412,0.0048259261855020845]
 |
-
-|1.0 |(11,\[0,1,3,4,7,10\],\[1.0,3.0,1.0,3.0,2.0,1.0\])
-|\[0.008050728965819664,0.008050328998096084,0.008050336072632464,0.0080513660777465,0.008050221907908819,0.9275445084405548,0.008050734285468413,0.008050740924870691,0.008050657635177337,0.008050376691725378\]
+|1.0 |(11,[0,1,3,4,7,10],[1.0,3.0,1.0,3.0,2.0,1.0])
+|[0.008050728965819664,0.008050328998096084,0.008050336072632464,0.0080513660777465,0.008050221907908819,0.9275445084405548,0.008050734285468413,0.008050740924870691,0.008050657635177337,0.008050376691725378]
 |
-
 ……
+```
 
 代码 4‑128
 
@@ -4052,64 +3308,60 @@ words）的方法，这种方法将每一篇文档视为一个词频向量，从
 
 二分k均值是一种使用分裂（或“自上而下”）方法的分层聚类：所有观测都在一个聚类中开始，当一个分层向下移动时，分裂被递归地执行。二分k均值通常比常规K均值要快得多，但通常会产生不同的聚类。BisectingKMeans是作为估算器实现的，并生成一个BisectingKMeansModel作为基础模型。
 
-scala\> import org.apache.spark.ml.clustering.BisectingKMeans
-
+```scala
+scala> import org.apache.spark.ml.clustering.BisectingKMeans
 import org.apache.spark.ml.clustering.BisectingKMeans
+```
 
 代码 4‑129
 
   - 加载数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_kmeans\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_kmeans_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑130
 
   - 训练二分k均值模型
 
-scala\> val bkm = new BisectingKMeans().setK(2).setSeed(1)
-
+```scala
+scala> val bkm = new BisectingKMeans().setK(2).setSeed(1)
 bkm: org.apache.spark.ml.clustering.BisectingKMeans =
-bisecting-kmeans\_bf550173fc8c
-
-scala\> val model = bkm.fit(dataset)
-
+bisecting-kmeans_bf550173fc8c
+scala> val model = bkm.fit(dataset)
 model: org.apache.spark.ml.clustering.BisectingKMeansModel =
-bisecting-kmeans\_bf550173fc8c
+bisecting-kmeans_bf550173fc8c
+```
 
 代码 4‑131
 
   - 评估聚集
 
-scala\> val cost = model.computeCost(dataset)
-
+```scala
+scala> val cost = model.computeCost(dataset)
 cost: Double = 0.11999999999994547
-
-scala\> println(s"Within Set Sum of Squared Errors = $cost")
-
+scala> println(s"Within Set Sum of Squared Errors = $cost")
 Within Set Sum of Squared Errors = 0.11999999999994547
+```
 
 代码 4‑132
 
   - 显示结果
 
-scala\> println("Cluster Centers: ")
-
+```scala
+scala> println("Cluster Centers: ")
 Cluster Centers:
-
-scala\> val centers = model.clusterCenters
-
-centers: Array\[org.apache.spark.ml.linalg.Vector\] =
-Array(\[0.1,0.1,0.1\], \[9.1,9.1,9.1\])
-
-scala\> centers.foreach(println)
-
-\[0.1,0.1,0.1\]
-
-\[9.1,9.1,9.1\]
+scala> val centers = model.clusterCenters
+centers: Array[org.apache.spark.ml.linalg.Vector] =
+Array([0.1,0.1,0.1], [9.1,9.1,9.1])
+scala> centers.foreach(println)
+[0.1,0.1,0.1]
+[9.1,9.1,9.1]
+```
 
 代码 4‑133
 
@@ -4136,82 +3388,64 @@ scala\> centers.foreach(println)
 
 代码如下：
 
-scala\> import org.apache.spark.ml.clustering.GaussianMixture
-
+```scala
+scala> import org.apache.spark.ml.clustering.GaussianMixture
 import org.apache.spark.ml.clustering.GaussianMixture
+```
 
 代码 4‑134
 
   - 加载数据
 
-scala\> val dataset =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_kmeans\_data.txt")
-
-dataset: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+```scala
+scala> val dataset =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_kmeans_data.txt")
+dataset: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 代码 4‑135
 
   - 训练模型
 
-scala\> val gmm = new GaussianMixture()
-
+```scala
+scala> val gmm = new GaussianMixture()
 gmm: org.apache.spark.ml.clustering.GaussianMixture =
-GaussianMixture\_2c319d8bb00b
-
-scala\> .setK(2)
-
-\<console\>:1: error: illegal start of definition
-
+GaussianMixture_2c319d8bb00b
+scala> .setK(2)
+<console>:1: error: illegal start of definition
 .setK(2)
-
 ^
-
-scala\> val model = gmm.fit(dataset)
-
+scala> val model = gmm.fit(dataset)
 model: org.apache.spark.ml.clustering.GaussianMixtureModel =
-GaussianMixture\_2c319d8bb00b
+GaussianMixture_2c319d8bb00b
+```
 
 代码 4‑136
 
   - 混合模型的输出参数
 
-scala\> for (i \<- 0 until model.getK) {
-
-| println(s"Gaussian $i:\\nweight=${model.weights(i)}\\n" +
-
+```scala
+scala> for (i <- 0 until model.getK) {
+| println(s"Gaussian $i:\nweight=${model.weights(i)}\n" +
 |
-s"mu=${model.gaussians(i).mean}\\nsigma=\\n${model.gaussians(i).cov}\\n")
-
+s"mu=${model.gaussians(i).mean}\nsigma=\n${model.gaussians(i).cov}\n")
 | }
-
 Gaussian 0:
-
 weight=0.5
-
-mu=\[0.10000000000001552,0.10000000000001552,0.10000000000001552\]
-
+mu=[0.10000000000001552,0.10000000000001552,0.10000000000001552]
 sigma=
-
 0.006666666666806454 0.006666666666806454 0.006666666666806454
-
 0.006666666666806454 0.006666666666806454 0.006666666666806454
-
 0.006666666666806454 0.006666666666806454 0.006666666666806454
-
 Gaussian 1:
-
 weight=0.5
-
-mu=\[9.099999999999984,9.099999999999984,9.099999999999984\]
-
+mu=[9.099999999999984,9.099999999999984,9.099999999999984]
 sigma=
-
 0.006666666666812185 0.006666666666812185 0.006666666666812185
-
 0.006666666666812185 0.006666666666812185 0.006666666666812185
-
 0.006666666666812185 0.006666666666812185 0.006666666666812185
+```
 
 代码 4‑137
 

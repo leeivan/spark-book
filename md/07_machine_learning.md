@@ -61,34 +61,38 @@ MLlib支持单个机器上存储的局部向量和矩阵，以及由一个或多
 
 局部向量将具有整数型、基于0的索引和双精度类型的值，存储在一台机器上。MLlib支持两种类型的局部向量：稠密和稀疏。稠密向量由表示其输入值的双精度数组支持，而稀疏向量由两个并行数组支持：索引和值。例如一个向量（1.0,0.0,3.0）可以用稠密格式表示为\[1.0,0.0,3.0\]，或者以(3,\[0,2\],\[1.0,3.0\])的稀疏格式表示，其中第一个值3为向量的大小，第二个值表示向量的索引，第三个值表示向量的值。局部向量的基类是Vector，提供了两个实现：DenseVector和SparseVector。建议使用Vectors中实现的工厂方法来创建局部向量。Scala默认导入scala.collection.immutable.Vector，所以必须明确地导入org.apache.spark.ml.linalg.Vector。
 
-scala\> import org.apache.spark.ml.linalg.{Vectors, Vector}
-
+```scala
+scala> import org.apache.spark.ml.linalg.{Vectors, Vector}
 import org.apache.spark.ml.linalg.{Vectors, Vector}
+```
 
 代码 4‑1
 
   - 创建稠密向量(1.0, 0.0, 3.0)
 
-scala\> val dv: Vector = Vectors.dense(1.0, 0.0, 3.0)
-
-dv: org.apache.spark.ml.linalg.Vector = \[1.0,0.0,3.0\]
+```scala
+scala> val dv: Vector = Vectors.dense(1.0, 0.0, 3.0)
+dv: org.apache.spark.ml.linalg.Vector = [1.0,0.0,3.0]
+```
 
 代码 4‑2
 
   - 通过指定非零条目的索引和值，创建一个稀疏向量（1.0，0.0，3.0）。
 
-scala\> val sv1: Vector = Vectors.sparse(3, Array(0, 2), Array(1.0,
+```scala
+scala> val sv1: Vector = Vectors.sparse(3, Array(0, 2), Array(1.0,
 3.0))
-
-sv1: org.apache.spark.ml.linalg.Vector = (3,\[0,2\],\[1.0,3.0\])
+sv1: org.apache.spark.ml.linalg.Vector = (3,[0,2],[1.0,3.0])
+```
 
 代码 4‑3
 
   - 通过指定非零条目来创建一个稀疏向量（1.0，0.0，3.0）。
 
-scala\> val sv2: Vector = Vectors.sparse(3, Seq((0, 1.0), (2, 3.0)))
-
-sv2: org.apache.spark.ml.linalg.Vector = (3,\[0,2\],\[1.0,3.0\])
+```scala
+scala> val sv2: Vector = Vectors.sparse(3, Seq((0, 1.0), (2, 3.0)))
+sv2: org.apache.spark.ml.linalg.Vector = (3,[0,2],[1.0,3.0])
+```
 
 代码 4‑4
 
@@ -99,31 +103,32 @@ sv2: org.apache.spark.ml.linalg.Vector = (3,\[0,2\],\[1.0,3.0\])
 标签向量是一个稠密或稀疏的局部向量，而且关联了标签。在MLlib中，标签向量用于有监督学习算法。使用双精度来存储标签，所以可以在回归和分类中使用标签向量。对于二元分类，标签应该是0（负）或1（正）。对于多类分类，标签应该是从零开始的类索引：0,1,2
 ...。标签向量由案例类LabeledPoint表示。
 
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+```scala
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> import org.apache.spark.ml.feature.LabeledPoint
-
+scala> import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.feature.LabeledPoint
+```
 
 代码 4‑5
 
   - 使用正标签和稠密特征向量创建标签向量
 
-scala\> val pos = LabeledPoint(1.0, Vectors.dense(1.0, 0.0, 3.0))
-
-pos: org.apache.spark.ml.feature.LabeledPoint = (1.0,\[1.0,0.0,3.0\])
+```scala
+scala> val pos = LabeledPoint(1.0, Vectors.dense(1.0, 0.0, 3.0))
+pos: org.apache.spark.ml.feature.LabeledPoint = (1.0,[1.0,0.0,3.0])
+```
 
 代码 4‑6
 
   - 使用负标签和稀疏特征向量创建标签向量
 
-scala\> val neg = LabeledPoint(0.0, Vectors.sparse(3, Array(0, 2),
+```scala
+scala> val neg = LabeledPoint(0.0, Vectors.sparse(3, Array(0, 2),
 Array(1.0, 3.0)))
-
 neg: org.apache.spark.ml.feature.LabeledPoint =
-(0.0,(3,\[0,2\],\[1.0,3.0\]))
+(0.0,(3,[0,2],[1.0,3.0]))
+```
 
 代码 4‑7
 
@@ -187,51 +192,42 @@ os,代码本身是c++写的，同时也有matlab，python，java，c/c++扩展�
 
 以矩阵大小（3,2）存储在一维数组\[1.0,3.0,5.0,2.0,4.0,6.0\]中。局部矩阵的基类是Matrix，提供了两个实现：DenseMatrix和SparseMatrix。建议使用在矩阵中实现的工厂方法来创建局部矩阵。请记住，MLlib中的局部矩阵以列优先顺序存储。
 
-scala\> import org.apache.spark.ml.linalg.{Matrix, Matrices}
-
+```scala
+scala> import org.apache.spark.ml.linalg.{Matrix, Matrices}
 import org.apache.spark.ml.linalg.{Matrix, Matrices}
+```
 
 代码 4‑10
 
   - 创建稠密矩阵((1.0, 2.0), (3.0, 4.0), (5.0, 6.0))
 
-scala\> val dm: Matrix = Matrices.dense(3, 2, Array(1.0, 3.0, 5.0, 2.0,
+```scala
+scala> val dm: Matrix = Matrices.dense(3, 2, Array(1.0, 3.0, 5.0, 2.0,
 4.0, 6.0))
-
 dm: org.apache.spark.ml.linalg.Matrix =
-
 1.0 2.0
-
 3.0 4.0
-
 5.0 6.0
+```
 
 代码 4‑11
 
   - 创建稀疏矩阵 ((9.0, 0.0), (0.0, 8.0), (0.0, 6.0))
 
-scala\> val sm: Matrix = Matrices.sparse(3, 2, Array(0, 1, 3), Array(0,
+```scala
+scala> val sm: Matrix = Matrices.sparse(3, 2, Array(0, 1, 3), Array(0,
 2, 1), Array(9, 6, 8))
-
 sm: org.apache.spark.ml.linalg.Matrix =
-
 3 x 2 CSCMatrix
-
 (0,0) 9.0
-
 (2,1) 6.0
-
 (1,1) 8.0
-
-scala\> sm.toDense
-
+scala> sm.toDense
 res4: org.apache.spark.ml.linalg.DenseMatrix =
-
 9.0 0.0
-
 0.0 8.0
-
 0.0 6.0
+```
 
 代码 4‑12
 
@@ -262,50 +258,47 @@ Array(0, 1, 3)、rowIndices= Array(0, 2, 1)、values=Array(9, 6,
 
 RowMatrix就是将每行对应一个RDD，将矩阵的每行分布式存储，矩阵的每行是一个局部向量。由于每一行均由局部向量表示，因此列数受整数范围限制，但实际上应小得多。
 
-scala\> import org.apache.spark.mllib.linalg.Vectors
-
+```scala
+scala> import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.Vectors
-
-scala\> import org.apache.spark.mllib.linalg.distributed.RowMatrix
-
+scala> import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
+```
 
 代码 4‑13
 
 创建RDD\[Vector\]：
 
-scala\> val trainRDD = spark.sparkContext.parallelize(Seq(
-
+```scala
+scala> val trainRDD = spark.sparkContext.parallelize(Seq(
 | Vectors.dense(2.0, 3.0, 4.0),
-
 | Vectors.dense(5.0, 5.0, 5.0),
-
 | Vectors.dense(2.0, 3.0, 4.0)))
-
 trainRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.linalg.Vector\] =
-ParallelCollectionRDD\[0\] at parallelize at \<console\>:25
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector] =
+ParallelCollectionRDD[0] at parallelize at <console>:25
+```
 
 代码 4‑14
 
 从RDD\[Vector\]创建RowMatrix：
 
-scala\> val mat: RowMatrix = new RowMatrix(trainRDD)
-
+```scala
+scala> val mat: RowMatrix = new RowMatrix(trainRDD)
 mat: org.apache.spark.mllib.linalg.distributed.RowMatrix =
 <org.apache.spark.mllib.linalg.distributed.RowMatrix@14e8304b>
+```
 
 代码 4‑15
 
 得到RowMatrix的长度：
 
-scala\> val m = mat.numRows()
-
+```scala
+scala> val m = mat.numRows()
 m: Long = 3
-
-scala\> val n = mat.numCols()
-
+scala> val n = mat.numCols()
 n: Long = 3
+```
 
 代码 4‑16
 
@@ -314,51 +307,49 @@ n: Long = 3
 IndexedRowMatrix类似于RowMatrix，但行索引有意义。它由带索引行的RDD存储，因此每行都由长整型索引和局部向量表示。IndexedRowMatrix可以用RDD
 \[IndexedRow\]实例创建，其中IndexedRow是一个基于(Long,Vector)的包装器。IndexedRowMatrix可以通过删除行索引来转换为RowMatrix。
 
-scala\> import org.apache.spark.mllib.linalg.distributed.{IndexedRow,
+```scala
+scala> import org.apache.spark.mllib.linalg.distributed.{IndexedRow,
 IndexedRowMatrix}
-
 import org.apache.spark.mllib.linalg.distributed.{IndexedRow,
 IndexedRowMatrix}
-
-scala\> val rows = spark.sparkContext.parallelize(Seq(
-
+scala> val rows = spark.sparkContext.parallelize(Seq(
 | IndexedRow(0, Vectors.dense(1, 3)),
-
 | IndexedRow(1, Vectors.dense(4, 5))))
-
 rows:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.linalg.distributed.IndexedRow\]
-= ParallelCollectionRDD\[9\] at parallelize at \<console\>:28
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.IndexedRow]
+= ParallelCollectionRDD[9] at parallelize at <console>:28
+```
 
 代码 4‑17
 
 用RDD\[IndexedRow\]创建IndexedRowMatrix：
 
-scala\> val mat02: IndexedRowMatrix = new IndexedRowMatrix(rows)
-
+```scala
+scala> val mat02: IndexedRowMatrix = new IndexedRowMatrix(rows)
 mat02: org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix =
 <org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix@46b4cddb>
+```
 
 代码 4‑18
 
 得到长度：
 
-scala\>val m02 = mat02.numRows()
-
+```scala
+scala>val m02 = mat02.numRows()
 m02: Long = 2
-
-scala\>val n02 = mat02.numCols()
-
+scala>val n02 = mat02.numCols()
 n02: Long = 2
+```
 
 代码 4‑19
 
 去掉行索引：
 
-scala\> val rowMat: RowMatrix = mat02.toRowMatrix()
-
+```scala
+scala> val rowMat: RowMatrix = mat02.toRowMatrix()
 rowMat: org.apache.spark.mllib.linalg.distributed.RowMatrix =
 <org.apache.spark.mllib.linalg.distributed.RowMatrix@435e857c>
+```
 
 代码 4‑20
 
@@ -367,54 +358,51 @@ rowMat: org.apache.spark.mllib.linalg.distributed.RowMatrix =
 CoordinateMatrix也是分布式矩阵，每个条目由RDD保存。每个条目是(i:Long,j：Long,value：Double)的一个元组，其中i是行索引，j是列索引，value是条目值。CoordinateMatrix只有在矩阵的两个维度都很大且矩阵非常稀疏时才能使用。CoordinateMatrix可以由RDD
 \[MatrixEntry\]实例创建，其中MatrixEntry是基于(Long,Long,Double)的包装器。可以通过调用toIndexedRowMatrix将CoordinateMatrix转换为具有稀疏行的IndexedRowMatrix。目前还不支持CoordinateMatrix的其他计算。
 
-scala\> import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
+```scala
+scala> import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
 CoordinateMatrix}
-
 import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
 CoordinateMatrix}
-
-scala\> val entries03 = spark.sparkContext.parallelize(Seq(
-
+scala> val entries03 = spark.sparkContext.parallelize(Seq(
 | MatrixEntry(0, 1, 1), MatrixEntry(0, 2, 2), MatrixEntry(0, 3, 3),
-
 | MatrixEntry(0, 4, 4), MatrixEntry(2, 3, 5), MatrixEntry(2, 4, 6),
-
 | MatrixEntry(3, 4, 7)))
-
 entries03:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.linalg.distributed.MatrixEntry\]
-= ParallelCollectionRDD\[13\] at parallelize at \<console\>:30
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.MatrixEntry]
+= ParallelCollectionRDD[13] at parallelize at <console>:30
+```
 
 代码 4‑21
 
 用RDD\[MatrixEntry\]创建CoordinateMatrix：
 
-scala\>val mat03: CoordinateMatrix = new CoordinateMatrix(entries03)
-
+```scala
+scala>val mat03: CoordinateMatrix = new CoordinateMatrix(entries03)
 mat03: org.apache.spark.mllib.linalg.distributed.CoordinateMatrix =
 <org.apache.spark.mllib.linalg.distributed.CoordinateMatrix@17c158ca>
+```
 
 代码 4‑22
 
 得到长度：
 
-scala\> val m03 = mat03.numRows()
-
+```scala
+scala> val m03 = mat03.numRows()
 m03: Long = 4
-
-scala\>val n03 = mat03.numCols()
-
+scala>val n03 = mat03.numCols()
 n03: Long = 5
+```
 
 代码 4‑23
 
 转换成IndexRowMatrix，其中的行为稀疏向量：
 
-scala\> val indexedRowMatrix = mat03.toIndexedRowMatrix()
-
+```scala
+scala> val indexedRowMatrix = mat03.toIndexedRowMatrix()
 indexedRowMatrix:
 org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix =
 <org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix@c34e260>
+```
 
 代码 4‑24
 
@@ -424,56 +412,57 @@ BlockMatrix是分布式矩阵，其中的MatrixBlock是由RDD方式保存。Matr
 
 BlockMatrix可以通过调用toBlockMatrix方便地从IndexedRowMatrix或CoordinateMatrix创建。toBlockMatrix默认创建大小为1024\*1024的块。用户可以通过toBlockMatrix(rowsPerBlock,colsPerBlock)方法提供值来改变块的大小。
 
-scala\> import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
+```scala
+scala> import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
 CoordinateMatrix, BlockMatrix}
-
 import org.apache.spark.mllib.linalg.distributed.{MatrixEntry,
 CoordinateMatrix, BlockMatrix}
-
-scala\> val entries04 = spark.sparkContext.parallelize(Seq(
-
+scala> val entries04 = spark.sparkContext.parallelize(Seq(
 | MatrixEntry(0, 0, 1.2),
-
 | MatrixEntry(1, 0, 2.1),
-
 | MatrixEntry(6, 1, 3.7)))
-
 entries04:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.linalg.distributed.MatrixEntry\]
-= ParallelCollectionRDD\[18\] at parallelize at \<console\>:31
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.MatrixEntry]
+= ParallelCollectionRDD[18] at parallelize at <console>:31
+```
 
 代码 4‑25
 
 用RDD\[MatrixEntry\]创建CoordinateMatrix：
 
-scala\> val coordMat: CoordinateMatrix = new CoordinateMatrix(entries04)
-
+```scala
+scala> val coordMat: CoordinateMatrix = new CoordinateMatrix(entries04)
 coordMat: org.apache.spark.mllib.linalg.distributed.CoordinateMatrix =
 <org.apache.spark.mllib.linalg.distributed.CoordinateMatrix@2142b70d>
+```
 
 代码 4‑26
 
 将CoordinateMatrix转换为BlockMatrix：
 
-scala\> val matA: BlockMatrix = coordMat.toBlockMatrix().cache()
-
+```scala
+scala> val matA: BlockMatrix = coordMat.toBlockMatrix().cache()
 matA: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 <org.apache.spark.mllib.linalg.distributed.BlockMatrix@42e58f8e>
+```
 
 代码 4‑27
 
 验证BlockMatrix是否设置正确。当它是无效的，抛出一个异常。
 
-scala\> matA.validate()
+```scala
+scala> matA.validate()
+```
 
 代码 4‑28
 
 计算A^T A：
 
-scala\> val ata = matA.transpose.multiply(matA)
-
+```scala
+scala> val ata = matA.transpose.multiply(matA)
 ata: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 <org.apache.spark.mllib.linalg.distributed.BlockMatrix@7e09407a>
+```
 
 代码 4‑29
 
@@ -486,62 +475,38 @@ ata: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 计算两个系列数据之间的相关性是统计中的常见操作。spark.mllib提供了灵活性来计算许多序列之间的成对相关性。目前支持的相关分析是皮尔逊和斯皮尔曼。org.apache.spark.ml.stat提供了计算序列之间相关性的方法，根据输入的类型（两个RDD
 \[Double\]或一个RDD \[Vector\]），输出分别是Double或相关矩阵。
 
-scala\> import org.apache.spark.ml.linalg.{Matrix, Vectors}
-
+```scala
+scala> import org.apache.spark.ml.linalg.{Matrix, Vectors}
 import org.apache.spark.ml.linalg.{Matrix, Vectors}
-
-scala\> import org.apache.spark.ml.stat.Correlation
-
+scala> import org.apache.spark.ml.stat.Correlation
 import org.apache.spark.ml.stat.Correlation
-
-scala\> import org.apache.spark.sql.Row
-
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
-
-scala\> val data = Seq(
-
+scala> val data = Seq(
 | Vectors.sparse(4, Seq((0, 1.0), (3, -2.0))),
-
 | Vectors.dense(4.0, 5.0, 0.0, 3.0),
-
 | Vectors.dense(6.0, 7.0, 0.0, 8.0),
-
 | Vectors.sparse(4, Seq((0, 9.0), (3, 1.0)))
-
 | )
-
-data: Seq\[org.apache.spark.ml.linalg.Vector\] =
-List((4,\[0,3\],\[1.0,-2.0\]), \[4.0,5.0,0.0,3.0\], \[6.0,7.0,0.0,8.0\],
-(4,\[0,3\],\[9.0,1.0\]))
-
-scala\> val df = data.map(Tuple1.apply).toDF("features")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector\]
-
-scala\> val Row(coeff1: Matrix) = Correlation.corr(df, "features").head
-
+data: Seq[org.apache.spark.ml.linalg.Vector] =
+List((4,[0,3],[1.0,-2.0]), [4.0,5.0,0.0,3.0], [6.0,7.0,0.0,8.0],
+(4,[0,3],[9.0,1.0]))
+scala> val df = data.map(Tuple1.apply).toDF("features")
+df: org.apache.spark.sql.DataFrame = [features: vector]
+scala> val Row(coeff1: Matrix) = Correlation.corr(df, "features").head
 coeff1: org.apache.spark.ml.linalg.Matrix =
-
 1.0 0.055641488407465814 NaN 0.4004714203168137
-
 0.055641488407465814 1.0 NaN 0.9135958615342522
-
 NaN NaN 1.0 NaN
-
 0.4004714203168137 0.9135958615342522 NaN 1.0
-
-scala\> val Row(coeff2: Matrix) = Correlation.corr(df, "features",
+scala> val Row(coeff2: Matrix) = Correlation.corr(df, "features",
 "spearman").head
-
 coeff2: org.apache.spark.ml.linalg.Matrix =
-
 1.0 0.10540925533894532 NaN 0.40000000000000174
-
 0.10540925533894532 1.0 NaN 0.9486832980505141
-
 NaN NaN 1.0 NaN
-
 0.40000000000000174 0.9486832980505141 NaN 1.0
+```
 
 代码 4‑30
 
@@ -571,56 +536,36 @@ NaN NaN 1.0 NaN
 假设检验是统计学中一个强大的工具，用来确定一个结果是否具有统计显着性，这个结果是否偶然发生。spark.ml目前支持皮尔森卡方检验（\(x^{2}\)）独立性测试。ChiSquareTest针对标签上的每个特征进行皮尔逊独立性测试。对于每个特征，将(feature,
 label)对转换为列矩阵，针对该列矩阵计算卡方统计量。所有标签和特征值必须是分类的。
 
-scala\> import org.apache.spark.ml.linalg.{Vector, Vectors}
-
+```scala
+scala> import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-
-scala\> import org.apache.spark.ml.stat.ChiSquareTest
-
+scala> import org.apache.spark.ml.stat.ChiSquareTest
 import org.apache.spark.ml.stat.ChiSquareTest
-
-scala\> val data = Seq(
-
+scala> val data = Seq(
 | (0.0, Vectors.dense(0.5, 10.0)),
-
 | (0.0, Vectors.dense(1.5, 20.0)),
-
 | (1.0, Vectors.dense(1.5, 30.0)),
-
 | (0.0, Vectors.dense(3.5, 30.0)),
-
 | (0.0, Vectors.dense(3.5, 40.0)),
-
 | (1.0, Vectors.dense(3.5, 40.0))
-
 | )
-
-data: Seq\[(Double, org.apache.spark.ml.linalg.Vector)\] =
-List((0.0,\[0.5,10.0\]), (0.0,\[1.5,20.0\]), (1.0,\[1.5,30.0\]),
-(0.0,\[3.5,30.0\]), (0.0,\[3.5,40.0\]), (1.0,\[3.5,40.0\]))
-
-scala\> val df = data.toDF("label", "features")
-
-df: org.apache.spark.sql.DataFrame = \[label: double, features: vector\]
-
-scala\> val chi = ChiSquareTest.test(df, "features", "label").head
-
+data: Seq[(Double, org.apache.spark.ml.linalg.Vector)] =
+List((0.0,[0.5,10.0]), (0.0,[1.5,20.0]), (1.0,[1.5,30.0]),
+(0.0,[3.5,30.0]), (0.0,[3.5,40.0]), (1.0,[3.5,40.0]))
+scala> val df = data.toDF("label", "features")
+df: org.apache.spark.sql.DataFrame = [label: double, features: vector]
+scala> val chi = ChiSquareTest.test(df, "features", "label").head
 chi: org.apache.spark.sql.Row =
-\[\[0.6872892787909721,0.6822703303362126\],WrappedArray(2,
-3),\[0.75,1.5\]\]
-
-scala\> println("pValues = " + chi.getAs\[Vector\](0))
-
-pValues = \[0.6872892787909721,0.6822703303362126\]
-
-scala\> println("degreesOfFreedom = " +
-chi.getSeq\[Int\](1).mkString("\[", ",", "\]"))
-
-degreesOfFreedom = \[2,3\]
-
-scala\> println("statistics = " + chi.getAs\[Vector\](2))
-
-statistics = \[0.75,1.5\]
+[[0.6872892787909721,0.6822703303362126],WrappedArray(2,
+3),[0.75,1.5]]
+scala> println("pValues = " + chi.getAs[Vector](0))
+pValues = [0.6872892787909721,0.6822703303362126]
+scala> println("degreesOfFreedom = " +
+chi.getSeq[Int](1).mkString("[", ",", "]"))
+degreesOfFreedom = [2,3]
+scala> println("statistics = " + chi.getAs[Vector](2))
+statistics = [0.75,1.5]
+```
 
 代码 4‑31
 
@@ -632,66 +577,43 @@ statistics = \[0.75,1.5\]
 
 在spark.ml包中，Summarizer提供了DataFrame的向量列摘要统计信息。可用的度量是每列数据的最大值、最小值、平均值、方差和非零数以及总数。下面的示例演示如何使用Summarizer为输入DataFrame的向量列（带有和不带有权重列）计算均值和方差。
 
-scala\> import org.apache.spark.ml.linalg.{Vector, Vectors}
-
+```scala
+scala> import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-
-scala\> import org.apache.spark.ml.stat.Summarizer
-
+scala> import org.apache.spark.ml.stat.Summarizer
 import org.apache.spark.ml.stat.Summarizer
-
-scala\> import spark.implicits.\_
-
-import spark.implicits.\_
-
-scala\> import Summarizer.\_
-
-import Summarizer.\_
-
-scala\> val data = Seq(
-
+scala> import spark.implicits._
+import spark.implicits._
+scala> import Summarizer._
+import Summarizer._
+scala> val data = Seq(
 | (Vectors.dense(2.0, 3.0, 5.0), 1.0),
-
 | (Vectors.dense(4.0, 6.0, 7.0), 2.0)
-
 | )
-
-data: Seq\[(org.apache.spark.ml.linalg.Vector, Double)\] =
-List((\[2.0,3.0,5.0\],1.0), (\[4.0,6.0,7.0\],2.0))
-
-scala\> val df = data.toDF("features", "weight")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector, weight:
-double\]
-
-scala\> val (meanVal, varianceVal) = df.select(metrics("mean",
+data: Seq[(org.apache.spark.ml.linalg.Vector, Double)] =
+List(([2.0,3.0,5.0],1.0), ([4.0,6.0,7.0],2.0))
+scala> val df = data.toDF("features", "weight")
+df: org.apache.spark.sql.DataFrame = [features: vector, weight:
+double]
+scala> val (meanVal, varianceVal) = df.select(metrics("mean",
 "variance")
-
 | .summary($"features", $"weight").as("summary")).select("summary.mean",
-"summary.variance").as\[(Vector, Vector)\].first()
-
+"summary.variance").as[(Vector, Vector)].first()
 meanVal: org.apache.spark.ml.linalg.Vector =
-\[3.333333333333333,5.0,6.333333333333333\]
-
-varianceVal: org.apache.spark.ml.linalg.Vector = \[2.0,4.5,2.0\]
-
-scala\> println(s"with weight: mean = ${meanVal}, variance =
+[3.333333333333333,5.0,6.333333333333333]
+varianceVal: org.apache.spark.ml.linalg.Vector = [2.0,4.5,2.0]
+scala> println(s"with weight: mean = ${meanVal}, variance =
 ${varianceVal}")
-
-with weight: mean = \[3.333333333333333,5.0,6.333333333333333\],
-variance = \[2.0,4.5,2.0\]
-
-scala\> val (meanVal2, varianceVal2) = df.select(mean($"features"),
-variance($"features")).as\[(Vector, Vector)\].first()
-
-meanVal2: org.apache.spark.ml.linalg.Vector = \[3.0,4.5,6.0\]
-
-varianceVal2: org.apache.spark.ml.linalg.Vector = \[2.0,4.5,2.0\]
-
-scala\> println(s"without weight: mean = ${meanVal2}, sum =
+with weight: mean = [3.333333333333333,5.0,6.333333333333333],
+variance = [2.0,4.5,2.0]
+scala> val (meanVal2, varianceVal2) = df.select(mean($"features"),
+variance($"features")).as[(Vector, Vector)].first()
+meanVal2: org.apache.spark.ml.linalg.Vector = [3.0,4.5,6.0]
+varianceVal2: org.apache.spark.ml.linalg.Vector = [2.0,4.5,2.0]
+scala> println(s"without weight: mean = ${meanVal2}, sum =
 ${varianceVal2}")
-
-without weight: mean = \[3.0,4.5,6.0\], sum = \[2.0,4.5,2.0\]
+without weight: mean = [3.0,4.5,6.0], sum = [2.0,4.5,2.0]
+```
 
 ## 7.6 算法概述
 
@@ -910,223 +832,174 @@ vectors）。由于LogisticRegression是一个估算器，所以机器学习管�
 20)。如果管道中有两个带有maxIter参数的算法，这种方式将很有用。通常，将模型或管道保存到存储中可以供以后使用。从Spark
 1.6开始，模型导入和导出的功能已添加到API中。下面的示例描述了文本处理的机器学习管道执行的过程。
 
-scala\> import org.apache.spark.ml.{Pipeline, PipelineModel}
-
+```scala
+scala> import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
-
-scala\> import org.apache.spark.ml.classification.LogisticRegression
-
+scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
-
-scala\> import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
-
+scala> import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
 import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
-
-scala\> import org.apache.spark.ml.linalg.Vector
-
+scala> import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.linalg.Vector
-
-scala\> import org.apache.spark.sql.Row
-
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
+```
 
 代码 4‑32
 
 准备训练数据：
 
-scala\> val training = spark.createDataFrame(Seq(
-
+```scala
+scala> val training = spark.createDataFrame(Seq(
 | (0L, "a b c d e spark", 1.0),
-
 | (1L, "b d", 0.0),
-
 | (2L, "spark f g h", 1.0),
-
 | (3L, "hadoop mapreduce", 0.0)
-
 | )).toDF("id", "text", "label")
-
-training: org.apache.spark.sql.DataFrame = \[id: bigint, text: string
-... 1 more field\]
-
-scala\> training.show
-
-\+---+----------------+-----+
-
+training: org.apache.spark.sql.DataFrame = [id: bigint, text: string
+... 1 more field]
+scala> training.show
++---+----------------+-----+
 | id| text|label|
-
-\+---+----------------+-----+
-
++---+----------------+-----+
 | 0| a b c d e spark| 1.0|
-
 | 1| b d| 0.0|
-
 | 2| spark f g h| 1.0|
-
 | 3|hadoop mapreduce| 0.0|
-
-\+---+----------------+-----+
++---+----------------+-----+
+```
 
 代码 4‑33
 
 配置ML管道，由三个阶段组成：tokenizer、hashingTF和lr：
 
-scala\>val tokenizer = new
+```scala
+scala>val tokenizer = new
 Tokenizer().setInputCol("text").setOutputCol("words")
-
-tokenizer: org.apache.spark.ml.feature.Tokenizer = tok\_d33aebff5942
-
-scala\>val hashingTF = new
+tokenizer: org.apache.spark.ml.feature.Tokenizer = tok_d33aebff5942
+scala>val hashingTF = new
 HashingTF().setNumFeatures(1000).setInputCol(tokenizer.getOutputCol).setOutputCol("features")
-
 hashingTF: org.apache.spark.ml.feature.HashingTF =
-hashingTF\_214a5ff53c51
-
-scala\>val lr = new
+hashingTF_214a5ff53c51
+scala>val lr = new
 LogisticRegression().setMaxIter(10).setRegParam(0.001)
-
 lr: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_6b1ab2bbcffb
-
-scala\>val pipeline = new Pipeline().setStages(Array(tokenizer,
+logreg_6b1ab2bbcffb
+scala>val pipeline = new Pipeline().setStages(Array(tokenizer,
 hashingTF, lr))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_b07867b9cf3e
+pipeline: org.apache.spark.ml.Pipeline = pipeline_b07867b9cf3e
+```
 
 代码 4‑34
 
 使用fit()方法将训练文档传递给管道：
 
-scala\> val model = pipeline.fit(training)
-
-model: org.apache.spark.ml.PipelineModel = pipeline\_b07867b9cf3e
+```scala
+scala> val model = pipeline.fit(training)
+model: org.apache.spark.ml.PipelineModel = pipeline_b07867b9cf3e
+```
 
 代码 4‑35
 
 现在，可以将拟合后的管道保存：
 
-scala\>
+```scala
+scala>
 model.write.overwrite().save("/tmp/spark-logistic-regression-model")
+```
 
 代码 4‑36
 
 也可以将没有执行fit()的管道保存：
 
-scala\> pipeline.write.overwrite().save("/tmp/unfit-lr-model")
+```scala
+scala> pipeline.write.overwrite().save("/tmp/unfit-lr-model")
+```
 
 代码 4‑37
 
 加载保存的管道：
 
-scala\> val sameModel =
+```scala
+scala> val sameModel =
 PipelineModel.load("/tmp/spark-logistic-regression-model")
-
-sameModel: org.apache.spark.ml.PipelineModel = pipeline\_b07867b9cf3e
+sameModel: org.apache.spark.ml.PipelineModel = pipeline_b07867b9cf3e
+```
 
 代码 4‑38
 
 准备测试文档，为没有标记的元组(id, text)：
 
-scala\> val test = spark.createDataFrame(Seq(
-
+```scala
+scala> val test = spark.createDataFrame(Seq(
 | (4L, "spark i j k"),
-
 | (5L, "l m n"),
-
 | (6L, "spark hadoop spark"),
-
 | (7L, "apache hadoop")
-
 | )).toDF("id", "text")
-
-test: org.apache.spark.sql.DataFrame = \[id: bigint, text: string\]
+test: org.apache.spark.sql.DataFrame = [id: bigint, text: string]
+```
 
 代码 4‑39
 
 在测试文档上进行预测：
 
-scala\> model.transform(test).select("id", "text", "probability",
-
+```scala
+scala> model.transform(test).select("id", "text", "probability",
 | "prediction").collect().foreach { case Row(id: Long,
-
-| text: String, prob: Vector, prediction: Double) =\>
-
-| println(s"($id, $text) --\> prob=$prob, prediction=$prediction")
-
+| text: String, prob: Vector, prediction: Double) =>
+| println(s"($id, $text) --> prob=$prob, prediction=$prediction")
 | }
-
-(4, spark i j k) --\> prob=\[0.15964077387874118,0.8403592261212589\],
+(4, spark i j k) --> prob=[0.15964077387874118,0.8403592261212589],
 prediction=1.0
-
-(5, l m n) --\> prob=\[0.8378325685476612,0.16216743145233875\],
+(5, l m n) --> prob=[0.8378325685476612,0.16216743145233875],
 prediction=0.0
-
-(6, spark hadoop spark) --\>
-prob=\[0.06926633132976273,0.9307336686702373\], prediction=1.0
-
-(7, apache hadoop) --\> prob=\[0.9821575333444208,0.01784246665557917\],
+(6, spark hadoop spark) -->
+prob=[0.06926633132976273,0.9307336686702373], prediction=1.0
+(7, apache hadoop) --> prob=[0.9821575333444208,0.01784246665557917],
 prediction=0.0
+```
 
 代码 4‑40
 
 打印出参数对（名称：数值），名称中包含LogisticRegression实例的唯一ID(20733c862f55)：
 
-scala\> println("Model was fit using parameters: " + lr.extractParamMap)
-
+```scala
+scala> println("Model was fit using parameters: " + lr.extractParamMap)
 Model was fit using parameters: {
-
-logreg\_20733c862f55-aggregationDepth: 2,
-
-logreg\_20733c862f55-elasticNetParam: 0.0,
-
-logreg\_20733c862f55-family: auto,
-
-logreg\_20733c862f55-featuresCol: features,
-
-logreg\_20733c862f55-fitIntercept: true,
-
-logreg\_20733c862f55-labelCol: label,
-
-logreg\_20733c862f55-maxIter: 10,
-
-logreg\_20733c862f55-predictionCol: prediction,
-
-logreg\_20733c862f55-probabilityCol: probability,
-
-logreg\_20733c862f55-rawPredictionCol: rawPrediction,
-
-logreg\_20733c862f55-regParam: 0.001,
-
-logreg\_20733c862f55-standardization: true,
-
-logreg\_20733c862f55-threshold: 0.5,
-
-logreg\_20733c862f55-tol: 1.0E-6
-
+logreg_20733c862f55-aggregationDepth: 2,
+logreg_20733c862f55-elasticNetParam: 0.0,
+logreg_20733c862f55-family: auto,
+logreg_20733c862f55-featuresCol: features,
+logreg_20733c862f55-fitIntercept: true,
+logreg_20733c862f55-labelCol: label,
+logreg_20733c862f55-maxIter: 10,
+logreg_20733c862f55-predictionCol: prediction,
+logreg_20733c862f55-probabilityCol: probability,
+logreg_20733c862f55-rawPredictionCol: rawPrediction,
+logreg_20733c862f55-regParam: 0.001,
+logreg_20733c862f55-standardization: true,
+logreg_20733c862f55-threshold: 0.5,
+logreg_20733c862f55-tol: 1.0E-6
 }
+```
 
 代码 4‑41
 
 可替代地使用ParamMap中的不同方法指定参数：
 
-scala\> import org.apache.spark.ml.param.ParamMap
-
+```scala
+scala> import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.param.ParamMap
-
-scala\> val paramMap = ParamMap(lr.maxIter -\> 20).put(lr.maxIter,
-30).put(lr.regParam -\> 0.1, lr.threshold -\> 0.55)
-
+scala> val paramMap = ParamMap(lr.maxIter -> 20).put(lr.maxIter,
+30).put(lr.regParam -> 0.1, lr.threshold -> 0.55)
 paramMap: org.apache.spark.ml.param.ParamMap =
-
 {
-
-logreg\_20733c862f55-maxIter: 30,
-
-logreg\_20733c862f55-regParam: 0.1,
-
-logreg\_20733c862f55-threshold: 0.55
-
+logreg_20733c862f55-maxIter: 30,
+logreg_20733c862f55-regParam: 0.1,
+logreg_20733c862f55-threshold: 0.55
 }
+```
 
 代码 4‑42
 
@@ -1134,81 +1007,53 @@ logreg\_20733c862f55-threshold: 0.55
 
 组合多个ParamMap：
 
-scala\> val paramMap2 = ParamMap(lr.probabilityCol -\> "myProbability")
-
+```scala
+scala> val paramMap2 = ParamMap(lr.probabilityCol -> "myProbability")
 paramMap2: org.apache.spark.ml.param.ParamMap =
-
 {
-
-logreg\_20733c862f55-probabilityCol: myProbability
-
+logreg_20733c862f55-probabilityCol: myProbability
 }
-
-scala\> val paramMapCombined = paramMap ++ paramMap2
-
+scala> val paramMapCombined = paramMap ++ paramMap2
 paramMapCombined: org.apache.spark.ml.param.ParamMap =
-
 {
-
-logreg\_20733c862f55-maxIter: 30,
-
-logreg\_20733c862f55-probabilityCol: myProbability,
-
-logreg\_20733c862f55-regParam: 0.1,
-
-logreg\_20733c862f55-threshold: 0.55
-
+logreg_20733c862f55-maxIter: 30,
+logreg_20733c862f55-probabilityCol: myProbability,
+logreg_20733c862f55-regParam: 0.1,
+logreg_20733c862f55-threshold: 0.55
 }
+```
 
 代码 4‑43
 
 使用paramMapCombined中定义的参数学习新的模型，并且覆盖之前lr中参数：
 
-scala\> val model2 = pipeline.fit(training, paramMapCombined)
-
-model2: org.apache.spark.ml.PipelineModel = pipeline\_7a5c909d61d5
-
-scala\> val logRegModel =
-model2.stages.last.asInstanceOf\[org.apache.spark.ml.classification.LogisticRegressionModel\]
-
+```scala
+scala> val model2 = pipeline.fit(training, paramMapCombined)
+model2: org.apache.spark.ml.PipelineModel = pipeline_7a5c909d61d5
+scala> val logRegModel =
+model2.stages.last.asInstanceOf[org.apache.spark.ml.classification.LogisticRegressionModel]
 logRegModel: org.apache.spark.ml.classification.LogisticRegressionModel
-= LogisticRegressionModel: uid = logreg\_20733c862f55, numClasses = 2,
+= LogisticRegressionModel: uid = logreg_20733c862f55, numClasses = 2,
 numFeatures = 1000
-
-scala\> println("Model 2 was fit using parameters: " +
+scala> println("Model 2 was fit using parameters: " +
 logRegModel.extractParamMap)
-
 Model 2 was fit using parameters: {
-
-logreg\_20733c862f55-aggregationDepth: 2,
-
-logreg\_20733c862f55-elasticNetParam: 0.0,
-
-logreg\_20733c862f55-family: auto,
-
-logreg\_20733c862f55-featuresCol: features,
-
-logreg\_20733c862f55-fitIntercept: true,
-
-logreg\_20733c862f55-labelCol: label,
-
-logreg\_20733c862f55-maxIter: 30,
-
-logreg\_20733c862f55-predictionCol: prediction,
-
-logreg\_20733c862f55-probabilityCol: myProbability,
-
-logreg\_20733c862f55-rawPredictionCol: rawPrediction,
-
-logreg\_20733c862f55-regParam: 0.1,
-
-logreg\_20733c862f55-standardization: true,
-
-logreg\_20733c862f55-threshold: 0.55,
-
-logreg\_20733c862f55-tol: 1.0E-6
-
+logreg_20733c862f55-aggregationDepth: 2,
+logreg_20733c862f55-elasticNetParam: 0.0,
+logreg_20733c862f55-family: auto,
+logreg_20733c862f55-featuresCol: features,
+logreg_20733c862f55-fitIntercept: true,
+logreg_20733c862f55-labelCol: label,
+logreg_20733c862f55-maxIter: 30,
+logreg_20733c862f55-predictionCol: prediction,
+logreg_20733c862f55-probabilityCol: myProbability,
+logreg_20733c862f55-rawPredictionCol: rawPrediction,
+logreg_20733c862f55-regParam: 0.1,
+logreg_20733c862f55-standardization: true,
+logreg_20733c862f55-threshold: 0.55,
+logreg_20733c862f55-tol: 1.0E-6
 }
+```
 
 代码 4‑44
 
@@ -1236,240 +1081,170 @@ test)
 (3\*2)\*2=12不同模型被训练。在实际设置中，尝试更多的参数并使用更多的折叠数（通常k = 3和k =
 10）是很常见的。换句话说，虽然使用CrossValidator可能成本很高，需要的计算时间比较长，但是这也是一种公认的用于选择参数的方法，该方法在统计上比启发式手动调整更合理。
 
-scala\> import org.apache.spark.ml.Pipeline
-
+```scala
+scala> import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.Pipeline
-
-scala\> import org.apache.spark.ml.classification.LogisticRegression
-
+scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
-
-scala\> import
+scala> import
 org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator
-
-scala\> import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
-
+scala> import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
 import org.apache.spark.ml.feature.{HashingTF, Tokenizer}
-
-scala\> import org.apache.spark.ml.linalg.Vector
-
+scala> import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.linalg.Vector
-
-scala\> import org.apache.spark.ml.tuning.{CrossValidator,
+scala> import org.apache.spark.ml.tuning.{CrossValidator,
 ParamGridBuilder}
-
 import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-
-scala\> import org.apache.spark.sql.Row
-
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
+```
 
 代码 4‑45
 
 准备训练数据：
 
-scala\> val training = spark.createDataFrame(Seq(
-
+```scala
+scala> val training = spark.createDataFrame(Seq(
 | (0L, "a b c d e spark", 1.0),
-
 | (1L, "b d", 0.0),
-
 | (2L, "spark f g h", 1.0),
-
 | (3L, "hadoop mapreduce", 0.0),
-
 | (4L, "b spark who", 1.0),
-
 | (5L, "g d a y", 0.0),
-
 | (6L, "spark fly", 1.0),
-
 | (7L, "was mapreduce", 0.0),
-
 | (8L, "e spark program", 1.0),
-
 | (9L, "a e c l", 0.0),
-
 | (10L, "spark compile", 1.0),
-
 | (11L, "hadoop software", 0.0)
-
 | )).toDF("id", "text", "label")
-
-training: org.apache.spark.sql.DataFrame = \[id: bigint, text: string
-... 1 more field\]
-
-scala\> training.show
-
-\+---+----------------+-----+
-
+training: org.apache.spark.sql.DataFrame = [id: bigint, text: string
+... 1 more field]
+scala> training.show
++---+----------------+-----+
 | id| text|label|
-
-\+---+----------------+-----+
-
++---+----------------+-----+
 | 0| a b c d e spark| 1.0|
-
 | 1| b d| 0.0|
-
 | 2| spark f g h| 1.0|
-
 | 3|hadoop mapreduce| 0.0|
-
 | 4| b spark who| 1.0|
-
 | 5| g d a y| 0.0|
-
 | 6| spark fly| 1.0|
-
 | 7| was mapreduce| 0.0|
-
 | 8| e spark program| 1.0|
-
 | 9| a e c l| 0.0|
-
 | 10| spark compile| 1.0|
-
 | 11| hadoop software| 0.0|
-
-\+---+----------------+-----+
++---+----------------+-----+
+```
 
 代码 4‑46
 
 配置ML管道，有三个阶段组成：tokenizer、hashingTF和lr：
 
-scala\>val tokenizer = new
+```scala
+scala>val tokenizer = new
 Tokenizer().setInputCol("text").setOutputCol("words")
-
-tokenizer: org.apache.spark.ml.feature.Tokenizer = tok\_2d74c623b391
-
-scala\>val hashingTF = new
+tokenizer: org.apache.spark.ml.feature.Tokenizer = tok_2d74c623b391
+scala>val hashingTF = new
 HashingTF().setInputCol(tokenizer.getOutputCol).setOutputCol("features")
-
 hashingTF: org.apache.spark.ml.feature.HashingTF =
-hashingTF\_9d7dce2a61ed
-
-scala\>val lr = new LogisticRegression().setMaxIter(10)
-
+hashingTF_9d7dce2a61ed
+scala>val lr = new LogisticRegression().setMaxIter(10)
 lr: org.apache.spark.ml.classification.LogisticRegression =
-logreg\_ea85c25b7a9e
-
-scala\>val pipeline = new Pipeline().setStages(Array(tokenizer,
+logreg_ea85c25b7a9e
+scala>val pipeline = new Pipeline().setStages(Array(tokenizer,
 hashingTF, lr))
-
-pipeline: org.apache.spark.ml.Pipeline = pipeline\_51032200df93
+pipeline: org.apache.spark.ml.Pipeline = pipeline_51032200df93
+```
 
 代码 4‑47
 
 使用ParamGridBuilder构建一个参数网格来保存和检索参数：
 
-scala\>val paramGrid = new
+```scala
+scala>val paramGrid = new
 ParamGridBuilder().addGrid(hashingTF.numFeatures, Array(10, 100,
 1000)).addGrid(lr.regParam,Array(0.1, 0.01)).build()
-
-paramGrid: Array\[org.apache.spark.ml.param.ParamMap\] =
-
+paramGrid: Array[org.apache.spark.ml.param.ParamMap] =
 Array({
-
-hashingTF\_9d7dce2a61ed-numFeatures: 10,
-
-logreg\_ea85c25b7a9e-regParam: 0.1
-
+hashingTF_9d7dce2a61ed-numFeatures: 10,
+logreg_ea85c25b7a9e-regParam: 0.1
 }, {
-
-hashingTF\_9d7dce2a61ed-numFeatures: 100,
-
-logreg\_ea85c25b7a9e-regParam: 0.1
-
+hashingTF_9d7dce2a61ed-numFeatures: 100,
+logreg_ea85c25b7a9e-regParam: 0.1
 }, {
-
-hashingTF\_9d7dce2a61ed-numFeatures: 1000,
-
-logreg\_ea85c25b7a9e-regParam: 0.1
-
+hashingTF_9d7dce2a61ed-numFeatures: 1000,
+logreg_ea85c25b7a9e-regParam: 0.1
 }, {
-
-hashingTF\_9d7dce2a61ed-numFeatures: 10,
-
-logreg\_ea85c25b7a9e-regParam: 0.01
-
+hashingTF_9d7dce2a61ed-numFeatures: 10,
+logreg_ea85c25b7a9e-regParam: 0.01
 }, {
-
-hashingTF\_9d7dce2a61ed-numFeatures: 100,
-
-logreg\_ea85c25b7a9e-regParam: 0.01
-
+hashingTF_9d7dce2a61ed-numFeatures: 100,
+logreg_ea85c25b7a9e-regParam: 0.01
 }, {
-
-hashingTF\_9d7dce2a61ed-numFeatures: 1000,
-
-logreg\_ea85c25b7a9e-regParam: 0.01
-
+hashingTF_9d7dce2a61ed-numFeatures: 1000,
+logreg_ea85c25b7a9e-regParam: 0.01
 })
+```
 
 代码 4‑48
 
 hashingTF.numFeatures有3个值，lr.regParam有2个值，这个网格有3 x 2 =
 6种参数合组合。现在，我们将管道视为估算器，将其包装在CrossValidator实例中。这将使我们能够为所有Pipeline阶段共同选择参数。CrossValidator需要一个估算器、参数网格和评估器，此处的评估器是BinaryClassificationEvaluator及其默认指标是areaUnderROC。
 
-scala\> val cv = new
+```scala
+scala> val cv = new
 CrossValidator().setEstimator(pipeline).setEvaluator(new
 BinaryClassificationEvaluator).setEstimatorParamMaps(paramGrid).setNumFolds(2)
-
-cv: org.apache.spark.ml.tuning.CrossValidator = cv\_16c0f7c44720
+cv: org.apache.spark.ml.tuning.CrossValidator = cv_16c0f7c44720
+```
 
 代码 4‑49
 
 运行交叉验证，选择最好的参数组合：
 
-scala\> val cvModel = cv.fit(training)
-
+```scala
+scala> val cvModel = cv.fit(training)
 cvModel: org.apache.spark.ml.tuning.CrossValidatorModel =
-cv\_16c0f7c44720
+cv_16c0f7c44720
+```
 
 代码 4‑50
 
 准备测试文档：
 
-scala\> val test = spark.createDataFrame(Seq(
-
+```scala
+scala> val test = spark.createDataFrame(Seq(
 | (4L, "spark i j k"),
-
 | (5L, "l m n"),
-
 | (6L, "mapreduce spark"),
-
 | (7L, "apache hadoop")
-
 | )).toDF("id", "text")
-
-test: org.apache.spark.sql.DataFrame = \[id: bigint, text: string\]
+test: org.apache.spark.sql.DataFrame = [id: bigint, text: string]
+```
 
 代码 4‑51
 
 cvModel使用最好的模型在测试文档上进行预测：
 
-scala\>cvModel.transform(test).select("id", "text", "probability",
+```scala
+scala>cvModel.transform(test).select("id", "text", "probability",
 "prediction").collect().foreach { case Row(id: Long,
-
-| text: String, prob: Vector, prediction: Double) =\>
-
-| println(s"($id, $text) --\> prob=$prob, prediction=$prediction")
-
+| text: String, prob: Vector, prediction: Double) =>
+| println(s"($id, $text) --> prob=$prob, prediction=$prediction")
 | }
-
-(4, spark i j k) --\> prob=\[0.25803432137769916,0.7419656786223008\],
+(4, spark i j k) --> prob=[0.25803432137769916,0.7419656786223008],
 prediction=1.0
-
-(5, l m n) --\> prob=\[0.9187600482920034,0.08123995170799662\],
+(5, l m n) --> prob=[0.9187600482920034,0.08123995170799662],
 prediction=0.0
-
-(6, mapreduce spark) --\>
-prob=\[0.43181531442975374,0.5681846855702464\], prediction=1.0
-
-(7, apache hadoop) --\> prob=\[0.6766544523285499,0.32334554767145013\],
+(6, mapreduce spark) -->
+prob=[0.43181531442975374,0.5681846855702464], prediction=1.0
+(7, apache hadoop) --> prob=[0.6766544523285499,0.32334554767145013],
 prediction=0.0
+```
 
 代码 4‑52
 
@@ -1480,233 +1255,154 @@ TrainValidationSplit仅对每个参数组合进行一次评估，而对于CrossV
 test) 数据对，使用trainRatio参数将数据集分为这两部分，例如在trainRatio =
 0.75的情况下，TrainValidationSplit将生成训练和测试数据集对，其中75％的数据用于训练，而25％的数据用于验证。像CrossValidator一样，TrainValidationSplit最终使用最佳的ParamMap和整个数据集来拟合估算器。
 
-scala\> import org.apache.spark.ml.evaluation.RegressionEvaluator
-
+```scala
+scala> import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.evaluation.RegressionEvaluator
-
-scala\> import org.apache.spark.ml.regression.LinearRegression
-
+scala> import org.apache.spark.ml.regression.LinearRegression
 import org.apache.spark.ml.regression.LinearRegression
-
-scala\> import org.apache.spark.ml.tuning.{ParamGridBuilder,
+scala> import org.apache.spark.ml.tuning.{ParamGridBuilder,
 TrainValidationSplit}
-
 import org.apache.spark.ml.tuning.{ParamGridBuilder,
 TrainValidationSplit}
+```
 
 代码 4‑53
 
 准备训练和测试数据：
 
-scala\> val data =
-spark.read.format("libsvm").load("/root/data/example/mllib/sample\_linear\_regression\_data.txt")
-
-data: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
-
-scala\> data.show
-
-\+-------------------+--------------------+
-
+```scala
+scala> val data =
+spark.read.format("libsvm").load("/root/data/example/mllib/sample_linear_regression_data.txt")
+data: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+scala> data.show
++-------------------+--------------------+
 | label| features|
-
-\+-------------------+--------------------+
-
-| -9.490009878824548|(10,\[0,1,2,3,4,5,...|
-
-| 0.2577820163584905|(10,\[0,1,2,3,4,5,...|
-
-| -4.438869807456516|(10,\[0,1,2,3,4,5,...|
-
-|-19.782762789614537|(10,\[0,1,2,3,4,5,...|
-
-| -7.966593841555266|(10,\[0,1,2,3,4,5,...|
-
-| -7.896274316726144|(10,\[0,1,2,3,4,5,...|
-
-| -8.464803554195287|(10,\[0,1,2,3,4,5,...|
-
-| 2.1214592666251364|(10,\[0,1,2,3,4,5,...|
-
-| 1.0720117616524107|(10,\[0,1,2,3,4,5,...|
-
-|-13.772441561702871|(10,\[0,1,2,3,4,5,...|
-
-| -5.082010756207233|(10,\[0,1,2,3,4,5,...|
-
-| 7.887786536531237|(10,\[0,1,2,3,4,5,...|
-
-| 14.323146365332388|(10,\[0,1,2,3,4,5,...|
-
-|-20.057482615789212|(10,\[0,1,2,3,4,5,...|
-
-|-0.8995693247765151|(10,\[0,1,2,3,4,5,...|
-
-| -19.16829262296376|(10,\[0,1,2,3,4,5,...|
-
-| 5.601801561245534|(10,\[0,1,2,3,4,5,...|
-
-|-3.2256352187273354|(10,\[0,1,2,3,4,5,...|
-
-| 1.5299675726687754|(10,\[0,1,2,3,4,5,...|
-
-| -0.250102447941961|(10,\[0,1,2,3,4,5,...|
-
-\+-------------------+--------------------+
-
++-------------------+--------------------+
+| -9.490009878824548|(10,[0,1,2,3,4,5,...|
+| 0.2577820163584905|(10,[0,1,2,3,4,5,...|
+| -4.438869807456516|(10,[0,1,2,3,4,5,...|
+|-19.782762789614537|(10,[0,1,2,3,4,5,...|
+| -7.966593841555266|(10,[0,1,2,3,4,5,...|
+| -7.896274316726144|(10,[0,1,2,3,4,5,...|
+| -8.464803554195287|(10,[0,1,2,3,4,5,...|
+| 2.1214592666251364|(10,[0,1,2,3,4,5,...|
+| 1.0720117616524107|(10,[0,1,2,3,4,5,...|
+|-13.772441561702871|(10,[0,1,2,3,4,5,...|
+| -5.082010756207233|(10,[0,1,2,3,4,5,...|
+| 7.887786536531237|(10,[0,1,2,3,4,5,...|
+| 14.323146365332388|(10,[0,1,2,3,4,5,...|
+|-20.057482615789212|(10,[0,1,2,3,4,5,...|
+|-0.8995693247765151|(10,[0,1,2,3,4,5,...|
+| -19.16829262296376|(10,[0,1,2,3,4,5,...|
+| 5.601801561245534|(10,[0,1,2,3,4,5,...|
+|-3.2256352187273354|(10,[0,1,2,3,4,5,...|
+| 1.5299675726687754|(10,[0,1,2,3,4,5,...|
+| -0.250102447941961|(10,[0,1,2,3,4,5,...|
++-------------------+--------------------+
 only showing top 20 rows
-
-scala\>val Array(training, test) = data.randomSplit(Array(0.9, 0.1),
+scala>val Array(training, test) = data.randomSplit(Array(0.9, 0.1),
 seed = 12345)
-
-training: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-test: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[label: double, features: vector\]
-
-scala\>val lr = new LinearRegression().setMaxIter(10)
-
+training: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+test: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[label: double, features: vector]
+scala>val lr = new LinearRegression().setMaxIter(10)
 lr: org.apache.spark.ml.regression.LinearRegression =
-linReg\_4653e1bfeb16
+linReg_4653e1bfeb16
+```
 
 代码 4‑54
 
 使用ParamGridBuilder构建参数网格：
 
-scala\>val paramGrid = new ParamGridBuilder().addGrid(lr.regParam,
+```scala
+scala>val paramGrid = new ParamGridBuilder().addGrid(lr.regParam,
 Array(0.1, 0.01)).addGrid(lr.fitIntercept).addGrid(lr
-
 | .elasticNetParam, Array(0.0, 0.5, 1.0)).build()
-
-paramGrid: Array\[org.apache.spark.ml.param.ParamMap\] =
-
+paramGrid: Array[org.apache.spark.ml.param.ParamMap] =
 Array({
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.0,
-
-linReg\_4653e1bfeb16-fitIntercept: true,
-
-linReg\_4653e1bfeb16-regParam: 0.1
-
+linReg_4653e1bfeb16-elasticNetParam: 0.0,
+linReg_4653e1bfeb16-fitIntercept: true,
+linReg_4653e1bfeb16-regParam: 0.1
 }, {
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.0,
-
-linReg\_4653e1bfeb16-fitIntercept: true,
-
-linReg\_4653e1bfeb16-regParam: 0.01
-
+linReg_4653e1bfeb16-elasticNetParam: 0.0,
+linReg_4653e1bfeb16-fitIntercept: true,
+linReg_4653e1bfeb16-regParam: 0.01
 }, {
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.0,
-
-linReg\_4653e1bfeb16-fitIntercept: false,
-
-linReg\_4653e1bfeb16-regParam: 0.1
-
+linReg_4653e1bfeb16-elasticNetParam: 0.0,
+linReg_4653e1bfeb16-fitIntercept: false,
+linReg_4653e1bfeb16-regParam: 0.1
 }, {
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.0,
-
-linReg\_4653e1bfeb16-fitIntercept: false,
-
-linReg\_4653e1bfeb16-regParam: 0.01
-
+linReg_4653e1bfeb16-elasticNetParam: 0.0,
+linReg_4653e1bfeb16-fitIntercept: false,
+linReg_4653e1bfeb16-regParam: 0.01
 }, {
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.5,
-
-linReg\_4653e1bfeb16-fitIntercept: true,
-
-linReg\_4653e1bfeb16-regParam: 0.1
-
+linReg_4653e1bfeb16-elasticNetParam: 0.5,
+linReg_4653e1bfeb16-fitIntercept: true,
+linReg_4653e1bfeb16-regParam: 0.1
 }, {
-
-linReg\_4653e1bfeb16-elasticNetParam: 0.5,
-
-linReg\_4653e1bfeb16-fitIntercept: true,
-
-linReg\_4653e1bfeb16-regPa...
-
-scala\>
+linReg_4653e1bfeb16-elasticNetParam: 0.5,
+linReg_4653e1bfeb16-fitIntercept: true,
+linReg_4653e1bfeb16-regPa...
+scala>
+```
 
 代码 4‑55
 
 TrainValidationSplit会调用所有的参数组合，使用评估器确定最好的模型。其包括线性回归评估器，评估器参数集合和估算器。80%的数据被用来作为训练数据，20%作为测试数据。
 
-scala\>val trainValidationSplit = new
+```scala
+scala>val trainValidationSplit = new
 TrainValidationSplit().setEstimator(lr).setEvaluator(new
 RegressionEvaluator).setEstimatorParamMaps(paramGrid).setTrainRatio(0.8)
-
 trainValidationSplit: org.apache.spark.ml.tuning.TrainValidationSplit =
-tvs\_ec6640a05517
+tvs_ec6640a05517
+```
 
 代码 4‑56
 
 运行TrainValidationSplit，选择最好的参数组合：
 
-scala\> val model = trainValidationSplit.fit(training)
-
+```scala
+scala> val model = trainValidationSplit.fit(training)
 model: org.apache.spark.ml.tuning.TrainValidationSplitModel =
-tvs\_ec6640a05517
+tvs_ec6640a05517
+```
 
 代码 4‑57
 
 在测试数据上进行预测：
 
-scala\>model.transform(test).select("features", "label",
+```scala
+scala>model.transform(test).select("features", "label",
 "prediction").show()
-
-\+--------------------+--------------------+--------------------+
-
++--------------------+--------------------+--------------------+
 | features| label| prediction|
-
-\+--------------------+--------------------+--------------------+
-
-|(10,\[0,1,2,3,4,5,...| -23.51088409032297| -1.6659388625179559|
-
-|(10,\[0,1,2,3,4,5,...| -21.432387764165806| 0.3400877302576284|
-
-|(10,\[0,1,2,3,4,5,...| -12.977848725392104|-0.02335359093652395|
-
-|(10,\[0,1,2,3,4,5,...| -11.827072996392571| 2.5642684021108417|
-
-|(10,\[0,1,2,3,4,5,...| -10.945919657782932| -0.1631314487734783|
-
-|(10,\[0,1,2,3,4,5,...| -10.58331129986813| 2.517790654691453|
-
-|(10,\[0,1,2,3,4,5,...| -10.288657252388708| -0.9443474180536754|
-
-|(10,\[0,1,2,3,4,5,...| -8.822357870425154| 0.6872889429113783|
-
-|(10,\[0,1,2,3,4,5,...| -8.772667465932606| -1.485408580416465|
-
-|(10,\[0,1,2,3,4,5,...| -8.605713514762092| 1.110272909026478|
-
-|(10,\[0,1,2,3,4,5,...| -6.544633229269576| 3.0454559778611285|
-
-|(10,\[0,1,2,3,4,5,...| -5.055293333055445| 0.6441174575094268|
-
-|(10,\[0,1,2,3,4,5,...| -5.039628433467326| 0.9572366607107066|
-
-|(10,\[0,1,2,3,4,5,...| -4.937258492902948| 0.2292114538379546|
-
-|(10,\[0,1,2,3,4,5,...| -3.741044592262687| 3.343205816009816|
-
-|(10,\[0,1,2,3,4,5,...| -3.731112242951253| -2.6826413698701064|
-
-|(10,\[0,1,2,3,4,5,...| -2.109441044710089| -2.1930034039595445|
-
-|(10,\[0,1,2,3,4,5,...| -1.8722161156986976| 0.49547270330052423|
-
-|(10,\[0,1,2,3,4,5,...| -1.1009750789589774| -0.9441633113006601|
-
-|(10,\[0,1,2,3,4,5,...|-0.48115211266405217| -0.6756196573079968|
-
-\+--------------------+--------------------+--------------------+
-
++--------------------+--------------------+--------------------+
+|(10,[0,1,2,3,4,5,...| -23.51088409032297| -1.6659388625179559|
+|(10,[0,1,2,3,4,5,...| -21.432387764165806| 0.3400877302576284|
+|(10,[0,1,2,3,4,5,...| -12.977848725392104|-0.02335359093652395|
+|(10,[0,1,2,3,4,5,...| -11.827072996392571| 2.5642684021108417|
+|(10,[0,1,2,3,4,5,...| -10.945919657782932| -0.1631314487734783|
+|(10,[0,1,2,3,4,5,...| -10.58331129986813| 2.517790654691453|
+|(10,[0,1,2,3,4,5,...| -10.288657252388708| -0.9443474180536754|
+|(10,[0,1,2,3,4,5,...| -8.822357870425154| 0.6872889429113783|
+|(10,[0,1,2,3,4,5,...| -8.772667465932606| -1.485408580416465|
+|(10,[0,1,2,3,4,5,...| -8.605713514762092| 1.110272909026478|
+|(10,[0,1,2,3,4,5,...| -6.544633229269576| 3.0454559778611285|
+|(10,[0,1,2,3,4,5,...| -5.055293333055445| 0.6441174575094268|
+|(10,[0,1,2,3,4,5,...| -5.039628433467326| 0.9572366607107066|
+|(10,[0,1,2,3,4,5,...| -4.937258492902948| 0.2292114538379546|
+|(10,[0,1,2,3,4,5,...| -3.741044592262687| 3.343205816009816|
+|(10,[0,1,2,3,4,5,...| -3.731112242951253| -2.6826413698701064|
+|(10,[0,1,2,3,4,5,...| -2.109441044710089| -2.1930034039595445|
+|(10,[0,1,2,3,4,5,...| -1.8722161156986976| 0.49547270330052423|
+|(10,[0,1,2,3,4,5,...| -1.1009750789589774| -0.9441633113006601|
+|(10,[0,1,2,3,4,5,...|-0.48115211266405217| -0.6756196573079968|
++--------------------+--------------------+--------------------+
 only showing top 20 rows
+```
 
 代码 4‑58
 
@@ -1734,64 +1430,57 @@ ML中实现了交替最小二乘，并针对大规模的协作式过滤问题而
 
 图例 4‑11机器学习的工作流程
 
-scala\> import org.apache.spark.mllib.recommendation.{ ALS,
+```scala
+scala> import org.apache.spark.mllib.recommendation.{ ALS,
 MatrixFactorizationModel, Rating }
-
 import org.apache.spark.mllib.recommendation.{ALS,
 MatrixFactorizationModel, Rating}
+```
 
 在第一步中，加载评价数据到ratingText，加载数据为RDD
 
-scala\> val ratingText = sc.textFile("/data/ratings.dat")
-
-ratingText: org.apache.spark.rdd.RDD\[String\] = /root/data/ratings.dat
-MapPartitionsRDD\[1\] at textFile at \<console\>:25
-
-scala\> ratingText.take(2)
-
-res3: Array\[String\] = Array(1::1193::5::978300760,
+```scala
+scala> val ratingText = sc.textFile("/data/ratings.dat")
+ratingText: org.apache.spark.rdd.RDD[String] = /root/data/ratings.dat
+MapPartitionsRDD[1] at textFile at <console>:25
+scala> ratingText.take(2)
+res3: Array[String] = Array(1::1193::5::978300760,
 1::661::3::978302109)
+```
 
 代码 4‑59
 
 转换ratingText为RDD，将parseRating函数适用于ratingText的每个元素，并返回一个新的评价对象ratingsRDD，因为将利用这些数据来构建矩阵模型，所以需要缓存，。
 
-scala\> def parseRating(str: String): Rating = {
-
+```scala
+scala> def parseRating(str: String): Rating = {
 | val fields = str.split("::")
-
 | Rating(fields(0).toInt, fields(1).toInt, fields(2).toDouble)
-
 | }
-
 parseRating: (str: String)org.apache.spark.mllib.recommendation.Rating
-
-scala\> val ratingsRDD = ratingText.map(parseRating).cache()
-
+scala> val ratingsRDD = ratingText.map(parseRating).cache()
 ratingsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= MapPartitionsRDD\[2\] at map at \<console\>:29
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= MapPartitionsRDD[2] at map at <console>:29
+```
 
 该parseRating函数解析评价数据文件的每一行，将其转换为MLlib的Rating类，将以此作为ALS.run方法的输入。下一步，将数据分为两个部分，一个用于训练模型和一个用于测试模型。在这里显示的代码使用了Hold-Out分割数据，80%的数据用来训练，20%的数据用来测试，然后运行交替最小二乘算法建立和训练用户和产品矩阵模型。
 
-scala\> val splits = ratingsRDD.randomSplit(Array(0.8, 0.2), 0L)
-
+```scala
+scala> val splits = ratingsRDD.randomSplit(Array(0.8, 0.2), 0L)
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]\]
-= Array(MapPartitionsRDD\[3\] at randomSplit at \<console\>:31,
-MapPartitionsRDD\[4\] at randomSplit at \<console\>:31)
-
-scala\> val trainingRatingsRDD = splits(0).cache()
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]]
+= Array(MapPartitionsRDD[3] at randomSplit at <console>:31,
+MapPartitionsRDD[4] at randomSplit at <console>:31)
+scala> val trainingRatingsRDD = splits(0).cache()
 trainingRatingsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= MapPartitionsRDD\[3\] at randomSplit at \<console\>:31
-
-scala\> val testRatingsRDD = splits(1).cache()
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= MapPartitionsRDD[3] at randomSplit at <console>:31
+scala> val testRatingsRDD = splits(1).cache()
 testRatingsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= MapPartitionsRDD\[4\] at randomSplit at \<console\>:31
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= MapPartitionsRDD[4] at randomSplit at <console>:31
+```
 
 代码 4‑60
 
@@ -1804,154 +1493,133 @@ rank：模型中潜在因子的数量（默认为10）
 
 regParam：交替最小二乘中的正则化参数（默认为1.0）
 
-scala\> val model = ALS.train(trainingRatingsRDD, 10, 20)
-
+```scala
+scala> val model = ALS.train(trainingRatingsRDD, 10, 20)
 model: org.apache.spark.mllib.recommendation.MatrixFactorizationModel =
 <org.apache.spark.mllib.recommendation.MatrixFactorizationModel@6f2f9ba4>
+```
 
 代码 4‑61
 
 已经训练了一个模型model，想要得到测试数据的电影预测评价。首先用testRatingsRDD创建新的RDD，其中包括测试用户ID和影片ID，没有任何评价。
 
-scala\> val testUserProductRDD = testRatingsRDD.map {
-
-| case Rating(user, product, rating) =\> (user, product)
-
+```scala
+scala> val testUserProductRDD = testRatingsRDD.map {
+| case Rating(user, product, rating) => (user, product)
 | }
-
-testUserProductRDD: org.apache.spark.rdd.RDD\[(Int, Int)\] =
-MapPartitionsRDD\[392\] at map at \<console\>:35
+testUserProductRDD: org.apache.spark.rdd.RDD[(Int, Int)] =
+MapPartitionsRDD[392] at map at <console>:35
+```
 
 代码 4‑62
 
 然后，调用model.predict()方法，输入新的testUserProductRDD，以获取每个测试用户ID和影片ID对应的预测评级。
 
-scala\> val predictionsForTestRDD = model.predict(testUserProductRDD)
-
+```scala
+scala> val predictionsForTestRDD = model.predict(testUserProductRDD)
 prdictionsForTestRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= MapPartitionsRDD\[401\] at map at MatrixFactorizationModel.scala:140
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= MapPartitionsRDD[401] at map at MatrixFactorizationModel.scala:140
+```
 
 代码 4‑63
 
 接下来对比测试评级的预测结果。在这里，创建用户ID，ID电影收视率键值对，这样就可以比较测试评级的预测评级。
 
-scala\>val predictionsKeyedByUserProductRDD = predictionsForTestRDD.map
+```scala
+scala>val predictionsKeyedByUserProductRDD = predictionsForTestRDD.map
 {
-
-| case Rating(user, product, rating) =\> ((user, product), rating)
-
+| case Rating(user, product, rating) => ((user, product), rating)
 |}
-
-predictionsKeyedByUserProductRDD: org.apache.spark.rdd.RDD\[((Int, Int),
-Double)\] = MapPartitionsRDD\[402\] at map at \<console\>:43
+predictionsKeyedByUserProductRDD: org.apache.spark.rdd.RDD[((Int, Int),
+Double)] = MapPartitionsRDD[402] at map at <console>:43
+```
 
 为比较准备测试数据：
 
-scala\>val testKeyedByUserProductRDD = testRatingsRDD.map {
-
-| case Rating(user, product, rating) =\> ((user, product), rating)
-
+```scala
+scala>val testKeyedByUserProductRDD = testRatingsRDD.map {
+| case Rating(user, product, rating) => ((user, product), rating)
 |}
-
-testKeyedByUserProductRDD: org.apache.spark.rdd.RDD\[((Int, Int),
-Double)\] = MapPartitionsRDD\[403\] at map at \<console\>:35
+testKeyedByUserProductRDD: org.apache.spark.rdd.RDD[((Int, Int),
+Double)] = MapPartitionsRDD[403] at map at <console>:35
+```
 
 将预测结果与测试数据结合：
 
-scala\>val testAndPredictionsJoinedRDD =
+```scala
+scala>val testAndPredictionsJoinedRDD =
 testKeyedByUserProductRDD.join(predictionsKeyedByUserProductRDD)
-
-testAndPredictionsJoinedRDD: org.apache.spark.rdd.RDD\[((Int, Int),
-(Double, Double))\] = MapPartitionsRDD\[406\] at join at \<console\>:47
-
-scala\> testAndPredictionsJoinedRDD.take(10).mkString("\\n")
-
+testAndPredictionsJoinedRDD: org.apache.spark.rdd.RDD[((Int, Int),
+(Double, Double))] = MapPartitionsRDD[406] at join at <console>:47
+scala> testAndPredictionsJoinedRDD.take(10).mkString("\n")
 res5: String =
-
 ((233,1265),(4.0,4.460843005222394))
-
 ((1308,1042),(4.0,3.1014835510132865))
-
 ((5686,2967),(1.0,2.103888739955093))
-
 ((4447,1100),(1.0,1.4102976702457886))
-
 ((2131,512),(2.0,3.111590795245745))
-
 ((3093,955),(5.0,4.443509525728583))
-
 ((2109,3928),(2.0,4.038725293203363))
-
 ((3242,1690),(1.0,3.2002316015918826))
-
 ((4270,3616),(3.0,3.55205292499131))
-
 ((3650,2701),(3.0,1.9368462777917386))
+```
 
 代码 4‑64
 
 通过比较评分的预测，将预测评级为高，而实际评分较低作为误报。下面代码中测试评级\<= 1，而预测的评级是\> = 4为误报。
 
-scala\> val falsePositives = testAndPredictionsJoinedRDD.filter { case
-((user, product), (ratingT, ratingP)) =\> (ratingT \<= 1 && ratingP \>=
+```scala
+scala> val falsePositives = testAndPredictionsJoinedRDD.filter { case
+((user, product), (ratingT, ratingP)) => (ratingT <= 1 && ratingP >=
 4) }
-
-falsePositives: org.apache.spark.rdd.RDD\[((Int, Int), (Double,
-Double))\] = MapPartitionsRDD\[409\] at filter at \<console\>:49
-
-scala\> falsePositives.take(2)
-
-res6: Array\[((Int, Int), (Double, Double))\] =
+falsePositives: org.apache.spark.rdd.RDD[((Int, Int), (Double,
+Double))] = MapPartitionsRDD[409] at filter at <console>:49
+scala> falsePositives.take(2)
+res6: Array[((Int, Int), (Double, Double))] =
 Array(((1038,3545),(1.0,4.64155564571005)),
 ((5878,2875),(1.0,4.1482372423348295)))
+```
 
 代码 4‑65
 
 该模型也可以通过平均绝对误差计算实际测试评价和预测评价之间的绝对误差的平均值来判断模型的训练效果。
 
-scala\> val meanAbsoluteError = testAndPredictionsJoinedRDD.map {
-
-| case ((user, product), (testRating, predRating)) =\>
-
+```scala
+scala> val meanAbsoluteError = testAndPredictionsJoinedRDD.map {
+| case ((user, product), (testRating, predRating)) =>
 | val err = (testRating - predRating)
-
 | Math.abs(err)
-
 | }.mean()
-
 meanAbsoluteError: Double = 0.6895645970856591
+```
 
 代码 4‑66
 
 在下面的代码中，创建一个ID为0的新用户电影评价newRatingsRDD，然后与ratingsRDD合并成unionRatingsRDD，然后输出到ALS返回一个新的推荐模型model。现在，可以通过调用model.recommendProducts()来获得建议，输入参数用户ID=
 0和建议项目的数量=5。
 
-scala\> val
+```scala
+scala> val
 newRatingsRDD=sc.parallelize(Array(Rating(0,260,4),Rating(0,1,3)))
-
 newRatingsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= ParallelCollectionRDD\[413\] at parallelize at \<console\>:25
-
-scala\> val unionRatingsRDD = ratingsRDD.union(newRatingsRDD)
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= ParallelCollectionRDD[413] at parallelize at <console>:25
+scala> val unionRatingsRDD = ratingsRDD.union(newRatingsRDD)
 unionRatingsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.recommendation.Rating\]
-= UnionRDD\[414\] at union at \<console\>:33
-
-scala\> val model = new
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
+= UnionRDD[414] at union at <console>:33
+scala> val model = new
 ALS().setRank(20).setIterations(10).run(unionRatingsRDD)
-
 model: org.apache.spark.mllib.recommendation.MatrixFactorizationModel =
 org.apache.spark.mllib.recommendation.MatrixFactorizationModel@5859f307
-
-scala\> val topRecsForUser = model.recommendProducts(0, 5)
-
-topRecsForUser: Array\[org.apache.spark.mllib.recommendation.Rating\] =
+scala> val topRecsForUser = model.recommendProducts(0, 5)
+topRecsForUser: Array[org.apache.spark.mllib.recommendation.Rating] =
 Array(Rating(0,1651,4.026343140072196),
 Rating(0,260,3.9826456201257963), Rating(0,2323,3.955009095763199),
 Rating(0,1196,3.860915147369469), Rating(0,1198,3.6932753705094252))
+```
 
 代码 4‑67
 
@@ -1985,37 +1653,31 @@ Rating(0,1196,3.860915147369469), Rating(0,1198,3.6932753705094252))
 
 导入需要的软件包：
 
-scala\> import org.apache.spark.mllib.regression.LabeledPoint
-
+```scala
+scala> import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.regression.LabeledPoint
-
-scala\> import org.apache.spark.mllib.linalg.Vectors
-
+scala> import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.Vectors
-
-scala\> import org.apache.spark.mllib.tree.DecisionTree
-
+scala> import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.DecisionTree
-
-scala\> import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
+scala> import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
-
-scala\> import org.apache.spark.mllib.util.MLUtils
-
+scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
+```
 
 代码 4‑68
 
 示例中，每个航班是一个项目，使用case class定义与csv数据文件中的一行相对应的Flight模式：
 
-scala\> case class Flight(dofM: String, dofW: String, carrier: String,
-tailnum: String, flnum: Int, org\_id: String, origin: String, dest\_id:
+```scala
+scala> case class Flight(dofM: String, dofW: String, carrier: String,
+tailnum: String, flnum: Int, org_id: String, origin: String, dest_id:
 String, dest: String, crsdeptime: Double, deptime: Double, depdelaymins:
 Double, crsarrtime: Double, arrtime: Double, arrdelay: Double,
 crselapsedtime: Double, dist: Int)
-
 defined class Flight
+```
 
 代码 4‑69
 
@@ -2023,37 +1685,32 @@ defined class Flight
 
 // function to parse input into Flight class
 
-scala\> def parseFlight(str: String): Flight = {
-
+```scala
+scala> def parseFlight(str: String): Flight = {
 | val line = str.split(",")
-
 | Flight(line(0), line(1), line(2), line(3), line(4).toInt, line(5),
 line(6), line(7), line(8), line(9).toDouble, line(10).toDouble,
 line(11).toDouble, line(12).toDouble, line(13).toDouble,
 line(14).toDouble, line(15).toDouble, line(16).toInt)
-
 | }
-
 parseFlight: (str: String)Flight
+```
 
 代码 4‑70
 
 从CSV文件加载数据然后进行转换和缓存，调用first()返回RDD中的第一个元素。
 
-scala\> val textRDD = sc.textFile("/root/data/rita2014jan.csv")
-
-textRDD: org.apache.spark.rdd.RDD\[String\] = /root/data/rita2014jan.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:29
-
-scala\> val flightsRDD = textRDD.map(parseFlight).cache()
-
-flightsRDD: org.apache.spark.rdd.RDD\[Flight\] = MapPartitionsRDD\[2\]
-at map at \<console\>:35
-
-scala\> flightsRDD.first()
-
+```scala
+scala> val textRDD = sc.textFile("/root/data/rita2014jan.csv")
+textRDD: org.apache.spark.rdd.RDD[String] = /root/data/rita2014jan.csv
+MapPartitionsRDD[1] at textFile at <console>:29
+scala> val flightsRDD = textRDD.map(parseFlight).cache()
+flightsRDD: org.apache.spark.rdd.RDD[Flight] = MapPartitionsRDD[2]
+at map at <console>:35
+scala> flightsRDD.first()
 res0: Flight =
 Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,385.0,2475)
+```
 
 代码 4‑71
 
@@ -2061,117 +1718,87 @@ Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,3
 
 创建运营商、始发地和目的地：
 
-scala\> var carrierMap: Map\[String, Int\] = Map()
-
-carrierMap: Map\[String,Int\] = Map()
-
-scala\> var index: Int = 0
-
+```scala
+scala> var carrierMap: Map[String, Int] = Map()
+carrierMap: Map[String,Int] = Map()
+scala> var index: Int = 0
 index: Int = 0
-
-scala\> flightsRDD.map(flight =\>
-flight.carrier).distinct.collect.foreach(x =\> { carrierMap += (x -\>
+scala> flightsRDD.map(flight =>
+flight.carrier).distinct.collect.foreach(x => { carrierMap += (x ->
 index); index += 1 })
-
-scala\> carrierMap.toString
-
-res2: String = Map(DL -\> 5, F9 -\> 10, US -\> 9, OO -\> 2, B6 -\> 0, AA
--\> 6, EV -\> 12, FL -\> 1, UA -\> 4, MQ -\> 8, WN -\> 13, AS -\> 3, VX
--\> 7, HA -\> 11)
-
-scala\> var originMap: Map\[String, Int\] = Map()
-
-originMap: Map\[String,Int\] = Map()
-
-scala\> var index1: Int = 0
-
+scala> carrierMap.toString
+res2: String = Map(DL -> 5, F9 -> 10, US -> 9, OO -> 2, B6 -> 0, AA
+-> 6, EV -> 12, FL -> 1, UA -> 4, MQ -> 8, WN -> 13, AS -> 3, VX
+-> 7, HA -> 11)
+scala> var originMap: Map[String, Int] = Map()
+originMap: Map[String,Int] = Map()
+scala> var index1: Int = 0
 index1: Int = 0
-
-scala\> flightsRDD.map(flight =\>
-flight.origin).distinct.collect.foreach(x =\> { originMap += (x -\>
+scala> flightsRDD.map(flight =>
+flight.origin).distinct.collect.foreach(x => { originMap += (x ->
 index1); index1 += 1 })
-
-scala\> originMap.toString
-
-res4: String = Map(ROW -\> 23, OAJ -\> 144, GCC -\> 232, SYR -\> 80, TYR
--\> 162, TUL -\> 180, STL -\> 203, IDA -\> 61, ICT -\> 62, MQT -\> 37,
-SWF -\> 118, EKO -\> 148, JFK -\> 216, LGB -\> 241, ISP -\> 101, ART -\>
-288, ORD -\> 234, STX -\> 170, EGE -\> 159, LWS -\> 132, TWF -\> 229,
-LAS -\> 44, BET -\> 286, GSP -\> 117, DAY -\> 123, KOA -\> 252, BUR -\>
-292, DRO -\> 276, PVD -\> 31, BRD -\> 77, SPS -\> 1, CLD -\> 184, SGF
--\> 86, CDV -\> 222, STT -\> 214, OTZ -\> 279, AVL -\> 199, BOI -\> 12,
-PSP -\> 150, SAF -\> 40, FWA -\> 146, MHT -\> 186, SBN -\> 206, RDM -\>
-182, PSG -\> 59, LAX -\> 294, BQN -\> 293, HSV -\> 257, RIC -\> 6, BTM
--\> 217, LSE -\> 33, FCA -\> 55, JAC -\> 110, ATL -\> 273, CHA -\> 112,
-BQK -\> 96, MIA -\> 176, GUC -\> 282, SBP -\> 163, BFL -\> 74, DHN -\>
-51, FLG -\> 155, BRO -\> 274, LAN -\> 192, FSM -\> 15, RAP -\> 285, EAU
--\> 1...
-
-scala\> var destMap: Map\[String, Int\] = Map()
-
-destMap: Map\[String,Int\] = Map()
-
-scala\> var index2: Int = 0
-
+scala> originMap.toString
+res4: String = Map(ROW -> 23, OAJ -> 144, GCC -> 232, SYR -> 80, TYR
+-> 162, TUL -> 180, STL -> 203, IDA -> 61, ICT -> 62, MQT -> 37,
+SWF -> 118, EKO -> 148, JFK -> 216, LGB -> 241, ISP -> 101, ART ->
+288, ORD -> 234, STX -> 170, EGE -> 159, LWS -> 132, TWF -> 229,
+LAS -> 44, BET -> 286, GSP -> 117, DAY -> 123, KOA -> 252, BUR ->
+292, DRO -> 276, PVD -> 31, BRD -> 77, SPS -> 1, CLD -> 184, SGF
+-> 86, CDV -> 222, STT -> 214, OTZ -> 279, AVL -> 199, BOI -> 12,
+PSP -> 150, SAF -> 40, FWA -> 146, MHT -> 186, SBN -> 206, RDM ->
+182, PSG -> 59, LAX -> 294, BQN -> 293, HSV -> 257, RIC -> 6, BTM
+-> 217, LSE -> 33, FCA -> 55, JAC -> 110, ATL -> 273, CHA -> 112,
+BQK -> 96, MIA -> 176, GUC -> 282, SBP -> 163, BFL -> 74, DHN ->
+51, FLG -> 155, BRO -> 274, LAN -> 192, FSM -> 15, RAP -> 285, EAU
+-> 1...
+scala> var destMap: Map[String, Int] = Map()
+destMap: Map[String,Int] = Map()
+scala> var index2: Int = 0
 index2: Int = 0
-
-scala\> flightsRDD.map(flight =\>
-flight.dest).distinct.collect.foreach(x =\> { destMap += (x -\> index2);
+scala> flightsRDD.map(flight =>
+flight.dest).distinct.collect.foreach(x => { destMap += (x -> index2);
 index2 += 1 })
-
-scala\> destMap.toString
-
-res13: String = Map(ROW -\> 23, OAJ -\> 144, GCC -\> 232, SYR -\> 80,
-TYR -\> 162, TUL -\> 180, STL -\> 203, IDA -\> 61, ICT -\> 62, MQT -\>
-37, SWF -\> 118, EKO -\> 148, JFK -\> 216, LGB -\> 241, ISP -\> 101, ART
--\> 288, ORD -\> 234, STX -\> 170, EGE -\> 159, LWS -\> 132, TWF -\>
-229, LAS -\> 44, BET -\> 286, GSP -\> 117, DAY -\> 123, KOA -\> 252, BUR
--\> 292, DRO -\> 276, PVD -\> 31, BRD -\> 77, SPS -\> 1, CLD -\> 184,
-SGF -\> 86, CDV -\> 222, STT -\> 214, OTZ -\> 279, AVL -\> 199, BOI -\>
-12, PSP -\> 150, SAF -\> 40, FWA -\> 146, MHT -\> 186, SBN -\> 206, RDM
--\> 182, PSG -\> 59, LAX -\> 294, BQN -\> 293, HSV -\> 257, RIC -\> 6,
-BTM -\> 217, LSE -\> 33, FCA -\> 55, JAC -\> 110, ATL -\> 273, CHA -\>
-112, BQK -\> 96, MIA -\> 176, GUC -\> 282, SBP -\> 163, BFL -\> 74, DHN
--\> 51, FLG -\> 155, BRO -\> 274, LAN -\> 192, FSM -\> 15, RAP -\> 285,
-EAU -\> ...
+scala> destMap.toString
+res13: String = Map(ROW -> 23, OAJ -> 144, GCC -> 232, SYR -> 80,
+TYR -> 162, TUL -> 180, STL -> 203, IDA -> 61, ICT -> 62, MQT ->
+37, SWF -> 118, EKO -> 148, JFK -> 216, LGB -> 241, ISP -> 101, ART
+-> 288, ORD -> 234, STX -> 170, EGE -> 159, LWS -> 132, TWF ->
+229, LAS -> 44, BET -> 286, GSP -> 117, DAY -> 123, KOA -> 252, BUR
+-> 292, DRO -> 276, PVD -> 31, BRD -> 77, SPS -> 1, CLD -> 184,
+SGF -> 86, CDV -> 222, STT -> 214, OTZ -> 279, AVL -> 199, BOI ->
+12, PSP -> 150, SAF -> 40, FWA -> 146, MHT -> 186, SBN -> 206, RDM
+-> 182, PSG -> 59, LAX -> 294, BQN -> 293, HSV -> 257, RIC -> 6,
+BTM -> 217, LSE -> 33, FCA -> 55, JAC -> 110, ATL -> 273, CHA ->
+112, BQK -> 96, MIA -> 176, GUC -> 282, SBP -> 163, BFL -> 74, DHN
+-> 51, FLG -> 155, BRO -> 274, LAN -> 192, FSM -> 15, RAP -> 285,
+EAU -> ...
+```
 
 代码 4‑72
 
 定义特征向量：
 
-scala\> val mlprep = flightsRDD.map(flight =\> {
-
+```scala
+scala> val mlprep = flightsRDD.map(flight => {
 | val monthday = flight.dofM.toInt - 1 // category
-
 | val weekday = flight.dofW.toInt - 1 // category
-
 | val crsdeptime1 = flight.crsdeptime.toInt
-
 | val crsarrtime1 = flight.crsarrtime.toInt
-
 | val carrier1 = carrierMap(flight.carrier) // category
-
 | val crselapsedtime1 = flight.crselapsedtime.toDouble
-
 | val origin1 = originMap(flight.origin) // category
-
 | val dest1 = destMap(flight.dest) // category
-
-| val delayed = if (flight.depdelaymins.toDouble \> 40) 1.0 else 0.0
-
+| val delayed = if (flight.depdelaymins.toDouble > 40) 1.0 else 0.0
 | Array(delayed.toDouble, monthday.toDouble, weekday.toDouble,
 crsdeptime1.toDouble, crsarrtime1.toDouble, carrier1.toDouble,
 crselapsedtime1.toDouble, origin1.toDouble, dest1.toDouble)
-
 | })
-
-mlprep: org.apache.spark.rdd.RDD\[Array\[Double\]\] =
-MapPartitionsRDD\[28\] at map at \<console\>:43
-
-scala\> mlprep.take(1)
-
-res14: Array\[Array\[Double\]\] = Array(Array(0.0, 0.0, 2.0, 900.0,
+mlprep: org.apache.spark.rdd.RDD[Array[Double]] =
+MapPartitionsRDD[28] at map at <console>:43
+scala> mlprep.take(1)
+res14: Array[Array[Double]] = Array(Array(0.0, 0.0, 2.0, 900.0,
 1225.0, 6.0, 385.0, 216.0, 294.0))
+```
 
 代码 4‑73
 
@@ -2180,64 +1807,56 @@ res14: Array\[Array\[Double\]\] = Array(Array(0.0, 0.0, 2.0, 900.0,
 //Making LabeledPoint of features - this is the training data for the
 model
 
-scala\> val mldata = mlprep.map(x =\> LabeledPoint(x(0),
+```scala
+scala> val mldata = mlprep.map(x => LabeledPoint(x(0),
 Vectors.dense(x(1), x(2), x(3), x(4), x(5), x(6), x(7), x(8))))
-
 mldata:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[29\] at map at \<console\>:45
-
-scala\> mldata.take(1)
-
-res15: Array\[org.apache.spark.mllib.regression.LabeledPoint\] =
-Array((0.0,\[0.0,2.0,900.0,1225.0,6.0,385.0,216.0,294.0\]))
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[29] at map at <console>:45
+scala> mldata.take(1)
+res15: Array[org.apache.spark.mllib.regression.LabeledPoint] =
+Array((0.0,[0.0,2.0,900.0,1225.0,6.0,385.0,216.0,294.0]))
+```
 
 代码 4‑74
 
 接下来数据被拆分，以获得延迟和不延迟航班的合适百分比。然后将其分为训练数据集和测试数据集。mldata0是85%的非延迟，mldata1是100%的延迟，将mldata0与mldata1合并为mldata2：
 
-scala\> val mldata0 = mldata.filter(x =\> x.label ==
+```scala
+scala> val mldata0 = mldata.filter(x => x.label ==
 0).randomSplit(Array(0.85, 0.15))(1)
-
 mldata0:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[32\] at randomSplit at \<console\>:47
-
-scala\> val mldata1 = mldata.filter(x =\> x.label \!= 0)
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[32] at randomSplit at <console>:47
+scala> val mldata1 = mldata.filter(x => x.label != 0)
 mldata1:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[33\] at filter at \<console\>:47
-
-scala\> val mldata2 = mldata0 ++ mldata1
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[33] at filter at <console>:47
+scala> val mldata2 = mldata0 ++ mldata1
 mldata2:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= UnionRDD\[34\] at $plus$plus at \<console\>:51
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= UnionRDD[34] at $plus$plus at <console>:51
+```
 
 分割mldata2为训练和测试数据集：
 
-scala\> val splits = mldata2.randomSplit(Array(0.7, 0.3))
-
+```scala
+scala> val splits = mldata2.randomSplit(Array(0.7, 0.3))
 splits:
-Array\[org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]\]
-= Array(MapPartitionsRDD\[35\] at randomSplit at \<console\>:53,
-MapPartitionsRDD\[36\] at randomSplit at \<console\>:53)
-
-scala\> val (trainingData, testData) = (splits(0), splits(1))
-
+Array[org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]]
+= Array(MapPartitionsRDD[35] at randomSplit at <console>:53,
+MapPartitionsRDD[36] at randomSplit at <console>:53)
+scala> val (trainingData, testData) = (splits(0), splits(1))
 trainingData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[35\] at randomSplit at \<console\>:53
-
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[35] at randomSplit at <console>:53
 testData:
-org.apache.spark.rdd.RDD\[org.apache.spark.mllib.regression.LabeledPoint\]
-= MapPartitionsRDD\[36\] at randomSplit at \<console\>:53
-
-scala\> testData.take(1)
-
-res16: Array\[org.apache.spark.mllib.regression.LabeledPoint\] =
-Array((0.0,\[23.0,4.0,900.0,1225.0,6.0,385.0,216.0,294.0\]))
+org.apache.spark.rdd.RDD[org.apache.spark.mllib.regression.LabeledPoint]
+= MapPartitionsRDD[36] at randomSplit at <console>:53
+scala> testData.take(1)
+res16: Array[org.apache.spark.mllib.regression.LabeledPoint] =
+Array((0.0,[23.0,4.0,900.0,1225.0,6.0,385.0,216.0,294.0]))
+```
 
 代码 4‑75
 
@@ -2257,68 +1876,48 @@ impurity：是指在节点处的标签均匀性的不纯度测量。
 
 为dofM、dofW、carrier、origin、dest设置范围：
 
-scala\> var categoricalFeaturesInfo = Map\[Int, Int\]()
-
-categoricalFeaturesInfo: scala.collection.immutable.Map\[Int,Int\] =
+```scala
+scala> var categoricalFeaturesInfo = Map[Int, Int]()
+categoricalFeaturesInfo: scala.collection.immutable.Map[Int,Int] =
 Map()
-
-scala\> categoricalFeaturesInfo += (0 -\> 31)
-
-scala\> categoricalFeaturesInfo += (1 -\> 7)
-
-scala\> categoricalFeaturesInfo += (4 -\> carrierMap.size)
-
-scala\> categoricalFeaturesInfo += (6 -\> originMap.size)
-
-scala\> categoricalFeaturesInfo += (7 -\> destMap.size)
-
-scala\> val numClasses = 2
-
+scala> categoricalFeaturesInfo += (0 -> 31)
+scala> categoricalFeaturesInfo += (1 -> 7)
+scala> categoricalFeaturesInfo += (4 -> carrierMap.size)
+scala> categoricalFeaturesInfo += (6 -> originMap.size)
+scala> categoricalFeaturesInfo += (7 -> destMap.size)
+scala> val numClasses = 2
 numClasses: Int = 2
+```
 
 代码 4‑76
 
 定义其他参数：
 
-scala\> val impurity = "gini"
-
+```scala
+scala> val impurity = "gini"
 impurity: String = gini
-
-scala\> val maxDepth = 9
-
+scala> val maxDepth = 9
 maxDepth: Int = 9
-
-scala\> val maxBins = 7000
-
+scala> val maxBins = 7000
 maxBins: Int = 7000
-
-scala\> val model = DecisionTree.trainClassifier(trainingData,
+scala> val model = DecisionTree.trainClassifier(trainingData,
 numClasses, categoricalFeaturesInfo,
-
 | impurity, maxDepth, maxBins)
-
 model: org.apache.spark.mllib.tree.model.DecisionTreeModel =
 DecisionTreeModel classifier of depth 9 with 581 nodes
-
-scala\> model.toDebugString
-
+scala> model.toDebugString
 res22: String =
-
 "DecisionTreeModel classifier of depth 9 with 581 nodes
-
 If (feature 0 in
 {10.0,24.0,25.0,14.0,20.0,21.0,13.0,17.0,22.0,27.0,12.0,18.0,16.0,11.0,26.0,23.0,30.0,19.0,15.0})
-
 If (feature 4 in
 {0.0,5.0,10.0,1.0,6.0,9.0,13.0,2.0,7.0,3.0,11.0,8.0,4.0})
-
-If (feature 2 \<= 1151.0)
-
+If (feature 2 <= 1151.0)
 If (feature 0 in
 {24.0,25.0,14.0,13.0,17.0,12.0,18.0,16.0,11.0,19.0,15.0})
-
 If (feature 6 in
 {88.0,247.0,288.0,196.0,46.0,152.0,228.0,29.0,179.0,211.0,106.0,238.0,121.0,61.0,132.0,133.0,1.0,248.0,201.0,102.0,260.0,38.0,297.0,165.0,252.0,197.0,156.0,109.0,256.0,212.0,129.0,237.0,2.0,266.0,148.0,264.0,279.0,118.0,281.0,54.0,181.0,219.0,76.0,7.0,245.0,39.0,98.0,208.0,103.0,66.0,251.0,241.0,162.0,112.0,194.0,50.0,67.0,199.0,182.0,154.0,143.0,87.0,158.0,186.0,55.0,119.0,246.0,190.0,19.0,239....
+```
 
 代码 4‑77
 
@@ -2326,38 +1925,26 @@ Model.toDebugString打印出决策树。接下来，使用测试数据来获得�
 
 在测试数据上进行评估，并且计算误差：
 
-scala\> val labelAndPreds = testData.map { point =\>
-
+```scala
+scala> val labelAndPreds = testData.map { point =>
 | val prediction = model.predict(point.features)
-
 | (point.label, prediction)
-
 | }
-
-labelAndPreds: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[75\] at map at \<console\>:43
-
-scala\> labelAndPreds.take(3)
-
-res24: Array\[(Double, Double)\] = Array((0.0,0.0), (0.0,0.0),
+labelAndPreds: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[75] at map at <console>:43
+scala> labelAndPreds.take(3)
+res24: Array[(Double, Double)] = Array((0.0,0.0), (0.0,0.0),
 (0.0,1.0))
-
-scala\> val wrongPrediction =(labelAndPreds.filter{
-
-| case (label, prediction) =\> ( label \!=prediction)
-
+scala> val wrongPrediction =(labelAndPreds.filter{
+| case (label, prediction) => ( label !=prediction)
 | })
-
-wrongPrediction: org.apache.spark.rdd.RDD\[(Double, Double)\] =
-MapPartitionsRDD\[76\] at filter at \<console\>:45
-
-scala\> wrongPrediction.count()
-
+wrongPrediction: org.apache.spark.rdd.RDD[(Double, Double)] =
+MapPartitionsRDD[76] at filter at <console>:45
+scala> wrongPrediction.count()
 res25: Long = 11109
-
-scala\> val ratioWrong=wrongPrediction.count().toDouble/testData.count()
-
+scala> val ratioWrong=wrongPrediction.count().toDouble/testData.count()
 ratioWrong: Double = 0.31526520418877885
+```
 
 代码 4‑78
 
@@ -2365,6 +1952,3 @@ ratioWrong: Double = 0.31526520418877885
 
 从Apache
 Spark项目发布之初，MLlib就被认为是Spark成功的基础。MLlib的关键优势在于允许数据科学家更多地专注于数据和模型，而不需要考虑怎样实现分布式数据基础架构和配置问题。Spark的核心组件是基于分布式系统实现的，MLib可以利用Spark集群优势提高机器学习的规模和速度。目前，MLlib实现了大部分机器学习算法，Spark提供了开放社区允许对现有机器学习框架进行构建和扩展。通过本章学习，了解了机器学习基本算法，MLlib用到的数据类型和API，最后通过实用程序介绍了机器学习算法的应用。
-
-
-

@@ -216,29 +216,20 @@ localhost 9999
 20/03/26 08:28:39 WARN NativeCodeLoader: Unable to load native-hadoop
 library for your platform... using builtin-java classes where applicable
 
-\-------------------------------------------
-
+```text
+-------------------------------------------
 Time: 1585211330000 ms
-
-\-------------------------------------------
-
+-------------------------------------------
 (Hello,1028)
-
 (Apache,1028)
-
 (Spark,1028)
-
-\-------------------------------------------
-
+-------------------------------------------
 Time: 1585211340000 ms
-
-\-------------------------------------------
-
+-------------------------------------------
 (Hello,188)
-
 (Apache,188)
-
 (Spark,188)
+```
 
 代码 4‑3
 
@@ -336,14 +327,13 @@ Streaming（检测本地系统中的核心数）。请注意，这在内部创�
 
 （2）如果通过spark-shell打开交互界面，StreamingContext对象也可以从现有的SparkContext对象创建。
 
-scala\> import org.apache.spark.streaming.\_
-
-import org.apache.spark.streaming.\_
-
-scala\> val ssc = new StreamingContext(sc, Seconds(10))
-
+```scala
+scala> import org.apache.spark.streaming._
+import org.apache.spark.streaming._
+scala> val ssc = new StreamingContext(sc, Seconds(10))
 ssc: org.apache.spark.streaming.StreamingContext =
 org.apache.spark.streaming.StreamingContext@3c4231e5
+```
 
 代码 4‑5
 
@@ -414,41 +404,28 @@ Streaming应用程序的内核数量必须大于接收器数量，否则系统�
 必须通过将文件从同一文件系统中的另一个位置移动到受监控目录中。 文件名以开头。
 被忽略：创建一个输入流，该输入流监视文件系统中的新文件，并将其作为文本文件读取，键的数据类型为LongWritable，值的数据类型为Text，输入格式为TextInputFormat。必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。在虚拟环境的终端界面启动spark-shell，使用textFileStream创建输入流：
 
-scala\> import org.apache.spark.streaming.\_
-
-import org.apache.spark.streaming.\_
-
-scala\> val ssc = new StreamingContext(sc, Seconds(10))
-
+```scala
+scala> import org.apache.spark.streaming._
+import org.apache.spark.streaming._
+scala> val ssc = new StreamingContext(sc, Seconds(10))
 ssc: org.apache.spark.streaming.StreamingContext =
 org.apache.spark.streaming.StreamingContext@54a5eff
-
-scala\> val lines = ssc.textFileStream("/data/input")
-
-lines: org.apache.spark.streaming.dstream.DStream\[String\] =
+scala> val lines = ssc.textFileStream("/data/input")
+lines: org.apache.spark.streaming.dstream.DStream[String] =
 org.apache.spark.streaming.dstream.MappedDStream@3a70acd5
-
-scala\> val words = lines.flatMap(\_.split(" "))
-
-words: org.apache.spark.streaming.dstream.DStream\[String\] =
+scala> val words = lines.flatMap(_.split(" "))
+words: org.apache.spark.streaming.dstream.DStream[String] =
 org.apache.spark.streaming.dstream.FlatMappedDStream@c4fc610
-
-scala\> val wordCounts = words.map(x =\> (x, 1)).reduceByKey(\_ + \_)
-
-wordCounts: org.apache.spark.streaming.dstream.DStream\[(String, Int)\]
+scala> val wordCounts = words.map(x => (x, 1)).reduceByKey(_ + _)
+wordCounts: org.apache.spark.streaming.dstream.DStream[(String, Int)]
 = org.apache.spark.streaming.dstream.ShuffledDStream@3a5922ec
-
-scala\> wordCounts.print()
-
-scala\> ssc.start()
-
-scala\> ssc.awaitTermination()
-
-\-------------------------------------------
-
+scala> wordCounts.print()
+scala> ssc.start()
+scala> ssc.awaitTermination()
+-------------------------------------------
 Time: 1585054770000 ms
-
-\-------------------------------------------
+-------------------------------------------
+```
 
 代码 4‑6
 
@@ -458,33 +435,22 @@ cp /usr/local/spark/README.md /root/data/input/1.txt
 
 一旦将文件添加到目录中，应该可以在执行程序的终端中看到刚添加文件的单词统计输出：
 
-\-------------------------------------------
-
+```text
+-------------------------------------------
 Time: 1585054780000 ms
-
-\-------------------------------------------
-
+-------------------------------------------
 (stream,1)
-
 (review,1)
-
 (its,1)
-
-(\[run,1)
-
+([run,1)
 (can,6)
-
 (guidance,2)
-
 (have,1)
-
 (locally,2)
-
 (sc.parallelize(1,1)
-
 (,72)
-
 ...
+```
 
 要停止流式传输，在运行程序的终端中使用Ctrl+C。还可以使用QueueStream创建基于RDD队列的离散流，推送到队列中的每个RDD将被视为离散流中的一批数据，并像流一样处理。
 
@@ -493,89 +459,54 @@ Time: 1585054780000 ms
 
 下面代码每隔1秒创建一个RDD放入到队列中，QueueStream每隔1秒接收队列中的数据进行处理：
 
-scala\> import org.apache.spark.rdd.RDD
-
+```scala
+scala> import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD
-
-scala\> import org.apache.spark.streaming.{Seconds, StreamingContext}
-
+scala> import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
-
-scala\> import scala.collection.mutable.Queue
-
+scala> import scala.collection.mutable.Queue
 import scala.collection.mutable.Queue
-
-scala\> val ssc = new StreamingContext(sc, Seconds(1))
-
+scala> val ssc = new StreamingContext(sc, Seconds(1))
 ssc: org.apache.spark.streaming.StreamingContext =
 org.apache.spark.streaming.StreamingContext@3031d9e9
-
-scala\> val rddQueue = new Queue\[RDD\[Int\]\]()
-
+scala> val rddQueue = new Queue[RDD[Int]]()
 rddQueue:
-scala.collection.mutable.Queue\[org.apache.spark.rdd.RDD\[Int\]\] =
+scala.collection.mutable.Queue[org.apache.spark.rdd.RDD[Int]] =
 Queue()
-
-scala\> val inputStream = ssc.queueStream(rddQueue)
-
-inputStream: org.apache.spark.streaming.dstream.InputDStream\[Int\] =
+scala> val inputStream = ssc.queueStream(rddQueue)
+inputStream: org.apache.spark.streaming.dstream.InputDStream[Int] =
 org.apache.spark.streaming.dstream.QueueInputDStream@80f3111
-
-scala\> val mappedStream = inputStream.map(x =\> (x % 10, 1))
-
-mappedStream: org.apache.spark.streaming.dstream.DStream\[(Int, Int)\] =
+scala> val mappedStream = inputStream.map(x => (x % 10, 1))
+mappedStream: org.apache.spark.streaming.dstream.DStream[(Int, Int)] =
 org.apache.spark.streaming.dstream.MappedDStream@222e9ace
-
-scala\> val reducedStream = mappedStream.reduceByKey(\_ + \_)
-
-reducedStream: org.apache.spark.streaming.dstream.DStream\[(Int, Int)\]
+scala> val reducedStream = mappedStream.reduceByKey(_ + _)
+reducedStream: org.apache.spark.streaming.dstream.DStream[(Int, Int)]
 = org.apache.spark.streaming.dstream.ShuffledDStream@6a636c62
-
-scala\> reducedStream.print()
-
-scala\> ssc.start()
-
-scala\> for (i \<- 1 to 30) {
-
+scala> reducedStream.print()
+scala> ssc.start()
+scala> for (i <- 1 to 30) {
 | rddQueue.synchronized {
-
 | rddQueue += ssc.sparkContext.makeRDD(1 to 1000, 10)
-
 | }
-
 | Thread.sleep(1000)
-
 | }
-
-\-------------------------------------------
-
+-------------------------------------------
 Time: 1585059428000 ms
-
-\-------------------------------------------
-
+-------------------------------------------
 (0,100)
-
 (1,100)
-
 (2,100)
-
 (3,100)
-
 (4,100)
-
 (5,100)
-
 (6,100)
-
 (7,100)
-
 (8,100)
-
 (9,100)
-
-  - def rawSocketStream\[T: ClassTag\](hostname: String, port: Int,
+  - def rawSocketStream[T: ClassTag](hostname: String, port: Int,
     storageLevel: StorageLevel =
-    StorageLevel.MEMORY\_AND\_DISK\_SER\_2): ReceiverInputDStream\[T\]
+    StorageLevel.MEMORY_AND_DISK_SER_2): ReceiverInputDStream[T]
+```
 
 从网络地址hostname:port创建一个输入流，这个输入流将数据作为序列化的块接收，可以将其直接推送到块管理器而无需反序列化它们，这是接收数据的最有效方法。
 
@@ -1303,35 +1234,23 @@ Spark”，在第二个终端中进行统计计数和打印，输出内容类似
 
 Batch: 0
 
-\-------------------------------------------
-
-\+-----+-----+
-
+```text
+-------------------------------------------
++-----+-----+
 |value|count|
-
-\+-----+-----+
-
-\+-----+-----+
-
-\-------------------------------------------
-
++-----+-----+
++-----+-----+
+-------------------------------------------
 Batch: 1
-
-\-------------------------------------------
-
-\+------+-----+
-
+-------------------------------------------
++------+-----+
 | value|count|
-
-\+------+-----+
-
++------+-----+
 |Apache| 927|
-
 | Hello| 927|
-
 | Spark| 927|
-
-\+------+-----+
++------+-----+
+```
 
 代码 4‑22
 
@@ -1629,51 +1548,31 @@ localhost 9999 10 5
 然后，在第一个运行Netcat服务的终端中会不断的自动输入“Hello Apache
 Spark”，在第二个终端中进行统计计数和打印，输出内容类似于以下：
 
-\-------------------------------------------
-
+```text
+-------------------------------------------
 Batch: 0
-
-\-------------------------------------------
-
-\+------+----+-----+
-
+-------------------------------------------
++------+----+-----+
 |window|word|count|
-
-\+------+----+-----+
-
-\+------+----+-----+
-
-\-------------------------------------------
-
++------+----+-----+
++------+----+-----+
+-------------------------------------------
 Batch: 1
-
-\-------------------------------------------
-
-\+------------------------------------------+------+-----+
-
+-------------------------------------------
++------------------------------------------+------+-----+
 |window |word |count|
-
-\+------------------------------------------+------+-----+
-
-|\[2020-04-03 09:08:35, 2020-04-03 09:08:45\]|Apache|225 |
-
-|\[2020-04-03 09:08:35, 2020-04-03 09:08:45\]|Hello |225 |
-
-|\[2020-04-03 09:08:35, 2020-04-03 09:08:45\]|Spark |225 |
-
-|\[2020-04-03 09:08:40, 2020-04-03 09:08:50\]|Apache|282 |
-
-|\[2020-04-03 09:08:40, 2020-04-03 09:08:50\]|Spark |282 |
-
-|\[2020-04-03 09:08:40, 2020-04-03 09:08:50\]|Hello |282 |
-
-|\[2020-04-03 09:08:45, 2020-04-03 09:08:55\]|Hello |57 |
-
-|\[2020-04-03 09:08:45, 2020-04-03 09:08:55\]|Spark |57 |
-
-|\[2020-04-03 09:08:45, 2020-04-03 09:08:55\]|Apache|57 |
-
-\+------------------------------------------+------+-----+
++------------------------------------------+------+-----+
+|[2020-04-03 09:08:35, 2020-04-03 09:08:45]|Apache|225 |
+|[2020-04-03 09:08:35, 2020-04-03 09:08:45]|Hello |225 |
+|[2020-04-03 09:08:35, 2020-04-03 09:08:45]|Spark |225 |
+|[2020-04-03 09:08:40, 2020-04-03 09:08:50]|Apache|282 |
+|[2020-04-03 09:08:40, 2020-04-03 09:08:50]|Spark |282 |
+|[2020-04-03 09:08:40, 2020-04-03 09:08:50]|Hello |282 |
+|[2020-04-03 09:08:45, 2020-04-03 09:08:55]|Hello |57 |
+|[2020-04-03 09:08:45, 2020-04-03 09:08:55]|Spark |57 |
+|[2020-04-03 09:08:45, 2020-04-03 09:08:55]|Apache|57 |
++------------------------------------------+------+-----+
+```
 
 代码 4‑32
 
@@ -1775,170 +1674,104 @@ HBase表。Spark Streaming示例代码执行以下操作：
 
 #### 5.9.1.1 传感器日志
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val schema =
-
 StructType(
-
 Array(
-
 StructField("resid", StringType, nullable=false),
-
 StructField("date", StringType, nullable=false),
-
 StructField("time", StringType, nullable=false),
-
 StructField("hz", DoubleType, nullable=false),
-
 StructField("disp", DoubleType, nullable=false),
-
 StructField("flo", LongType, nullable=false),
-
 StructField("sedPPM", DoubleType, nullable=false),
-
 StructField("psi", LongType, nullable=false),
-
 StructField("chlPPM", DoubleType, nullable=false)
-
 )
-
 )
-
 // Exiting paste mode, now interpreting.
-
 schema: org.apache.spark.sql.types.StructType =
 StructType(StructField(resid,StringType,false),
 StructField(date,StringType,false), StructField(time,StringType,false),
 StructField(hz,DoubleType,false), StructField(disp,DoubleType,false),
 StructField(flo,LongType,false), StructField(sedPPM,DoubleType,false),
 StructField(psi,LongType,false), StructField(chlPPM,DoubleType,false))
-
-scala\> case class Sensor(resid: String, date: String, time: String, hz:
+scala> case class Sensor(resid: String, date: String, time: String, hz:
 Double, disp: Double, flo: Double, sedPPM: Double, psi: Double, chlPPM:
 Double)
-
 defined class Sensor
-
-scala\> val df =
-spark.read.schema(schema).csv("/data/sensordata.csv").as\[Sensor\]
-
-df: org.apache.spark.sql.Dataset\[Sensor\] = \[sensorname: string, date:
-string ... 7 more fields\]
-
-scala\> df.show(5)
-
-\+----------+-------+----+-----+-----+---+------+---+------+
-
+scala> val df =
+spark.read.schema(schema).csv("/data/sensordata.csv").as[Sensor]
+df: org.apache.spark.sql.Dataset[Sensor] = [sensorname: string, date:
+string ... 7 more fields]
+scala> df.show(5)
++----------+-------+----+-----+-----+---+------+---+------+
 | resid | date|time| hz| disp|flo|sedPPM|psi|chlPPM|
-
-\+----------+-------+----+-----+-----+---+------+---+------+
-
++----------+-------+----+-----+-----+---+------+---+------+
 | COHUTTA|3/10/14|1:01|10.27| 1.73|881| 1.56| 85| 1.94|
-
 | COHUTTA|3/10/14|1:02| 9.67|1.731|882| 0.52| 87| 1.79|
-
 | COHUTTA|3/10/14|1:03|10.47|1.732|882| 1.7| 92| 0.66|
-
 | COHUTTA|3/10/14|1:05| 9.56|1.734|883| 1.35| 99| 0.68|
-
 | COHUTTA|3/10/14|1:06| 9.74|1.736|884| 1.27| 92| 0.73|
-
-\+----------+-------+----+-----+-----+---+------+---+------+
-
++----------+-------+----+-----+-----+---+------+---+------+
 only showing top 5 rows
+```
 
 #### 5.9.1.2 维护信息
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val maintSchema =
-
 StructType(
-
 Array(
-
 StructField("resid", StringType, nullable=false),
-
 StructField("eventDate", StringType, nullable=false),
-
 StructField("technician", StringType, nullable=false),
-
 StructField("description", StringType, nullable=false)
-
 )
-
 )
-
 // Exiting paste mode, now interpreting.
-
 maintSchema: org.apache.spark.sql.types.StructType =
 StructType(StructField(resid,StringType,false),
 StructField(eventDate,StringType,false),
 StructField(technician,StringType,false),
 StructField(description,StringType,false))
-
-scala\> case class Maint(resid: String, eventDate: String, technician:
+scala> case class Maint(resid: String, eventDate: String, technician:
 String, description: String)
-
-scala\> df.show(5)
-
-\+----------+---------+----------+--------------------+
-
+scala> df.show(5)
++----------+---------+----------+--------------------+
 | resid|eventDate|technician| description|
-
-\+----------+---------+----------+--------------------+
-
++----------+---------+----------+--------------------+
 | COHUTTA| 3/15/11| J.Thomas| Install|
-
 | COHUTTA| 2/20/12| J.Thomas| Inspection|
-
 | COHUTTA| 1/13/13| J.Thomas| Inspection|
-
 | COHUTTA| 6/15/13| J.Thomas| Tighten Mounts|
-
 | COHUTTA| 2/27/14| J.Thomas| Inspection|
-
-\+----------+---------+----------+--------------------+
-
++----------+---------+----------+--------------------+
 only showing top 5 rows
+```
 
 #### 5.9.1.3 生产厂家
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val pumpInfoSchema =
-
 StructType(
-
 Array(
-
 StructField("resid", StringType, nullable=false),
-
 StructField("pumpType", StringType, nullable=false),
-
 StructField("purchaseDate", StringType, nullable=false),
-
 StructField("serviceDate", StringType, nullable=false),
-
 StructField("vendor", StringType, nullable=false),
-
 StructField("longitude", FloatType, nullable=false),
-
 StructField("latitude", FloatType, nullable=false)
-
 )
-
 )
-
 // Exiting paste mode, now interpreting.
-
 pumpInfoSchema: org.apache.spark.sql.types.StructType =
 StructType(StructField(resid,StringType,false),
 StructField(pumpType,StringType,false),
@@ -1947,40 +1780,26 @@ StructField(serviceDate,StringType,false),
 StructField(vendor,StringType,false),
 StructField(longitude,FloatType,false),
 StructField(latitude,FloatType,false))
-
-scala\> case class PumpInfo(resid: String, pumpType: String,
+scala> case class PumpInfo(resid: String, pumpType: String,
 purchaseDate: String, serviceDate: String, vendor: String, longitude:
 Float, latitude: Float)
-
 defined class PumpInfo
-
-scala\> val df =
-spark.read.schema(pumpInfoSchema).csv("/data/sensorvendor.csv").as\[PumpInfo\]
-
-df: org.apache.spark.sql.Dataset\[PumpInfo\] = \[resid: string,
-pumpType: string ... 5 more fields\]
-
-scala\> df.show(5)
-
-\+----------+---------+------------+-----------+--------+---------+---------+
-
+scala> val df =
+spark.read.schema(pumpInfoSchema).csv("/data/sensorvendor.csv").as[PumpInfo]
+df: org.apache.spark.sql.Dataset[PumpInfo] = [resid: string,
+pumpType: string ... 5 more fields]
+scala> df.show(5)
++----------+---------+------------+-----------+--------+---------+---------+
 | resid| pumpType|purchaseDate|serviceDate| vendor|longitude| latitude|
-
-\+----------+---------+------------+-----------+--------+---------+---------+
-
++----------+---------+------------+-----------+--------+---------+---------+
 | COHUTTA|HYDROPUMP| 11/27/10| 3/15/11|HYDROCAM|29.687277|-91.16249|
-
 |NANTAHALLA|HYDROPUMP| 11/27/10| 3/15/11|HYDROCAM|29.687128| -91.1625|
-
 |THERMALITO|HYDROPUMP| 5/25/08| 9/26/09| GENPUMP|29.687277|-91.16249|
-
 | BUTTE|HYDROPUMP| 5/25/08| 9/26/09| GENPUMP| 29.68693| -91.1625|
-
 | CARGO|HYDROPUMP| 5/25/08| 9/26/09| GENPUMP|29.683147|-91.14545|
-
-\+----------+---------+------------+-----------+--------+---------+---------+
-
++----------+---------+------------+-----------+--------+---------+---------+
 only showing top 5 rows
+```
 
 #### 5.9.1.4 HBase表格
 
@@ -2644,7 +2463,3 @@ only showing top 1 row
 
 在本章中，学习了流式处理程序的基础知识；学习了怎样在Spark
 Streaming中操作离散化流和结构化流，还了解了Spark数据流的输入源类型以及各种数据流操作。
-
-
-
-

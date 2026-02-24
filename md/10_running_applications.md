@@ -85,15 +85,14 @@ Type in expressions to have them evaluated.
 
 Type :help for more information.
 
-scala\> spark
-
+```scala
+scala> spark
 res0: org.apache.spark.sql.SparkSession =
 <org.apache.spark.sql.SparkSession@47fbf95e>
-
-scala\> sc
-
+scala> sc
 res2: org.apache.spark.SparkContext =
 <org.apache.spark.SparkContext@5e9af5d4>
+```
 
 代码 4.4
 
@@ -125,9 +124,10 @@ val builder = SparkSession.builder
 
 > 返回当前Spark的版本。在内部，version使用spark.SPARK\_VERSION值，即CLASSPATH中spark-version-info.properties属性文件中的version属性。
 
-scala\> spark.version
-
+```scala
+scala> spark.version
 res4: String = 4.1.1
+```
 
 代码 4.6
 
@@ -151,15 +151,13 @@ implicits对象提供对从任何类型的RDD（Encoder所包括的）、case类
 
 > 创建一个空Dataset\[T\]。emptyDataset创建一个空数据集，假设将来的记录是类型T。
 
-scala\> val strings = spark.emptyDataset\[String\]
-
-strings: org.apache.spark.sql.Dataset\[String\] = \[value: string\]
-
-scala\> strings.printSchema
-
+```scala
+scala> val strings = spark.emptyDataset[String]
+strings: org.apache.spark.sql.Dataset[String] = [value: string]
+scala> strings.printSchema
 root
-
 |-- value: string (nullable = true)
+```
 
 代码 4.8
 
@@ -175,20 +173,16 @@ root
 
 > 创建一个Dataset\[Long\]。range的方法系列创建一个Long数据的数据集。
 
-scala\> spark.range(start = 0, end = 4, step = 2, numPartitions =
+```scala
+scala> spark.range(start = 0, end = 4, step = 2, numPartitions =
 5).show
-
-\+---+
-
++---+
 | id|
-
-\+---+
-
++---+
 | 0|
-
 | 2|
-
-\+---+
++---+
+```
 
 代码 4.9
 
@@ -200,31 +194,22 @@ scala\> spark.range(start = 0, end = 4, step = 2, numPartitions =
 
 执行SQL查询（并返回DataFrame）。sql执行参数sqlText传递的SQL语句并创建一个DataFrame。
 
-scala\> sql("SHOW TABLES")
-
-res0: org.apache.spark.sql.DataFrame = \[tableName: string, isTemporary:
-boolean\]
-
-scala\> sql("DROP TABLE IF EXISTS testData")
-
-res1: org.apache.spark.sql.DataFrame = \[\]
-
+```scala
+scala> sql("SHOW TABLES")
+res0: org.apache.spark.sql.DataFrame = [tableName: string, isTemporary:
+boolean]
+scala> sql("DROP TABLE IF EXISTS testData")
+res1: org.apache.spark.sql.DataFrame = []
 // Let's create a table to SHOW it
-
 spark.range(10).write.option("path",
 "/tmp/test").saveAsTable("testData")
-
-scala\> sql("SHOW TABLES").show
-
-\+---------+-----------+
-
+scala> sql("SHOW TABLES").show
++---------+-----------+
 |tableName|isTemporary|
-
-\+---------+-----------+
-
++---------+-----------+
 | testdata| false|
-
-\+---------+-----------+
++---------+-----------+
+```
 
 代码 4.10
 
@@ -232,32 +217,22 @@ scala\> sql("SHOW TABLES").show
 
 访问用户定义的函数（UDF）。udf属性允许访问UDFRegistration，允许注册基于SQL查询的用户定义函数。
 
-scala\> spark.udf.register("myUpper", (s: String) =\> s.toUpperCase)
-
+```scala
+scala> spark.udf.register("myUpper", (s: String) => s.toUpperCase)
 res6: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,StringType,Some(List(StringType)))
-
-scala\> val strs = ('a' to 'c').map(\_.toString).toDS
-
-strs: org.apache.spark.sql.Dataset\[String\] = \[value: string\]
-
-scala\> strs.createOrReplaceTempView("strs")
-
-scala\> sql("SELECT \*, myUpper(value) UPPER FROM strs").show
-
-\+-----+-----+
-
+UserDefinedFunction(<function1>,StringType,Some(List(StringType)))
+scala> val strs = ('a' to 'c').map(_.toString).toDS
+strs: org.apache.spark.sql.Dataset[String] = [value: string]
+scala> strs.createOrReplaceTempView("strs")
+scala> sql("SELECT *, myUpper(value) UPPER FROM strs").show
++-----+-----+
 |value|UPPER|
-
-\+-----+-----+
-
++-----+-----+
 | a| A|
-
 | b| B|
-
 | c| C|
-
-\+-----+-----+
++-----+-----+
+```
 
 代码 4.11
 
@@ -265,29 +240,20 @@ scala\> sql("SELECT \*, myUpper(value) UPPER FROM strs").show
 
 从表创建DataFrame。将表加载为DataFrame，如果存在。
 
-scala\> spark.catalog.tableExists("strs")
-
+```scala
+scala> spark.catalog.tableExists("strs")
 res12: Boolean = true
-
-scala\> val t1 = spark.table("strs")
-
-t1: org.apache.spark.sql.DataFrame = \[value: string\]
-
-scala\> t1.show
-
-\+-----+
-
+scala> val t1 = spark.table("strs")
+t1: org.apache.spark.sql.DataFrame = [value: string]
+scala> t1.show
++-----+
 |value|
-
-\+-----+
-
++-----+
 | a|
-
 | b|
-
 | c|
-
-\+-----+
++-----+
+```
 
 代码 4.12
 
@@ -295,19 +261,15 @@ scala\> t1.show
 
 访问结构化查询实体的元数据目录，catalog属性是当前元数据目录的查询接口，元数据目录包括关系实体，如数据库、表、函数、表列和临时视图。
 
-scala\> spark.catalog.listTables.show
-
-\+------------------+--------+-----------+---------+-----------+
-
+```scala
+scala> spark.catalog.listTables.show
++------------------+--------+-----------+---------+-----------+
 | name|database|description|tableType|isTemporary|
-
-\+------------------+--------+-----------+---------+-----------+
-
-|my\_permanent\_table| default| null| MANAGED| false|
-
++------------------+--------+-----------+---------+-----------+
+|my_permanent_table| default| null| MANAGED| false|
 | strs| null| null|TEMPORARY| true|
-
-\+------------------+--------+-----------+---------+-----------+
++------------------+--------+-----------+---------+-----------+
+```
 
 代码 4.13
 
@@ -419,37 +381,30 @@ Spark应用程序，或者具有Java和Scala代码的混合代码库，则最有
 
 如果使用sbt 0.13.13或更高版本，则可以使用sbt new命令快速设置简单的Hello World构建，键入以下命令到终端。
 
+```bash
 $ sbt new sbt/scala-seed.g8
-
 ....
-
 Minimum Scala build.
-
-name \[My Something Project\]: hello
-
+name [My Something Project]: hello
 Template applied in ./hello
+```
 
 代码 4.3
 
 当提示输入项目名称时，输入hello。这将在名为hello目录下创建一个新项目。现在从hello目录中，启动sbt并在sbt
 shell中输入run。在Linux或OS X上，这些命令可能如下所示：
 
+```bash
 $ cd hello
-
 $ sbt
-
 ...
-
-\> run
-
+> run
 ...
-
-\[info\] Compiling 1 Scala source to
+[info] Compiling 1 Scala source to
 /xxx/hello/target/scala-2.12/classes...
-
-\[info\] Running example.Hello
-
+[info] Running example.Hello
 Hello
+```
 
 命令 4.1
 
@@ -526,9 +481,10 @@ libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 已经在项目的基础目录中看到了build.sbt。其他的sbt
 文件在project子目录中。project目录可以包含.scala文件，这些文件最后会和.sbt文件合并共同构成完整的构建定义。除build.sbt之外，project目录还可以包含.scala文件用来定义助手对象和一次性插件。我们可能会在项目中看到.sbt文件，但不等同于项目基本目录中的.sbt文件。build.properties文件控制SBT的版本。不同的项目可以在同一开发环境中使用不同版本的工具。build.properties文件始终包含一个标识SBT版本的属性，例子中该版本是0.13.15。
 
-\# SBT Properties File: controls version of sbt tool
-
+```bash
+# SBT Properties File: controls version of sbt tool
 sbt.version=0.13.15
+```
 
 代码 4.8
 
@@ -627,7 +583,9 @@ sbt clean
 
 sbt package
 
-\# (This command may take a long time on its first run)
+```text
+# (This command may take a long time on its first run)
+```
 
 命令 4.3 SBT构建命令
 
@@ -637,17 +595,14 @@ package命令用于编译/src/main/中的源代码，并且创建一个没有任
 CSV作为运行时依赖关系。记住，spark-submit使用Maven语法，而不是SBT语法（冒号作为分隔符而不是百分号），并且不需要将Spark本身作为依赖关系，因为默认情况下它是隐含的。可以使用逗号分隔列表添加其他Maven
 ID。
 
-\# Run the Scala version.
-
+```text
+# Run the Scala version.
 cd /root/spark-app/building-sbt
-
-$SPARK\_HOME/bin/spark-submit \\
-
-\--class com.pinecone.SBuilding \\
-
-\--packages org.apache.commons:commons-csv:1.2 \\
-
-target/scala-2.13/buildingsbt\_2.13-1.0.jar
+$SPARK_HOME/bin/spark-submit \
+--class com.pinecone.SBuilding \
+--packages org.apache.commons:commons-csv:1.2 \
+target/scala-2.13/buildingsbt_2.13-1.0.jar
+```
 
 命令 4.5
 
@@ -677,17 +632,14 @@ wget
 （4）现在可以使用spark-submit使用--jars参数运行应用程序，以将Commons
 CSV作为运行时依赖关系。可以使用逗号分隔列表添加其他jar。
 
-\# Run the Scala version.
-
+```text
+# Run the Scala version.
 cd /root/spark-app/building-sbt
-
-$SPARK\_HOME/bin/spark-submit \\
-
-\--class com.pinecone.SBuildingSBT \\
-
-\--jars lib/commons-csv-1.2.jar \\
-
-target/scala-2.13/buildingsbt\_2.13-1.0.jar
+$SPARK_HOME/bin/spark-submit \
+--class com.pinecone.SBuildingSBT \
+--jars lib/commons-csv-1.2.jar \
+target/scala-2.13/buildingsbt_2.13-1.0.jar
+```
 
 命令 4.8提交scala程序
 
@@ -788,15 +740,13 @@ org/apache/commons/csv/Token.class
 
 现在可以使用装配jar提交执行应用程序。因为依赖关系是捆绑在一起的，所以不需要使用--jars或—packages：
 
-\# Run the Scala version.
-
+```text
+# Run the Scala version.
 cd /root/spark-app/building-sbt
-
-$SPARK\_HOME/bin/spark-submit \\
-
-\--class com.pinecone.SBuildingSBT \\
-
+$SPARK_HOME/bin/spark-submit \
+--class com.pinecone.SBuildingSBT \
 target/scala-2.13/BuildingSBT-assembly-1.0.jar
+```
 
 命令 4.11提交scala程序
 
@@ -808,19 +758,15 @@ sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop�
 
 ./bin/spark-submit \\
 
-\--class \<main-class\> \\
-
-\--master \<master-url\> \\
-
-\--deploy-mode \<deploy-mode\> \\
-
-\--conf \<key\>=\<value\> \\
-
-... \# other options
-
-\<application-jar\> \\
-
-\[application-arguments\]
+```text
+--class <main-class> \
+--master <master-url> \
+--deploy-mode <deploy-mode> \
+--conf <key>=<value> \
+... # other options
+<application-jar> \
+[application-arguments]
+```
 
 代码 4.48
 
@@ -844,102 +790,57 @@ sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop�
 
 有几个可用的选项是特定于正在使用的集群管理器，例如使用具有cluster部署模式的Spark独立集群，还可以指定--supervise，以确保如果出现非零退出代码失败，则自动重新启动驱动程序，要枚举所有可用于spark-submit可用选项，使用--help运行它，以下是常见选项的几个示例：
 
-\# Run application locally on 8 cores
-
-./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master local\[8\] \\
-
-/path/to/examples.jar \\
-
+```text
+# Run application locally on 8 cores
+./bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master local[8] \
+/path/to/examples.jar \
 100
-
-\# Run on a Spark standalone cluster in client deploy mode
-
-./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master spark://207.184.161.138:7077 \\
-
-\--executor-memory 20G \\
-
-\--conf spark.executor.instances=10 \\
-
-/path/to/examples.jar \\
-
+# Run on a Spark standalone cluster in client deploy mode
+./bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master spark://207.184.161.138:7077 \
+--executor-memory 20G \
+--conf spark.executor.instances=10 \
+/path/to/examples.jar \
 1000
-
-\# Run on a Spark standalone cluster in cluster deploy mode with
+# Run on a Spark standalone cluster in cluster deploy mode with
 supervise
-
-./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master spark://207.184.161.138:7077 \\
-
-\--deploy-mode cluster \\
-
+./bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master spark://207.184.161.138:7077 \
+--deploy-mode cluster \
 \
-
-\--executor-memory 20G \\
-
-\--conf spark.executor.instances=10 \\
-
-/path/to/examples.jar \\
-
+--executor-memory 20G \
+--conf spark.executor.instances=10 \
+/path/to/examples.jar \
 1000
-
-\# Run on a YARN cluster
-
-export HADOOP\_CONF\_DIR=XXX
-
-./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master yarn \\
-
-\--deploy-mode cluster \\ \# can be client for client mode
-
-\--executor-memory 20G \\
-
-\--num-executors 50 \\
-
-/path/to/examples.jar \\
-
+# Run on a YARN cluster
+export HADOOP_CONF_DIR=XXX
+./bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master yarn \
+--deploy-mode cluster \ # can be client for client mode
+--executor-memory 20G \
+--num-executors 50 \
+/path/to/examples.jar \
 1000
-
-\# Run a Python application on a Spark standalone cluster
-
-./bin/spark-submit \\
-
-\--master spark://207.184.161.138:7077 \\
-
-examples/src/main/python/pi.py \\
-
+# Run a Python application on a Spark standalone cluster
+./bin/spark-submit \
+--master spark://207.184.161.138:7077 \
+examples/src/main/python/pi.py \
 1000
-
-\# Run on a Kubernetes cluster in cluster deploy mode
-
-./bin/spark-submit \\
-
-\--class org.apache.spark.examples.SparkPi \\
-
-\--master k8s://https://207.184.161.138:6443 \\
-
-\--deploy-mode cluster \\
-
-\--executor-memory 20G \\
-
-\--conf spark.executor.instances=10 \\
-
-local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \\
-
+# Run on a Kubernetes cluster in cluster deploy mode
+./bin/spark-submit \
+--class org.apache.spark.examples.SparkPi \
+--master k8s://https://207.184.161.138:6443 \
+--deploy-mode cluster \
+--executor-memory 20G \
+--conf spark.executor.instances=10 \
+local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \
 1000
+```
 
 命令 4.19
 
@@ -1268,30 +1169,26 @@ ResourceManager。此目录中包含的配置将分发到YARN群集，以便应�
 有两种可用于在YARN上启动Spark应用程序的部署模式。在cluster模式下，Spark驱动程序在由集群上的YARN管理的应用程序主进程中运行，客户端可以在启动应用程序后离开。在client模式下，驱动程序在客户端进程中运行，应用程序主程序仅用于从YARN请求资源。不同于Spark独立和Kubernetes模式，其中master地址在--master参数中指定，在YARN模式下，ResourceManager的地址从Hadoop配置中提取。因此，--
 --master参数是yarn。要在cluster模式下启动Spark应用程序：
 
+```bash
 $ ./bin/spark-submit --class path.to.your.Class --master yarn
---deploy-mode cluster \[options\] \<app jar\> \[app options\]
+--deploy-mode cluster [options] <app jar> [app options]
+```
 
 命令 4.25
 
 例如：
 
-$ ./bin/spark-submit --class org.apache.spark.examples.SparkPi \\
-
-\--master yarn \\
-
-\--deploy-mode cluster \\
-
-\--driver-memory 4g \\
-
-\--executor-memory 2g \\
-
-\--executor-cores 1 \\
-
-\--queue thequeue \\
-
-lib/spark-examples\*.jar \\
-
+```bash
+$ ./bin/spark-submit --class org.apache.spark.examples.SparkPi \
+--master yarn \
+--deploy-mode cluster \
+--driver-memory 4g \
+--executor-memory 2g \
+--executor-cores 1 \
+--queue thequeue \
+lib/spark-examples*.jar \
 10
+```
 
 命令 4.26
 
@@ -1299,23 +1196,22 @@ lib/spark-examples\*.jar \\
 Master的子线程运行。 客户端将定期轮询Application
 Master以获取状态更新，并将其显示在控制台中，应用程序完成运行后客户端将退出。要在client模式下启动Spark应用程序请执行相同操作，否则将client替换为cluster，以下显示如何在client模式下运行spark-shell：
 
+```bash
 $ ./bin/spark-shell --master yarn --deploy-mode client
+```
 
 命令 4.27
 
 在cluster模式下，驱动程序在与客户机不同的机器上运行，因此SparkContext.addJar将不会与客户端本地的文件一起使用，要使客户端上的文件可用于SparkContext.addJar，请在启动命令中使用--jars选项包含它们。
 
-$ ./bin/spark-submit --class my.main.Class \\
-
-\--master yarn \\
-
-\--deploy-mode cluster \\
-
-\--jars my-other-jar.jar,my-other-other-jar.jar \\
-
-my-main-jar.jar \\
-
-app\_arg1 app\_arg2
+```bash
+$ ./bin/spark-submit --class my.main.Class \
+--master yarn \
+--deploy-mode cluster \
+--jars my-other-jar.jar,my-other-other-jar.jar \
+my-main-jar.jar \
+app_arg1 app_arg2
+```
 
 命令 4.28
 
@@ -1352,9 +1248,3 @@ Kubernetes 模式下，`spark-submit` 通过 `k8s://` 连接 API Server，驱动
 ## 10.6 小结
 
 本章讲述如何设置一个完整的开发环境来开发和调试Spark应用程序。本章使用Scala作为开发语言，sbt作为构建工具，讲述如何使用管理依赖项、如何打包和部署Spark应用程序。另外还介绍了Spark应用程序的几种部署模式。
-
-
-
-
-
-

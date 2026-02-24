@@ -62,74 +62,49 @@ Trick），即通过应用散列函数将原始特征（一系列单词或词组
 
 在下面的代码段中，从一组句子开始，使用Tokenizer将每个句子分成单词。对于每个句子（单词袋），使用HashingTF将句子散列成一个特征向量，然后使用IDF来重新调整特征向量的权重，当使用文本作为特征时这通常会提高性能，经过处理的特征向量可以传递给机器学习算法。
 
-scala\> import org.apache.spark.ml.feature.{HashingTF, IDF, Tokenizer}
-
+```scala
+scala> import org.apache.spark.ml.feature.{HashingTF, IDF, Tokenizer}
 import org.apache.spark.ml.feature.{HashingTF, IDF, Tokenizer}
-
-scala\> val sentenceData = spark.createDataFrame(Seq(
-
+scala> val sentenceData = spark.createDataFrame(Seq(
 | (0.0, "Hi I heard about Spark"),
-
 | (0.0, "I wish Java could use case classes"),
-
 | (1.0, "Logistic regression models are neat")
-
 | )).toDF("label", "sentence")
-
-sentenceData: org.apache.spark.sql.DataFrame = \[label: double,
-sentence: string\]
-
-scala\> val tokenizer = new
+sentenceData: org.apache.spark.sql.DataFrame = [label: double,
+sentence: string]
+scala> val tokenizer = new
 Tokenizer().setInputCol("sentence").setOutputCol("words")
-
-tokenizer: org.apache.spark.ml.feature.Tokenizer = tok\_1588061c5487
-
-scala\> val wordsData = tokenizer.transform(sentenceData)
-
-wordsData: org.apache.spark.sql.DataFrame = \[label: double, sentence:
-string ... 1 more field\]
-
-scala\> val hashingTF = new HashingTF()
-
+tokenizer: org.apache.spark.ml.feature.Tokenizer = tok_1588061c5487
+scala> val wordsData = tokenizer.transform(sentenceData)
+wordsData: org.apache.spark.sql.DataFrame = [label: double, sentence:
+string ... 1 more field]
+scala> val hashingTF = new HashingTF()
 hashingTF: org.apache.spark.ml.feature.HashingTF =
-hashingTF\_3b9077cfb7fe
-
-scala\>val hashingTF = new
+hashingTF_3b9077cfb7fe
+scala>val hashingTF = new
 HashingTF().setInputCol("words").setOutputCol("rawFeatures").setNumFeatures(20)
-
 hashingTF: org.apache.spark.ml.feature.HashingTF =
-hashingTF\_a7e6b47cbb50
-
-scala\> val featurizedData = hashingTF.transform(wordsData)
-
-featurizedData: org.apache.spark.sql.DataFrame = \[label: double,
-sentence: string ... 2 more fields\]
-
-scala\> val idf = new
+hashingTF_a7e6b47cbb50
+scala> val featurizedData = hashingTF.transform(wordsData)
+featurizedData: org.apache.spark.sql.DataFrame = [label: double,
+sentence: string ... 2 more fields]
+scala> val idf = new
 IDF().setInputCol("rawFeatures").setOutputCol("features")
-
-idf: org.apache.spark.ml.feature.IDF = idf\_d997c028b7bb
-
-scala\> val idfModel = idf.fit(featurizedData)
-
-idfModel: org.apache.spark.ml.feature.IDFModel = idf\_d997c028b7bb
-
-scala\> val rescaledData = idfModel.transform(featurizedData)
-
-rescaledData: org.apache.spark.sql.DataFrame = \[label: double,
-sentence: string ... 3 more fields\]
-
-scala\> featurizedData.take(1)
-
-res12: Array\[org.apache.spark.sql.Row\] = Array(\[0.0,Hi I heard about
+idf: org.apache.spark.ml.feature.IDF = idf_d997c028b7bb
+scala> val idfModel = idf.fit(featurizedData)
+idfModel: org.apache.spark.ml.feature.IDFModel = idf_d997c028b7bb
+scala> val rescaledData = idfModel.transform(featurizedData)
+rescaledData: org.apache.spark.sql.DataFrame = [label: double,
+sentence: string ... 3 more fields]
+scala> featurizedData.take(1)
+res12: Array[org.apache.spark.sql.Row] = Array([0.0,Hi I heard about
 Spark,WrappedArray(hi, i, heard, about,
-spark),(20,\[0,5,9,17\],\[1.0,1.0,1.0,2.0\])\])
-
-scala\> rescaledData.take(1)
-
-res15: Array\[org.apache.spark.sql.Row\] = Array(\[0.0,Hi I heard about
+spark),(20,[0,5,9,17],[1.0,1.0,1.0,2.0])])
+scala> rescaledData.take(1)
+res15: Array[org.apache.spark.sql.Row] = Array([0.0,Hi I heard about
 Spark,WrappedArray(hi, i, heard, about,
-spark),(20,\[0,5,9,17\],\[1.0,1.0,1.0,2.0\]),(20,\[0,5,9,17\],\[0.6931471805599453,0.6931471805599453,0.28768207245178085,1.3862943611198906\])\])
+spark),(20,[0,5,9,17],[1.0,1.0,1.0,2.0]),(20,[0,5,9,17],[0.6931471805599453,0.6931471805599453,0.28768207245178085,1.3862943611198906])])
+```
 
 代码 4‑1
 
@@ -159,89 +134,63 @@ Word2Vec计算词汇的分布式矢量表示，分布式表示的主要优点在
 
 Word2Vec是一个估算器，接受文档的单词序列并训练Word2VecModel。模型将每个单词映射到一个唯一的固定大小的向量。Word2VecModel使用文档中所有单词的平均值将每个文档转换为一个向量，这个向量然后可以作为文档的特征用来预测和文档相似性计算等。在下面的代码段中，从一组文档开始，每个文档都被表示为一个单词序列。对于每个文档，把它转换成一个特征向量，这个特征向量可以被传递给一个机器学习算法。
 
-scala\> import org.apache.spark.ml.feature.Word2Vec
-
+```scala
+scala> import org.apache.spark.ml.feature.Word2Vec
 import org.apache.spark.ml.feature.Word2Vec
-
-scala\> import org.apache.spark.ml.linalg.Vector
-
+scala> import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.linalg.Vector
-
-scala\> import org.apache.spark.sql.Row
-
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
+```
 
 代码 4‑2
 
 输入数据，每一行代表一句话或文档的词袋：
 
-scala\> val documentDF = spark.createDataFrame(Seq(
-
+```scala
+scala> val documentDF = spark.createDataFrame(Seq(
 | "Hi I heard about Spark".split(" "),
-
 | "I wish Java could use case classes".split(" "),
-
 | "Logistic regression models are neat".split(" ")
-
 | ).map(Tuple1.apply)).toDF("text")
-
-documentDF: org.apache.spark.sql.DataFrame = \[text: array\<string\>\]
-
-scala\> documentDF.show
-
-\+--------------------+
-
+documentDF: org.apache.spark.sql.DataFrame = [text: array<string>]
+scala> documentDF.show
++--------------------+
 | text|
-
-\+--------------------+
-
-|\[Hi, I, heard, ab...|
-
-|\[I, wish, Java, c...|
-
-|\[Logistic, regres...|
-
-\+--------------------+
++--------------------+
+|[Hi, I, heard, ab...|
+|[I, wish, Java, c...|
+|[Logistic, regres...|
++--------------------+
+```
 
 代码 4‑3
 
 学习从单词到向量的映射：
 
-scala\> val word2Vec = new
+```scala
+scala> val word2Vec = new
 Word2Vec().setInputCol("text").setOutputCol("result").setVectorSize(3).setMinCount(0)
-
-word2Vec: org.apache.spark.ml.feature.Word2Vec = w2v\_58b619bf7883
-
-scala\> val model = word2Vec.fit(documentDF)
-
-model: org.apache.spark.ml.feature.Word2VecModel = w2v\_58b619bf7883
-
-scala\> val result = model.transform(documentDF)
-
-result: org.apache.spark.sql.DataFrame = \[text: array\<string\>,
-result: vector\]
-
-scala\> result.collect().foreach { case Row(text: Seq\[\_\], features:
-Vector) =\>
-
-| println(s"Text: \[${text.mkString(", ")}\] =\> \\nVector:
-$features\\n")
-
+word2Vec: org.apache.spark.ml.feature.Word2Vec = w2v_58b619bf7883
+scala> val model = word2Vec.fit(documentDF)
+model: org.apache.spark.ml.feature.Word2VecModel = w2v_58b619bf7883
+scala> val result = model.transform(documentDF)
+result: org.apache.spark.sql.DataFrame = [text: array<string>,
+result: vector]
+scala> result.collect().foreach { case Row(text: Seq[_], features:
+Vector) =>
+| println(s"Text: [${text.mkString(", ")}] => \nVector:
+$features\n")
 | }
-
-Text: \[Hi, I, heard, about, Spark\] =\>
-
+Text: [Hi, I, heard, about, Spark] =>
 Vector:
-\[0.03173386193811894,0.009443491697311401,0.024377789348363876\]
-
-Text: \[I, wish, Java, could, use, case, classes\] =\>
-
-Vector: \[0.025682436302304268,0.0314303718706859,-0.01815584538105343\]
-
-Text: \[Logistic, regression, models, are, neat\] =\>
-
+[0.03173386193811894,0.009443491697311401,0.024377789348363876]
+Text: [I, wish, Java, could, use, case, classes] =>
+Vector: [0.025682436302304268,0.0314303718706859,-0.01815584538105343]
+Text: [Logistic, regression, models, are, neat] =>
 Vector:
-\[0.022586782276630402,-0.01601201295852661,0.05122732147574425\]
+[0.022586782276630402,-0.01601201295852661,0.05122732147574425]
+```
 
 代码 4‑4
 
@@ -271,11 +220,11 @@ CountVectorizer和CountVectorizerModel旨在帮助将文本文档集合转换为
 
 id | texts
 
-\----|----------
-
+```text
+----|----------
 0 | Array("a", "b", "c")
-
 1 | Array("a", "b", "b", "c", "a")
+```
 
 代码 4‑5
 
@@ -284,57 +233,42 @@ c)的CountVectorizerModel，然后转换后的输出列vector包含：
 
 id | texts | vector
 
-\----|---------------------------------|---------------
-
-0 | Array("a", "b", "c") | (3,\[0,1,2\],\[1.0,1.0,1.0\])
-
-1 | Array("a", "b", "b", "c", "a") | (3,\[0,1,2\],\[2.0,2.0,1.0\])
+```text
+----|---------------------------------|---------------
+0 | Array("a", "b", "c") | (3,[0,1,2],[1.0,1.0,1.0])
+1 | Array("a", "b", "b", "c", "a") | (3,[0,1,2],[2.0,2.0,1.0])
+```
 
 代码 4‑6
 
 每个向量表示文档中词汇的出现次数。
 
-scala\> import org.apache.spark.ml.feature.{CountVectorizer,
+```scala
+scala> import org.apache.spark.ml.feature.{CountVectorizer,
 CountVectorizerModel}
-
 import org.apache.spark.ml.feature.{CountVectorizer,
 CountVectorizerModel}
-
-scala\> val df = spark.createDataFrame(Seq(
-
+scala> val df = spark.createDataFrame(Seq(
 | (0, Array("a", "b", "c")),
-
 | (1, Array("a", "b", "b", "c", "a"))
-
 | )).toDF("id", "words")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, words: array\<string\>\]
-
-scala\> val cvModel: CountVectorizerModel = new
+df: org.apache.spark.sql.DataFrame = [id: int, words: array<string>]
+scala> val cvModel: CountVectorizerModel = new
 CountVectorizer().setInputCol("words").setOutputCol("features").setVocabSize(3).setMinDF(2).fit(df)
-
 cvModel: org.apache.spark.ml.feature.CountVectorizerModel =
-cntVec\_5074dfb20769
-
-scala\> val cvm = new CountVectorizerModel(Array("a", "b",
+cntVec_5074dfb20769
+scala> val cvm = new CountVectorizerModel(Array("a", "b",
 "c")).setInputCol("words").setOutputCol("features")
-
 cvm: org.apache.spark.ml.feature.CountVectorizerModel =
-cntVecModel\_8e78064be4b8
-
-scala\> cvModel.transform(df).select("features").show()
-
-\+--------------------+
-
+cntVecModel_8e78064be4b8
+scala> cvModel.transform(df).select("features").show()
++--------------------+
 | features|
-
-\+--------------------+
-
-|(3,\[0,1,2\],\[1.0,1...|
-
-|(3,\[0,1,2\],\[2.0,2...|
-
-\+--------------------+
++--------------------+
+|(3,[0,1,2],[1.0,1...|
+|(3,[0,1,2],[2.0,2...|
++--------------------+
+```
 
 代码 4‑7
 
@@ -345,93 +279,59 @@ scala\> cvModel.transform(df).select("features").show()
 Tokenizer的处理过程是将文本分解成单个词汇的过程。下面的例子展示了如何将句子拆分成单词序列。RegexTokenizer允许基于正则表达式匹配更高级的处理，默认情况下pattern参数被用作分隔符来分割输入文本（正则表达式默认值为\\\\s
 +），或者用户可以将gaps参数设置为false，指示正则表达式pattern指定了词汇而不是分割间隙，并查找所有匹配结果。
 
-scala\> import org.apache.spark.ml.feature.{RegexTokenizer, Tokenizer}
-
+```scala
+scala> import org.apache.spark.ml.feature.{RegexTokenizer, Tokenizer}
 import org.apache.spark.ml.feature.{RegexTokenizer, Tokenizer}
-
-scala\> import org.apache.spark.sql.functions.\_
-
-import org.apache.spark.sql.functions.\_
-
-scala\> val sentenceDataFrame = spark.createDataFrame(Seq(
-
+scala> import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions._
+scala> val sentenceDataFrame = spark.createDataFrame(Seq(
 | (0, "Hi I heard about Spark"),
-
 | (1, "I wish Java could use case classes"),
-
 | (2, "Logistic,regression,models,are,neat")
-
 | )).toDF("id", "sentence")
-
-sentenceDataFrame: org.apache.spark.sql.DataFrame = \[id: int, sentence:
-string\]
-
-scala\>
-
-scala\> val tokenizer = new
+sentenceDataFrame: org.apache.spark.sql.DataFrame = [id: int, sentence:
+string]
+scala>
+scala> val tokenizer = new
 Tokenizer().setInputCol("sentence").setOutputCol("words")
-
-tokenizer: org.apache.spark.ml.feature.Tokenizer = tok\_c0f6a3c47f23
-
-scala\> val regexTokenizer = new
-RegexTokenizer().setInputCol("sentence").setOutputCol("words").setPattern("\\\\W")
-
+tokenizer: org.apache.spark.ml.feature.Tokenizer = tok_c0f6a3c47f23
+scala> val regexTokenizer = new
+RegexTokenizer().setInputCol("sentence").setOutputCol("words").setPattern("\\W")
 regexTokenizer: org.apache.spark.ml.feature.RegexTokenizer =
-regexTok\_0a7025a2ca35
-
-scala\> val countTokens = udf { (words: Seq\[String\]) =\> words.length
+regexTok_0a7025a2ca35
+scala> val countTokens = udf { (words: Seq[String]) => words.length
 }
-
 countTokens: org.apache.spark.sql.expressions.UserDefinedFunction =
-UserDefinedFunction(\<function1\>,IntegerType,Some(List(ArrayType(StringType,true))))
-
-scala\> val tokenized = tokenizer.transform(sentenceDataFrame)
-
-tokenized: org.apache.spark.sql.DataFrame = \[id: int, sentence: string
-... 1 more field\]
-
-scala\> tokenized.select("sentence", "words").withColumn("tokens",
+UserDefinedFunction(<function1>,IntegerType,Some(List(ArrayType(StringType,true))))
+scala> val tokenized = tokenizer.transform(sentenceDataFrame)
+tokenized: org.apache.spark.sql.DataFrame = [id: int, sentence: string
+... 1 more field]
+scala> tokenized.select("sentence", "words").withColumn("tokens",
 countTokens(col("words"))).show(false)
-
-\+-----------------------------------+------------------------------------------+------+
-
++-----------------------------------+------------------------------------------+------+
 |sentence |words |tokens|
-
-\+-----------------------------------+------------------------------------------+------+
-
-|Hi I heard about Spark |\[hi, i, heard, about, spark\] |5 |
-
-|I wish Java could use case classes |\[i, wish, java, could, use, case,
-classes\]|7 |
-
-|Logistic,regression,models,are,neat|\[logistic,regression,models,are,neat\]
++-----------------------------------+------------------------------------------+------+
+|Hi I heard about Spark |[hi, i, heard, about, spark] |5 |
+|I wish Java could use case classes |[i, wish, java, could, use, case,
+classes]|7 |
+|Logistic,regression,models,are,neat|[logistic,regression,models,are,neat]
 |1 |
-
-\+-----------------------------------+------------------------------------------+------+
-
-scala\> val regexTokenized = regexTokenizer.transform(sentenceDataFrame)
-
-regexTokenized: org.apache.spark.sql.DataFrame = \[id: int, sentence:
-string ... 1 more field\]
-
-scala\> regexTokenized.select("sentence", "words").withColumn("tokens",
++-----------------------------------+------------------------------------------+------+
+scala> val regexTokenized = regexTokenizer.transform(sentenceDataFrame)
+regexTokenized: org.apache.spark.sql.DataFrame = [id: int, sentence:
+string ... 1 more field]
+scala> regexTokenized.select("sentence", "words").withColumn("tokens",
 countTokens(col("words"))).show(false)
-
-\+-----------------------------------+------------------------------------------+------+
-
++-----------------------------------+------------------------------------------+------+
 |sentence |words |tokens|
-
-\+-----------------------------------+------------------------------------------+------+
-
-|Hi I heard about Spark |\[hi, i, heard, about, spark\] |5 |
-
-|I wish Java could use case classes |\[i, wish, java, could, use, case,
-classes\]|7 |
-
-|Logistic,regression,models,are,neat|\[logistic, regression, models,
-are, neat\] |5 |
-
-\+-----------------------------------+------------------------------------------+------+
++-----------------------------------+------------------------------------------+------+
+|Hi I heard about Spark |[hi, i, heard, about, spark] |5 |
+|I wish Java could use case classes |[i, wish, java, could, use, case,
+classes]|7 |
+|Logistic,regression,models,are,neat|[logistic, regression, models,
+are, neat] |5 |
++-----------------------------------+------------------------------------------+------+
+```
 
 代码 4‑8
 
@@ -441,11 +341,11 @@ are, neat\] |5 |
 
 id | raw
 
-\----|----------
-
-0 | \[I, saw, the, red, baloon\]
-
-1 | \[Mary, had, a, little, lamb\]
+```text
+----|----------
+0 | [I, saw, the, red, baloon]
+1 | [Mary, had, a, little, lamb]
+```
 
 代码 4‑9
 
@@ -453,52 +353,38 @@ id | raw
 
 id | raw | filtered
 
-\----|-----------------------------|--------------------
-
-0 | \[I, saw, the, red, baloon\] | \[saw, red, baloon\]
-
-1 | \[Mary, had, a, little, lamb\]|\[Mary, little, lamb\]
+```text
+----|-----------------------------|--------------------
+0 | [I, saw, the, red, baloon] | [saw, red, baloon]
+1 | [Mary, had, a, little, lamb]|[Mary, little, lamb]
+```
 
 代码 4‑10
 
 在filtered中，停用词“I”，“the”，“had”和“a”已被过滤掉。
 
-scala\> import org.apache.spark.ml.feature.StopWordsRemover
-
+```scala
+scala> import org.apache.spark.ml.feature.StopWordsRemover
 import org.apache.spark.ml.feature.StopWordsRemover
-
-scala\> val remover = new
+scala> val remover = new
 StopWordsRemover().setInputCol("raw").setOutputCol("filtered")
-
 remover: org.apache.spark.ml.feature.StopWordsRemover =
-stopWords\_bcd87f61a74e
-
-scala\> val dataSet = spark.createDataFrame(Seq(
-
+stopWords_bcd87f61a74e
+scala> val dataSet = spark.createDataFrame(Seq(
 | (0, Seq("I", "saw", "the", "red", "balloon")),
-
 | (1, Seq("Mary", "had", "a", "little", "lamb"))
-
 | )).toDF("id", "raw")
-
-dataSet: org.apache.spark.sql.DataFrame = \[id: int, raw:
-array\<string\>\]
-
-scala\>
-
-scala\> remover.transform(dataSet).show(false)
-
-\+---+----------------------------+--------------------+
-
+dataSet: org.apache.spark.sql.DataFrame = [id: int, raw:
+array<string>]
+scala>
+scala> remover.transform(dataSet).show(false)
++---+----------------------------+--------------------+
 |id |raw |filtered |
-
-\+---+----------------------------+--------------------+
-
-|0 |\[I, saw, the, red, balloon\] |\[saw, red, balloon\] |
-
-|1 |\[Mary, had, a, little, lamb\]|\[Mary, little, lamb\]|
-
-\+---+----------------------------+--------------------+
++---+----------------------------+--------------------+
+|0 |[I, saw, the, red, balloon] |[saw, red, balloon] |
+|1 |[Mary, had, a, little, lamb]|[Mary, little, lamb]|
++---+----------------------------+--------------------+
+```
 
 代码 4‑11
 
@@ -506,48 +392,31 @@ scala\> remover.transform(dataSet).show(false)
 
 \(n\)-gram是\(n\)个连续单词的序列，\(\text{\ n}\)是某个整数。NGram类可以用来将输入特征转换成\(n\)-gram。\(n\)-gram将字符串序列作为输入，参数\(n\)用于确定每个\(n\)-gram中连续单词的数量，输出将由\(n\)-gram序列组成，其中每个\(n\)-gram由一个以空格分隔的\(n\)个连续单词的字符串表示。如果输入序列包含少于\(n\)个字符串，则不会生成输出。
 
-scala\> import org.apache.spark.ml.feature.NGram
-
+```scala
+scala> import org.apache.spark.ml.feature.NGram
 import org.apache.spark.ml.feature.NGram
-
-scala\> val wordDataFrame = spark.createDataFrame(Seq(
-
+scala> val wordDataFrame = spark.createDataFrame(Seq(
 | (0, Array("Hi", "I", "heard", "about", "Spark")),
-
 | (1, Array("I", "wish", "Java", "could", "use", "case", "classes")),
-
 | (2, Array("Logistic", "regression", "models", "are", "neat"))
-
 | )).toDF("id", "words")
-
-wordDataFrame: org.apache.spark.sql.DataFrame = \[id: int, words:
-array\<string\>\]
-
-scala\> val ngram = new
+wordDataFrame: org.apache.spark.sql.DataFrame = [id: int, words:
+array<string>]
+scala> val ngram = new
 NGram().setN(2).setInputCol("words").setOutputCol("ngrams")
-
-ngram: org.apache.spark.ml.feature.NGram = ngram\_c2b7dcbc9a97
-
-scala\> val ngramDataFrame = ngram.transform(wordDataFrame)
-
-ngramDataFrame: org.apache.spark.sql.DataFrame = \[id: int, words:
-array\<string\> ... 1 more field\]
-
-scala\> ngramDataFrame.select("ngrams").show(false)
-
-\+------------------------------------------------------------------+
-
+ngram: org.apache.spark.ml.feature.NGram = ngram_c2b7dcbc9a97
+scala> val ngramDataFrame = ngram.transform(wordDataFrame)
+ngramDataFrame: org.apache.spark.sql.DataFrame = [id: int, words:
+array<string> ... 1 more field]
+scala> ngramDataFrame.select("ngrams").show(false)
++------------------------------------------------------------------+
 |ngrams |
-
-\+------------------------------------------------------------------+
-
-|\[Hi I, I heard, heard about, about Spark\] |
-
-|\[I wish, wish Java, Java could, could use, use case, case classes\]|
-
-|\[Logistic regression, regression models, models are, are neat\] |
-
-\+------------------------------------------------------------------+
++------------------------------------------------------------------+
+|[Hi I, I heard, heard about, about Spark] |
+|[I wish, wish Java, Java could, could use, use case, case classes]|
+|[Logistic regression, regression models, models are, are neat] |
++------------------------------------------------------------------+
+```
 
 代码 4‑12
 
@@ -556,50 +425,33 @@ scala\> ngramDataFrame.select("ngrams").show(false)
 二值化是将数字特征根据阈值转换成二进制（0/1）特征的过程。Binarizer采用通用参数inputCol和outputCol
 ，以及阈值threshold。大于阈值的特征值被二进制化为1.0；等于或小于阈值的值被二值化为0.0。inputCol支持Vector和Double类型。
 
-scala\> import org.apache.spark.ml.feature.Binarizer
-
+```scala
+scala> import org.apache.spark.ml.feature.Binarizer
 import org.apache.spark.ml.feature.Binarizer
-
-scala\> val data = Array((0, 0.1), (1, 0.8), (2, 0.2))
-
-data: Array\[(Int, Double)\] = Array((0,0.1), (1,0.8), (2,0.2))
-
-scala\> val dataFrame = spark.createDataFrame(data).toDF("id",
+scala> val data = Array((0, 0.1), (1, 0.8), (2, 0.2))
+data: Array[(Int, Double)] = Array((0,0.1), (1,0.8), (2,0.2))
+scala> val dataFrame = spark.createDataFrame(data).toDF("id",
 "feature")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[id: int, feature: double\]
-
-scala\> val binarizer: Binarizer = new
-Binarizer().setInputCol("feature").setOutputCol("binarized\_feature").setThreshold(0.5)
-
+dataFrame: org.apache.spark.sql.DataFrame = [id: int, feature: double]
+scala> val binarizer: Binarizer = new
+Binarizer().setInputCol("feature").setOutputCol("binarized_feature").setThreshold(0.5)
 binarizer: org.apache.spark.ml.feature.Binarizer =
-binarizer\_ecd8c65d1d28
-
-scala\> val binarizedDataFrame = binarizer.transform(dataFrame)
-
-binarizedDataFrame: org.apache.spark.sql.DataFrame = \[id: int, feature:
-double ... 1 more field\]
-
-scala\> println(s"Binarizer output with Threshold =
+binarizer_ecd8c65d1d28
+scala> val binarizedDataFrame = binarizer.transform(dataFrame)
+binarizedDataFrame: org.apache.spark.sql.DataFrame = [id: int, feature:
+double ... 1 more field]
+scala> println(s"Binarizer output with Threshold =
 ${binarizer.getThreshold}")
-
 Binarizer output with Threshold = 0.5
-
-scala\> binarizedDataFrame.show()
-
-\+---+-------+-----------------+
-
-| id|feature|binarized\_feature|
-
-\+---+-------+-----------------+
-
+scala> binarizedDataFrame.show()
++---+-------+-----------------+
+| id|feature|binarized_feature|
++---+-------+-----------------+
 | 0| 0.1| 0.0|
-
 | 1| 0.8| 1.0|
-
 | 2| 0.2| 0.0|
-
-\+---+-------+-----------------+
++---+-------+-----------------+
+```
 
 代码 4‑13
 
@@ -607,57 +459,36 @@ scala\> binarizedDataFrame.show()
 
 PCA是一个统计的过程，使用正交变换将一组可能的相关变量观测值转换成一组线性不相关的变量值，称为主成分。一个PCA类使用主成分分析的方法训练一个模型来投影向量到低维空间。下面的例子说明了如何将5维的特征向量映射为3维的主成分。
 
-scala\> import org.apache.spark.ml.feature.PCA
-
+```scala
+scala> import org.apache.spark.ml.feature.PCA
 import org.apache.spark.ml.feature.PCA
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val data = Array(
-
+scala> val data = Array(
 | Vectors.sparse(5, Seq((1, 1.0), (3, 7.0))),
-
 | Vectors.dense(2.0, 0.0, 3.0, 4.0, 5.0),
-
 | Vectors.dense(4.0, 0.0, 0.0, 6.0, 7.0)
-
 | )
-
-data: Array\[org.apache.spark.ml.linalg.Vector\] =
-Array((5,\[1,3\],\[1.0,7.0\]), \[2.0,0.0,3.0,4.0,5.0\],
-\[4.0,0.0,0.0,6.0,7.0\])
-
-scala\> val df =
+data: Array[org.apache.spark.ml.linalg.Vector] =
+Array((5,[1,3],[1.0,7.0]), [2.0,0.0,3.0,4.0,5.0],
+[4.0,0.0,0.0,6.0,7.0])
+scala> val df =
 spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector\]
-
-scala\> val pca = new
+df: org.apache.spark.sql.DataFrame = [features: vector]
+scala> val pca = new
 PCA().setInputCol("features").setOutputCol("pcaFeatures").setK(3).fit(df)
-
-pca: org.apache.spark.ml.feature.PCAModel = pca\_85a461ad106b
-
-scala\> val result = pca.transform(df).select("pcaFeatures")
-
-result: org.apache.spark.sql.DataFrame = \[pcaFeatures: vector\]
-
-scala\> result.show(false)
-
-\+-----------------------------------------------------------+
-
+pca: org.apache.spark.ml.feature.PCAModel = pca_85a461ad106b
+scala> val result = pca.transform(df).select("pcaFeatures")
+result: org.apache.spark.sql.DataFrame = [pcaFeatures: vector]
+scala> result.show(false)
++-----------------------------------------------------------+
 |pcaFeatures |
-
-\+-----------------------------------------------------------+
-
-|\[1.6485728230883807,-4.013282700516296,-5.524543751369388\] |
-
-|\[-4.645104331781534,-1.1167972663619026,-5.524543751369387\]|
-
-|\[-6.428880535676489,-5.337951427775355,-5.524543751369389\] |
-
-\+-----------------------------------------------------------+
++-----------------------------------------------------------+
+|[1.6485728230883807,-4.013282700516296,-5.524543751369388] |
+|[-4.645104331781534,-1.1167972663619026,-5.524543751369387]|
+|[-6.428880535676489,-5.337951427775355,-5.524543751369389] |
++-----------------------------------------------------------+
+```
 
 代码 4‑14
 
@@ -665,58 +496,37 @@ scala\> result.show(false)
 
 PolynomialExpansion是一个将特征展开到多元空间的处理过程，运用于特征值进行一些多项式的转化，比如平方啊，三次方，通过设置n-degree参数结合原始的维度来定义，比如设置degree为2就可以将\((x,y)\)转化为\((x,x^{2},y,xy,y^{2})\)，下面的例子展示了如何将特征展开为一个3-degree多项式空间。
 
-scala\> import org.apache.spark.ml.feature.PolynomialExpansion
-
+```scala
+scala> import org.apache.spark.ml.feature.PolynomialExpansion
 import org.apache.spark.ml.feature.PolynomialExpansion
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val data = Array(
-
+scala> val data = Array(
 | Vectors.dense(2.0, 1.0),
-
 | Vectors.dense(0.0, 0.0),
-
 | Vectors.dense(3.0, -1.0)
-
 | )
-
-data: Array\[org.apache.spark.ml.linalg.Vector\] = Array(\[2.0,1.0\],
-\[0.0,0.0\], \[3.0,-1.0\])
-
-scala\> val df =
+data: Array[org.apache.spark.ml.linalg.Vector] = Array([2.0,1.0],
+[0.0,0.0], [3.0,-1.0])
+scala> val df =
 spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector\]
-
-scala\> val polyExpansion = new
+df: org.apache.spark.sql.DataFrame = [features: vector]
+scala> val polyExpansion = new
 PolynomialExpansion().setInputCol("features").setOutputCol("polyFeatures").setDegree(3)
-
 polyExpansion: org.apache.spark.ml.feature.PolynomialExpansion =
-poly\_a99f07202fbd
-
-scala\> val polyDF = polyExpansion.transform(df)
-
-polyDF: org.apache.spark.sql.DataFrame = \[features: vector,
-polyFeatures: vector\]
-
-scala\> polyDF.show(false)
-
-\+----------+------------------------------------------+
-
+poly_a99f07202fbd
+scala> val polyDF = polyExpansion.transform(df)
+polyDF: org.apache.spark.sql.DataFrame = [features: vector,
+polyFeatures: vector]
+scala> polyDF.show(false)
++----------+------------------------------------------+
 |features |polyFeatures |
-
-\+----------+------------------------------------------+
-
-|\[2.0,1.0\] |\[2.0,4.0,8.0,1.0,2.0,4.0,1.0,2.0,1.0\] |
-
-|\[0.0,0.0\] |\[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0\] |
-
-|\[3.0,-1.0\]|\[3.0,9.0,27.0,-1.0,-3.0,-9.0,1.0,3.0,-1.0\]|
-
-\+----------+------------------------------------------+
++----------+------------------------------------------+
+|[2.0,1.0] |[2.0,4.0,8.0,1.0,2.0,4.0,1.0,2.0,1.0] |
+|[0.0,0.0] |[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0] |
+|[3.0,-1.0]|[3.0,9.0,27.0,-1.0,-3.0,-9.0,1.0,3.0,-1.0]|
++----------+------------------------------------------+
+```
 
 代码 4‑15
 
@@ -724,56 +534,36 @@ scala\> polyDF.show(false)
 
 离散余弦变换（DCT）将在时域中的长度为\(N\)实数序列转换成另一个在频域中的长度为\(N\)实值序列。DCT类提供此功能，实现DCT-II方法并通过\(\frac{1}{\sqrt{2}}\)比例缩放结果，使得用于变换产生的表示矩阵为单一实体，无偏移被施加到所述变换的序列，例如变换序列的第0个元素是第0个DCT系数，而不是\(\frac{N}{2}\)）。
 
-scala\> import org.apache.spark.ml.feature.DCT
-
+```scala
+scala> import org.apache.spark.ml.feature.DCT
 import org.apache.spark.ml.feature.DCT
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val data = Seq(
-
+scala> val data = Seq(
 | Vectors.dense(0.0, 1.0, -2.0, 3.0),
-
 | Vectors.dense(-1.0, 2.0, 4.0, -7.0),
-
 | Vectors.dense(14.0, -2.0, -5.0, 1.0))
-
-data: Seq\[org.apache.spark.ml.linalg.Vector\] =
-List(\[0.0,1.0,-2.0,3.0\], \[-1.0,2.0,4.0,-7.0\],
-\[14.0,-2.0,-5.0,1.0\])
-
-scala\> val df =
+data: Seq[org.apache.spark.ml.linalg.Vector] =
+List([0.0,1.0,-2.0,3.0], [-1.0,2.0,4.0,-7.0],
+[14.0,-2.0,-5.0,1.0])
+scala> val df =
 spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector\]
-
-scala\> val dct = new
+df: org.apache.spark.sql.DataFrame = [features: vector]
+scala> val dct = new
 DCT().setInputCol("features").setOutputCol("featuresDCT").setInverse(false)
-
-dct: org.apache.spark.ml.feature.DCT = dct\_def77e623740
-
-scala\> val dctDf = dct.transform(df)
-
-dctDf: org.apache.spark.sql.DataFrame = \[features: vector, featuresDCT:
-vector\]
-
-scala\> dctDf.select("featuresDCT").show(false)
-
-\+----------------------------------------------------------------+
-
+dct: org.apache.spark.ml.feature.DCT = dct_def77e623740
+scala> val dctDf = dct.transform(df)
+dctDf: org.apache.spark.sql.DataFrame = [features: vector, featuresDCT:
+vector]
+scala> dctDf.select("featuresDCT").show(false)
++----------------------------------------------------------------+
 |featuresDCT |
-
-\+----------------------------------------------------------------+
-
-|\[1.0,-1.1480502970952693,2.0000000000000004,-2.7716385975338604\]|
-
-|\[-1.0,3.378492794482933,-7.000000000000001,2.9301512653149677\] |
-
-|\[4.0,9.304453421915744,11.000000000000002,1.5579302036357163\] |
-
-\+----------------------------------------------------------------+
++----------------------------------------------------------------+
+|[1.0,-1.1480502970952693,2.0000000000000004,-2.7716385975338604]|
+|[-1.0,3.378492794482933,-7.000000000000001,2.9301512653149677] |
+|[4.0,9.304453421915744,11.000000000000002,1.5579302036357163] |
++----------------------------------------------------------------+
+```
 
 代码 4‑16
 
@@ -807,19 +597,15 @@ numLabels\]，按照标签的出现频率进行排序，并且支持四种排序
 
 id | category
 
-\----|----------
-
+```text
+----|----------
 0 | a
-
 1 | b
-
 2 | c
-
 3 | a
-
 4 | a
-
 5 | c
+```
 
 代码 4‑17
 
@@ -827,19 +613,15 @@ category是具有三个标签字符串列：“a”，“b”和“c”的。应
 
 id | category | categoryIndex
 
-\----|----------|---------------
-
+```text
+----|----------|---------------
 0 | a | 0.0
-
 1 | b | 2.0
-
 2 | c | 1.0
-
 3 | a | 0.0
-
 4 | a | 0.0
-
 5 | c | 1.0
+```
 
 代码 4‑18
 
@@ -855,17 +637,14 @@ id | category | categoryIndex
 
 id | category
 
-\----|----------
-
+```text
+----|----------
 0 | a
-
 1 | b
-
 2 | c
-
 3 | d
-
 4 | e
+```
 
 代码 4‑19
 
@@ -873,13 +652,12 @@ id | category
 
 id | category | categoryIndex
 
-\----|----------|---------------
-
+```text
+----|----------|---------------
 0 | a | 0.0
-
 1 | b | 2.0
-
 2 | c | 1.0
+```
 
 代码 4‑20
 
@@ -887,66 +665,45 @@ id | category | categoryIndex
 
 id | category | categoryIndex
 
-\----|----------|---------------
-
+```text
+----|----------|---------------
 0 | a | 0.0
-
 1 | b | 2.0
-
 2 | c | 1.0
-
 3 | d | 3.0
-
 4 | e | 3.0
+```
 
 代码 4‑21
 
 含有“d”或“e”的行被映射到索引“3.0”
 
-scala\> import org.apache.spark.ml.feature.StringIndexer
-
+```scala
+scala> import org.apache.spark.ml.feature.StringIndexer
 import org.apache.spark.ml.feature.StringIndexer
-
-scala\> val df = spark.createDataFrame(
-
+scala> val df = spark.createDataFrame(
 | Seq((0, "a"), (1, "b"), (2, "c"), (3, "a"), (4, "a"), (5, "c"))
-
 | ).toDF("id", "category")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, category: string\]
-
-scala\> val indexer = new
+df: org.apache.spark.sql.DataFrame = [id: int, category: string]
+scala> val indexer = new
 StringIndexer().setInputCol("category").setOutputCol("categoryIndex")
-
 indexer: org.apache.spark.ml.feature.StringIndexer =
-strIdx\_13ff7dc1a41d
-
-scala\> val indexed = indexer.fit(df).transform(df)
-
-indexed: org.apache.spark.sql.DataFrame = \[id: int, category: string
-... 1 more field\]
-
-scala\> indexed.show()
-
-\+---+--------+-------------+
-
+strIdx_13ff7dc1a41d
+scala> val indexed = indexer.fit(df).transform(df)
+indexed: org.apache.spark.sql.DataFrame = [id: int, category: string
+... 1 more field]
+scala> indexed.show()
++---+--------+-------------+
 | id|category|categoryIndex|
-
-\+---+--------+-------------+
-
++---+--------+-------------+
 | 0| a| 0.0|
-
 | 1| b| 2.0|
-
 | 2| c| 1.0|
-
 | 3| a| 0.0|
-
 | 4| a| 0.0|
-
 | 5| c| 1.0|
-
-\+---+--------+-------------+
++---+--------+-------------+
+```
 
 代码 4‑22
 
@@ -956,19 +713,15 @@ scala\> indexed.show()
 
 id | categoryIndex
 
-\----|---------------
-
+```text
+----|---------------
 0 | 0.0
-
 1 | 2.0
-
 2 | 1.0
-
 3 | 0.0
-
 4 | 0.0
-
 5 | 1.0
+```
 
 代码 4‑23
 
@@ -976,144 +729,88 @@ id | categoryIndex
 
 id | categoryIndex | originalCategory
 
-\----|---------------|-----------------
-
+```text
+----|---------------|-----------------
 0 | 0.0 | a
-
 1 | 2.0 | b
-
 2 | 1.0 | c
-
 3 | 0.0 | a
-
 4 | 0.0 | a
-
 5 | 1.0 | c
+```
 
 代码 4‑24
 
-scala\> import org.apache.spark.ml.attribute.Attribute
-
+```scala
+scala> import org.apache.spark.ml.attribute.Attribute
 import org.apache.spark.ml.attribute.Attribute
-
-scala\> import org.apache.spark.ml.feature.{IndexToString,
+scala> import org.apache.spark.ml.feature.{IndexToString,
 StringIndexer}
-
 import org.apache.spark.ml.feature.{IndexToString, StringIndexer}
-
-scala\> val df = spark.createDataFrame(Seq(
-
+scala> val df = spark.createDataFrame(Seq(
 | (0, "a"),
-
 | (1, "b"),
-
 | (2, "c"),
-
 | (3, "a"),
-
 | (4, "a"),
-
 | (5, "c")
-
 | )).toDF("id", "category")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, category: string\]
-
-scala\> val indexer = new
+df: org.apache.spark.sql.DataFrame = [id: int, category: string]
+scala> val indexer = new
 StringIndexer().setInputCol("category").setOutputCol("categoryIndex").fit(df)
-
 indexer: org.apache.spark.ml.feature.StringIndexerModel =
-strIdx\_a7b1ea964da7
-
-scala\> val indexed = indexer.transform(df)
-
-indexed: org.apache.spark.sql.DataFrame = \[id: int, category: string
-... 1 more field\]
-
-scala\> println(s"Transformed string column '${indexer.getInputCol}' " +
-
+strIdx_a7b1ea964da7
+scala> val indexed = indexer.transform(df)
+indexed: org.apache.spark.sql.DataFrame = [id: int, category: string
+... 1 more field]
+scala> println(s"Transformed string column '${indexer.getInputCol}' " +
 | s"to indexed column '${indexer.getOutputCol}'")
-
 Transformed string column 'category' to indexed column 'categoryIndex'
-
-scala\> indexed.show()
-
-\+---+--------+-------------+
-
+scala> indexed.show()
++---+--------+-------------+
 | id|category|categoryIndex|
-
-\+---+--------+-------------+
-
++---+--------+-------------+
 | 0| a| 0.0|
-
 | 1| b| 2.0|
-
 | 2| c| 1.0|
-
 | 3| a| 0.0|
-
 | 4| a| 0.0|
-
 | 5| c| 1.0|
-
-\+---+--------+-------------+
-
-scala\> val inputColSchema = indexed.schema(indexer.getOutputCol)
-
++---+--------+-------------+
+scala> val inputColSchema = indexed.schema(indexer.getOutputCol)
 inputColSchema: org.apache.spark.sql.types.StructField =
 StructField(categoryIndex,DoubleType,true)
-
-scala\> println(s"StringIndexer will store labels in output column
+scala> println(s"StringIndexer will store labels in output column
 metadata: " +
-
-| s"${Attribute.fromStructField(inputColSchema).toString}\\n")
-
+| s"${Attribute.fromStructField(inputColSchema).toString}\n")
 StringIndexer will store labels in output column metadata:
-{"vals":\["a","c","b"\],"type":"nominal","name":"categoryIndex"}
-
-scala\> val converter = new
+{"vals":["a","c","b"],"type":"nominal","name":"categoryIndex"}
+scala> val converter = new
 IndexToString().setInputCol("categoryIndex").setOutputCol("originalCategory")
-
 converter: org.apache.spark.ml.feature.IndexToString =
-idxToStr\_6c16029b021c
-
-scala\> val converted = converter.transform(indexed)
-
-converted: org.apache.spark.sql.DataFrame = \[id: int, category: string
-... 2 more fields\]
-
-scala\>
-
-scala\> println(s"Transformed indexed column '${converter.getInputCol}'
+idxToStr_6c16029b021c
+scala> val converted = converter.transform(indexed)
+converted: org.apache.spark.sql.DataFrame = [id: int, category: string
+... 2 more fields]
+scala>
+scala> println(s"Transformed indexed column '${converter.getInputCol}'
 back to original string " +
-
 | s"column '${converter.getOutputCol}' using labels in metadata")
-
 Transformed indexed column 'categoryIndex' back to original string
 column 'originalCategory' using labels in metadata
-
-scala\> converted.select("id", "categoryIndex",
+scala> converted.select("id", "categoryIndex",
 "originalCategory").show()
-
-\+---+-------------+----------------+
-
++---+-------------+----------------+
 | id|categoryIndex|originalCategory|
-
-\+---+-------------+----------------+
-
++---+-------------+----------------+
 | 0| 0.0| a|
-
 | 1| 2.0| b|
-
 | 2| 1.0| c|
-
 | 3| 0.0| a|
-
 | 4| 0.0| a|
-
 | 5| 1.0| c|
-
-\+---+-------------+----------------+
++---+-------------+----------------+
+```
 
 代码 4‑25
 
@@ -1121,72 +818,45 @@ scala\> converted.select("id", "categoryIndex",
 
 OneHotEncoder将标签索引列映射到二进制向量列，其中只包含一个有效位，这种编码允许需要连续特征值的算法（如逻辑回归）使用类别特征。
 
-scala\> import org.apache.spark.ml.feature.{OneHotEncoder,
+```scala
+scala> import org.apache.spark.ml.feature.{OneHotEncoder,
 StringIndexer}
-
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
-
-scala\> val df = spark.createDataFrame(Seq(
-
+scala> val df = spark.createDataFrame(Seq(
 | (0, "a"),
-
 | (1, "b"),
-
 | (2, "c"),
-
 | (3, "a"),
-
 | (4, "a"),
-
 | (5, "c")
-
 | )).toDF("id", "category")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, category: string\]
-
-scala\> val indexer = new
+df: org.apache.spark.sql.DataFrame = [id: int, category: string]
+scala> val indexer = new
 StringIndexer().setInputCol("category").setOutputCol("categoryIndex").fit(df)
-
 indexer: org.apache.spark.ml.feature.StringIndexerModel =
-strIdx\_960fe46d3016
-
-scala\> val indexed = indexer.transform(df)
-
-indexed: org.apache.spark.sql.DataFrame = \[id: int, category: string
-... 1 more field\]
-
-scala\> val encoder = new
+strIdx_960fe46d3016
+scala> val indexed = indexer.transform(df)
+indexed: org.apache.spark.sql.DataFrame = [id: int, category: string
+... 1 more field]
+scala> val encoder = new
 OneHotEncoder().setInputCol("categoryIndex").setOutputCol("categoryVec")
-
 encoder: org.apache.spark.ml.feature.OneHotEncoder =
-oneHot\_e70bbac6206f
-
-scala\> val encoded = encoder.transform(indexed)
-
-encoded: org.apache.spark.sql.DataFrame = \[id: int, category: string
-... 2 more fields\]
-
-scala\> encoded.show()
-
-\+---+--------+-------------+-------------+
-
+oneHot_e70bbac6206f
+scala> val encoded = encoder.transform(indexed)
+encoded: org.apache.spark.sql.DataFrame = [id: int, category: string
+... 2 more fields]
+scala> encoded.show()
++---+--------+-------------+-------------+
 | id|category|categoryIndex| categoryVec|
-
-\+---+--------+-------------+-------------+
-
-| 0| a| 0.0|(2,\[0\],\[1.0\])|
-
-| 1| b| 2.0| (2,\[\],\[\])|
-
-| 2| c| 1.0|(2,\[1\],\[1.0\])|
-
-| 3| a| 0.0|(2,\[0\],\[1.0\])|
-
-| 4| a| 0.0|(2,\[0\],\[1.0\])|
-
-| 5| c| 1.0|(2,\[1\],\[1.0\])|
-
-\+---+--------+-------------+-------------+
++---+--------+-------------+-------------+
+| 0| a| 0.0|(2,[0],[1.0])|
+| 1| b| 2.0| (2,[],[])|
+| 2| c| 1.0|(2,[1],[1.0])|
+| 3| a| 0.0|(2,[0],[1.0])|
+| 4| a| 0.0|(2,[0],[1.0])|
+| 5| c| 1.0|(2,[1],[1.0])|
++---+--------+-------------+-------------+
+```
 
 代码 4‑26
 
@@ -1204,108 +874,66 @@ VectorIndexer将分类特征索引为向量数据集，既可以自动决定哪�
 
 索引后的类别特征可以帮助决策树等算法恰当的处理类别型特征，并得到较好结果。在下面的例子中，读入一个数据集，然后使用VectorIndexer来决定哪些特征需要被作为类别特征，将类别特征转换为他的索引。
 
-scala\> import org.apache.spark.ml.feature.VectorIndexer
-
+```scala
+scala> import org.apache.spark.ml.feature.VectorIndexer
 import org.apache.spark.ml.feature.VectorIndexer
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val data = Seq(
-
+scala> val data = Seq(
 | Vectors.sparse(3, Array(0, 1, 2), Array(2.0, 5.0, 7.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(3.0, 5.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(4.0, 7.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(2.0, 4.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(9.0, 5.0, 7.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(2.0, 5.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(2.0, 5.0, 7.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(3.0, 4.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(8.0, 4.0, 9.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(3.0, 6.0, 2.0)),
-
 | Vectors.sparse(3, Array(0, 1, 2), Array(5.0, 9.0, 2.0)))
-
-data: Seq\[org.apache.spark.ml.linalg.Vector\] =
-List((3,\[0,1,2\],\[2.0,5.0,7.0\]), (3,\[0,1,2\],\[3.0,5.0,9.0\]),
-(3,\[0,1,2\],\[4.0,7.0,9.0\]), (3,\[0,1,2\],\[2.0,4.0,9.0\]),
-(3,\[0,1,2\],\[9.0,5.0,7.0\]), (3,\[0,1,2\],\[2.0,5.0,9.0\]),
-(3,\[0,1,2\],\[2.0,5.0,7.0\]), (3,\[0,1,2\],\[3.0,4.0,9.0\]),
-(3,\[0,1,2\],\[8.0,4.0,9.0\]), (3,\[0,1,2\],\[3.0,6.0,2.0\]),
-(3,\[0,1,2\],\[5.0,9.0,2.0\]))
-
-scala\> val df =
+data: Seq[org.apache.spark.ml.linalg.Vector] =
+List((3,[0,1,2],[2.0,5.0,7.0]), (3,[0,1,2],[3.0,5.0,9.0]),
+(3,[0,1,2],[4.0,7.0,9.0]), (3,[0,1,2],[2.0,4.0,9.0]),
+(3,[0,1,2],[9.0,5.0,7.0]), (3,[0,1,2],[2.0,5.0,9.0]),
+(3,[0,1,2],[2.0,5.0,7.0]), (3,[0,1,2],[3.0,4.0,9.0]),
+(3,[0,1,2],[8.0,4.0,9.0]), (3,[0,1,2],[3.0,6.0,2.0]),
+(3,[0,1,2],[5.0,9.0,2.0]))
+scala> val df =
 spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
-
-df: org.apache.spark.sql.DataFrame = \[features: vector\]
-
-scala\> val indexer = new
+df: org.apache.spark.sql.DataFrame = [features: vector]
+scala> val indexer = new
 VectorIndexer().setInputCol("features").setOutputCol("indexedFeatures").setMaxCategories(5)
-
 indexer: org.apache.spark.ml.feature.VectorIndexer =
-vecIdx\_695bb0c7d21c
-
-scala\> val indexerModel = indexer.fit(df)
-
+vecIdx_695bb0c7d21c
+scala> val indexerModel = indexer.fit(df)
 indexerModel: org.apache.spark.ml.feature.VectorIndexerModel =
-vecIdx\_695bb0c7d21c
-
-scala\> val categoricalFeatures: Set\[Int\] =
+vecIdx_695bb0c7d21c
+scala> val categoricalFeatures: Set[Int] =
 indexerModel.categoryMaps.keys.toSet
-
-categoricalFeatures: Set\[Int\] = Set(1, 2)
-
-scala\> println(s"Chose ${categoricalFeatures.size} categorical
+categoricalFeatures: Set[Int] = Set(1, 2)
+scala> println(s"Chose ${categoricalFeatures.size} categorical
 features: " + categoricalFeatures.mkString(", "))
-
 Chose 2 categorical features: 1, 2
-
-scala\> val indexedData = indexerModel.transform(df)
-
-indexedData: org.apache.spark.sql.DataFrame = \[features: vector,
-indexedFeatures: vector\]
-
-scala\> indexedData.show(false)
-
-\+-------------------------+-------------------------+
-
+scala> val indexedData = indexerModel.transform(df)
+indexedData: org.apache.spark.sql.DataFrame = [features: vector,
+indexedFeatures: vector]
+scala> indexedData.show(false)
++-------------------------+-------------------------+
 |features |indexedFeatures |
-
-\+-------------------------+-------------------------+
-
-|(3,\[0,1,2\],\[2.0,5.0,7.0\])|(3,\[0,1,2\],\[2.0,1.0,1.0\])|
-
-|(3,\[0,1,2\],\[3.0,5.0,9.0\])|(3,\[0,1,2\],\[3.0,1.0,2.0\])|
-
-|(3,\[0,1,2\],\[4.0,7.0,9.0\])|(3,\[0,1,2\],\[4.0,3.0,2.0\])|
-
-|(3,\[0,1,2\],\[2.0,4.0,9.0\])|(3,\[0,1,2\],\[2.0,0.0,2.0\])|
-
-|(3,\[0,1,2\],\[9.0,5.0,7.0\])|(3,\[0,1,2\],\[9.0,1.0,1.0\])|
-
-|(3,\[0,1,2\],\[2.0,5.0,9.0\])|(3,\[0,1,2\],\[2.0,1.0,2.0\])|
-
-|(3,\[0,1,2\],\[2.0,5.0,7.0\])|(3,\[0,1,2\],\[2.0,1.0,1.0\])|
-
-|(3,\[0,1,2\],\[3.0,4.0,9.0\])|(3,\[0,1,2\],\[3.0,0.0,2.0\])|
-
-|(3,\[0,1,2\],\[8.0,4.0,9.0\])|(3,\[0,1,2\],\[8.0,0.0,2.0\])|
-
-|(3,\[0,1,2\],\[3.0,6.0,2.0\])|(3,\[0,1,2\],\[3.0,2.0,0.0\])|
-
-|(3,\[0,1,2\],\[5.0,9.0,2.0\])|(3,\[0,1,2\],\[5.0,4.0,0.0\])|
-
-\+-------------------------+-------------------------+
++-------------------------+-------------------------+
+|(3,[0,1,2],[2.0,5.0,7.0])|(3,[0,1,2],[2.0,1.0,1.0])|
+|(3,[0,1,2],[3.0,5.0,9.0])|(3,[0,1,2],[3.0,1.0,2.0])|
+|(3,[0,1,2],[4.0,7.0,9.0])|(3,[0,1,2],[4.0,3.0,2.0])|
+|(3,[0,1,2],[2.0,4.0,9.0])|(3,[0,1,2],[2.0,0.0,2.0])|
+|(3,[0,1,2],[9.0,5.0,7.0])|(3,[0,1,2],[9.0,1.0,1.0])|
+|(3,[0,1,2],[2.0,5.0,9.0])|(3,[0,1,2],[2.0,1.0,2.0])|
+|(3,[0,1,2],[2.0,5.0,7.0])|(3,[0,1,2],[2.0,1.0,1.0])|
+|(3,[0,1,2],[3.0,4.0,9.0])|(3,[0,1,2],[3.0,0.0,2.0])|
+|(3,[0,1,2],[8.0,4.0,9.0])|(3,[0,1,2],[8.0,0.0,2.0])|
+|(3,[0,1,2],[3.0,6.0,2.0])|(3,[0,1,2],[3.0,2.0,0.0])|
+|(3,[0,1,2],[5.0,9.0,2.0])|(3,[0,1,2],[5.0,4.0,0.0])|
++-------------------------+-------------------------+
+```
 
 代码 4‑27
 
@@ -1344,19 +972,15 @@ Interaction是一个转换器，用来加载向量或双值列，并生成一个
 
 id1|vec1 |vec2
 
-\---|--------------|--------------
-
-1 |\[1.0,2.0,3.0\] |\[8.0,4.0,5.0\]
-
-2 |\[4.0,3.0,8.0\] |\[7.0,9.0,8.0\]
-
-3 |\[6.0,1.0,9.0\] |\[2.0,3.0,6.0\]
-
-4 |\[10.0,8.0,6.0\]|\[9.0,4.0,5.0\]
-
-5 |\[9.0,2.0,7.0\] |\[10.0,7.0,3.0\]
-
-6 |\[1.0,1.0,4.0\] |\[2.0,8.0,4.0\]
+```text
+---|--------------|--------------
+1 |[1.0,2.0,3.0] |[8.0,4.0,5.0]
+2 |[4.0,3.0,8.0] |[7.0,9.0,8.0]
+3 |[6.0,1.0,9.0] |[2.0,3.0,6.0]
+4 |[10.0,8.0,6.0]|[9.0,4.0,5.0]
+5 |[9.0,2.0,7.0] |[10.0,7.0,3.0]
+6 |[1.0,1.0,4.0] |[2.0,8.0,4.0]
+```
 
 代码 4‑32
 
@@ -1364,119 +988,82 @@ id1|vec1 |vec2
 
 id1|vec1 |vec2 |interactedCol
 
-\---|--------------|--------------|------------------------------------------------------
-
-1 |\[1.0,2.0,3.0\] |\[8.0,4.0,5.0\]
-|\[8.0,4.0,5.0,16.0,8.0,10.0,24.0,12.0,15.0\]
-
-2 |\[4.0,3.0,8.0\] |\[7.0,9.0,8.0\]
-|\[56.0,72.0,64.0,42.0,54.0,48.0,112.0,144.0,128.0\]
-
-3 |\[6.0,1.0,9.0\] |\[2.0,3.0,6.0\]
-|\[36.0,54.0,108.0,6.0,9.0,18.0,54.0,81.0,162.0\]
-
-4 |\[10.0,8.0,6.0\]|\[9.0,4.0,5.0\]
-|\[360.0,160.0,200.0,288.0,128.0,160.0,216.0,96.0,120.0\]
-
-5 |\[9.0,2.0,7.0\]
-|\[10.0,7.0,3.0\]|\[450.0,315.0,135.0,100.0,70.0,30.0,350.0,245.0,105.0\]
-
-6 |\[1.0,1.0,4.0\] |\[2.0,8.0,4.0\]
-|\[12.0,48.0,24.0,12.0,48.0,24.0,48.0,192.0,96.0\]
+```text
+---|--------------|--------------|------------------------------------------------------
+1 |[1.0,2.0,3.0] |[8.0,4.0,5.0]
+|[8.0,4.0,5.0,16.0,8.0,10.0,24.0,12.0,15.0]
+2 |[4.0,3.0,8.0] |[7.0,9.0,8.0]
+|[56.0,72.0,64.0,42.0,54.0,48.0,112.0,144.0,128.0]
+3 |[6.0,1.0,9.0] |[2.0,3.0,6.0]
+|[36.0,54.0,108.0,6.0,9.0,18.0,54.0,81.0,162.0]
+4 |[10.0,8.0,6.0]|[9.0,4.0,5.0]
+|[360.0,160.0,200.0,288.0,128.0,160.0,216.0,96.0,120.0]
+5 |[9.0,2.0,7.0]
+|[10.0,7.0,3.0]|[450.0,315.0,135.0,100.0,70.0,30.0,350.0,245.0,105.0]
+6 |[1.0,1.0,4.0] |[2.0,8.0,4.0]
+|[12.0,48.0,24.0,12.0,48.0,24.0,48.0,192.0,96.0]
+```
 
 代码 4‑33
 
 代码如下：
 
-scala\>
-
+```scala
+scala>
 import org.apache.spark.ml.feature.Interaction
-
-scala\> import org.apache.spark.ml.feature.VectorAssembler
-
+scala> import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.feature.VectorAssembler
-
-scala\> val df = spark.createDataFrame(Seq(
-
+scala> val df = spark.createDataFrame(Seq(
 | (1, 1, 2, 3, 8, 4, 5),
-
 | (2, 4, 3, 8, 7, 9, 8),
-
 | (3, 6, 1, 9, 2, 3, 6),
-
 | (4, 10, 8, 6, 9, 4, 5),
-
 | (5, 9, 2, 7, 10, 7, 3),
-
 | (6, 1, 1, 4, 2, 8, 4)
-
 | )).toDF("id1", "id2", "id3", "id4", "id5", "id6", "id7")
-
-df: org.apache.spark.sql.DataFrame = \[id1: int, id2: int ... 5 more
-fields\]
-
-scala\> val assembler1 = new VectorAssembler().setInputCols(Array("id2",
+df: org.apache.spark.sql.DataFrame = [id1: int, id2: int ... 5 more
+fields]
+scala> val assembler1 = new VectorAssembler().setInputCols(Array("id2",
 "id3", "id4")).setOutputCol("vec1")
-
 assembler1: org.apache.spark.ml.feature.VectorAssembler =
-vecAssembler\_4be42f312aab
-
-scala\> val assembled1 = assembler1.transform(df)
-
-assembled1: org.apache.spark.sql.DataFrame = \[id1: int, id2: int ... 6
-more fields\]
-
-scala\> val assembler2 = new VectorAssembler().setInputCols(Array("id5",
+vecAssembler_4be42f312aab
+scala> val assembled1 = assembler1.transform(df)
+assembled1: org.apache.spark.sql.DataFrame = [id1: int, id2: int ... 6
+more fields]
+scala> val assembler2 = new VectorAssembler().setInputCols(Array("id5",
 "id6", "id7")).setOutputCol("vec2")
-
 assembler2: org.apache.spark.ml.feature.VectorAssembler =
-vecAssembler\_fbad7aa97d71
-
-scala\> val assembled2 = assembler2.transform(assembled1).select("id1",
+vecAssembler_fbad7aa97d71
+scala> val assembled2 = assembler2.transform(assembled1).select("id1",
 "vec1", "vec2")
-
-assembled2: org.apache.spark.sql.DataFrame = \[id1: int, vec1: vector
-... 1 more field\]
-
-scala\> val interaction = new Interaction().setInputCols(Array("id1",
+assembled2: org.apache.spark.sql.DataFrame = [id1: int, vec1: vector
+... 1 more field]
+scala> val interaction = new Interaction().setInputCols(Array("id1",
 "vec1", "vec2")).setOutputCol("interactedCol")
-
 interaction: org.apache.spark.ml.feature.Interaction =
-interaction\_f0818f401e2d
-
-scala\> val interacted = interaction.transform(assembled2)
-
-interacted: org.apache.spark.sql.DataFrame = \[id1: int, vec1: vector
-... 2 more fields\]
-
-scala\> interacted.show(truncate = false)
-
-\+---+--------------+--------------+------------------------------------------------------+
-
+interaction_f0818f401e2d
+scala> val interacted = interaction.transform(assembled2)
+interacted: org.apache.spark.sql.DataFrame = [id1: int, vec1: vector
+... 2 more fields]
+scala> interacted.show(truncate = false)
++---+--------------+--------------+------------------------------------------------------+
 |id1|vec1 |vec2 |interactedCol |
-
-\+---+--------------+--------------+------------------------------------------------------+
-
-|1 |\[1.0,2.0,3.0\] |\[8.0,4.0,5.0\]
-|\[8.0,4.0,5.0,16.0,8.0,10.0,24.0,12.0,15.0\] |
-
-|2 |\[4.0,3.0,8.0\] |\[7.0,9.0,8.0\]
-|\[56.0,72.0,64.0,42.0,54.0,48.0,112.0,144.0,128.0\] |
-
-|3 |\[6.0,1.0,9.0\] |\[2.0,3.0,6.0\]
-|\[36.0,54.0,108.0,6.0,9.0,18.0,54.0,81.0,162.0\] |
-
-|4 |\[10.0,8.0,6.0\]|\[9.0,4.0,5.0\]
-|\[360.0,160.0,200.0,288.0,128.0,160.0,216.0,96.0,120.0\]|
-
-|5 |\[9.0,2.0,7.0\]
-|\[10.0,7.0,3.0\]|\[450.0,315.0,135.0,100.0,70.0,30.0,350.0,245.0,105.0\]
++---+--------------+--------------+------------------------------------------------------+
+|1 |[1.0,2.0,3.0] |[8.0,4.0,5.0]
+|[8.0,4.0,5.0,16.0,8.0,10.0,24.0,12.0,15.0] |
+|2 |[4.0,3.0,8.0] |[7.0,9.0,8.0]
+|[56.0,72.0,64.0,42.0,54.0,48.0,112.0,144.0,128.0] |
+|3 |[6.0,1.0,9.0] |[2.0,3.0,6.0]
+|[36.0,54.0,108.0,6.0,9.0,18.0,54.0,81.0,162.0] |
+|4 |[10.0,8.0,6.0]|[9.0,4.0,5.0]
+|[360.0,160.0,200.0,288.0,128.0,160.0,216.0,96.0,120.0]|
+|5 |[9.0,2.0,7.0]
+|[10.0,7.0,3.0]|[450.0,315.0,135.0,100.0,70.0,30.0,350.0,245.0,105.0]
 |
-
-|6 |\[1.0,1.0,4.0\] |\[2.0,8.0,4.0\]
-|\[12.0,48.0,24.0,12.0,48.0,24.0,48.0,192.0,96.0\] |
-
-\+---+--------------+--------------+------------------------------------------------------+
+|6 |[1.0,1.0,4.0] |[2.0,8.0,4.0]
+|[12.0,48.0,24.0,12.0,48.0,24.0,48.0,192.0,96.0] |
++---+--------------+--------------+------------------------------------------------------+
+```
 
 代码 4‑34
 
@@ -1484,83 +1071,50 @@ scala\> interacted.show(truncate = false)
 
 Normalizer是一个转换器，作用范围是每一行，使每一个行向量归一化为一个单位范数。这需要指定参数p，用来指定p-范数用于归一化（默认情况下\(p = 2\)）。这种归一化可以帮助标准化我们的输入数据，并提高学习算法的行为。下面的例子演示了如何加载一个libsvm格式的数据集，然后归一化每个行，使其具有单位\(L^{1}\)范数和单位\(L^{\infty}\)范数。
 
-scala\> import org.apache.spark.ml.feature.Normalizer
-
+```scala
+scala> import org.apache.spark.ml.feature.Normalizer
 import org.apache.spark.ml.feature.Normalizer
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val dataFrame = spark.createDataFrame(Seq(
-
+scala> val dataFrame = spark.createDataFrame(Seq(
 | (0, Vectors.dense(1.0, 0.5, -1.0)),
-
 | (1, Vectors.dense(2.0, 1.0, 1.0)),
-
 | (2, Vectors.dense(4.0, 10.0, 2.0))
-
 | )).toDF("id", "features")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[id: int, features:
-vector\]
-
-scala\> val normalizer = new
+dataFrame: org.apache.spark.sql.DataFrame = [id: int, features:
+vector]
+scala> val normalizer = new
 Normalizer().setInputCol("features").setOutputCol("normFeatures").setP(1.0)
-
 normalizer: org.apache.spark.ml.feature.Normalizer =
-normalizer\_5dd6c243055f
-
-scala\> val l1NormData = normalizer.transform(dataFrame)
-
-l1NormData: org.apache.spark.sql.DataFrame = \[id: int, features: vector
-... 1 more field\]
-
-scala\> println("Normalized using L^1 norm")
-
+normalizer_5dd6c243055f
+scala> val l1NormData = normalizer.transform(dataFrame)
+l1NormData: org.apache.spark.sql.DataFrame = [id: int, features: vector
+... 1 more field]
+scala> println("Normalized using L^1 norm")
 Normalized using L^1 norm
-
-scala\> l1NormData.show()
-
-\+---+--------------+------------------+
-
+scala> l1NormData.show()
++---+--------------+------------------+
 | id| features| normFeatures|
-
-\+---+--------------+------------------+
-
-| 0|\[1.0,0.5,-1.0\]| \[0.4,0.2,-0.4\]|
-
-| 1| \[2.0,1.0,1.0\]| \[0.5,0.25,0.25\]|
-
-| 2|\[4.0,10.0,2.0\]|\[0.25,0.625,0.125\]|
-
-\+---+--------------+------------------+
-
-scala\> val lInfNormData = normalizer.transform(dataFrame, normalizer.p
--\> Double.PositiveInfinity)
-
-lInfNormData: org.apache.spark.sql.Dataset\[org.apache.spark.sql.Row\] =
-\[id: int, features: vector ... 1 more field\]
-
-scala\> println("Normalized using L^inf norm")
-
++---+--------------+------------------+
+| 0|[1.0,0.5,-1.0]| [0.4,0.2,-0.4]|
+| 1| [2.0,1.0,1.0]| [0.5,0.25,0.25]|
+| 2|[4.0,10.0,2.0]|[0.25,0.625,0.125]|
++---+--------------+------------------+
+scala> val lInfNormData = normalizer.transform(dataFrame, normalizer.p
+-> Double.PositiveInfinity)
+lInfNormData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
+[id: int, features: vector ... 1 more field]
+scala> println("Normalized using L^inf norm")
 Normalized using L^inf norm
-
-scala\> lInfNormData.show()
-
-\+---+--------------+--------------+
-
+scala> lInfNormData.show()
++---+--------------+--------------+
 | id| features| normFeatures|
-
-\+---+--------------+--------------+
-
-| 0|\[1.0,0.5,-1.0\]|\[1.0,0.5,-1.0\]|
-
-| 1| \[2.0,1.0,1.0\]| \[1.0,0.5,0.5\]|
-
-| 2|\[4.0,10.0,2.0\]| \[0.4,1.0,0.2\]|
-
-\+---+--------------+--------------+
++---+--------------+--------------+
+| 0|[1.0,0.5,-1.0]|[1.0,0.5,-1.0]|
+| 1| [2.0,1.0,1.0]| [1.0,0.5,0.5]|
+| 2|[4.0,10.0,2.0]| [0.4,1.0,0.2]|
++---+--------------+--------------+
+```
 
 代码 4‑35
 
@@ -1642,89 +1196,65 @@ StandardScaler是一个估算器，其可以在数据集上拟合，以产生一
 
 需要注意的是，如果一个特征的标准偏差为零，它将在这个特征的向量中返回默认0.0值。下面的例子演示了如何加载libsvm格式的数据集，然后归一化每个特征，使其具有单位标准偏差。
 
-scala\> import org.apache.spark.ml.feature.StandardScaler
-
+```scala
+scala> import org.apache.spark.ml.feature.StandardScaler
 import org.apache.spark.ml.feature.StandardScaler
-
-scala\> val dataFrame =
-spark.read.format("libsvm").load("/spark/data/example/mllib/sample\_libsvm\_data.txt")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector\]
+scala> val dataFrame =
+spark.read.format("libsvm").load("/spark/data/example/mllib/sample_libsvm_data.txt")
+dataFrame: org.apache.spark.sql.DataFrame = [label: double, features:
+vector]
+```
 
 setWithMean是否减均值，setWithStd是否将数据除以标准差，这里就是没有减均值但有除以标准差：
 
-scala\> val scaler = new
+```scala
+scala> val scaler = new
 StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
-
 scaler: org.apache.spark.ml.feature.StandardScaler =
-stdScal\_3902362fa7e8
+stdScal_3902362fa7e8
+```
 
 通过拟合StandardScaler计算汇总统计：
 
-scala\> val scalerModel = scaler.fit(dataFrame)
-
+```scala
+scala> val scalerModel = scaler.fit(dataFrame)
 scalerModel: org.apache.spark.ml.feature.StandardScalerModel =
-stdScal\_3902362fa7e8
+stdScal_3902362fa7e8
+```
 
 归一化每个特征到单位标准偏差：
 
-scala\> val scaledData = scalerModel.transform(dataFrame)
-
-scaledData: org.apache.spark.sql.DataFrame = \[label: double, features:
-vector ... 1 more field\]
-
-scala\> scaledData.show()
-
-\+-----+--------------------+--------------------+
-
+```scala
+scala> val scaledData = scalerModel.transform(dataFrame)
+scaledData: org.apache.spark.sql.DataFrame = [label: double, features:
+vector ... 1 more field]
+scala> scaledData.show()
++-----+--------------------+--------------------+
 |label| features| scaledFeatures|
-
-\+-----+--------------------+--------------------+
-
-| 0.0|(692,\[127,128,129...|(692,\[127,128,129...|
-
-| 1.0|(692,\[158,159,160...|(692,\[158,159,160...|
-
-| 1.0|(692,\[124,125,126...|(692,\[124,125,126...|
-
-| 1.0|(692,\[152,153,154...|(692,\[152,153,154...|
-
-| 1.0|(692,\[151,152,153...|(692,\[151,152,153...|
-
-| 0.0|(692,\[129,130,131...|(692,\[129,130,131...|
-
-| 1.0|(692,\[158,159,160...|(692,\[158,159,160...|
-
-| 1.0|(692,\[99,100,101,...|(692,\[99,100,101,...|
-
-| 0.0|(692,\[154,155,156...|(692,\[154,155,156...|
-
-| 0.0|(692,\[127,128,129...|(692,\[127,128,129...|
-
-| 1.0|(692,\[154,155,156...|(692,\[154,155,156...|
-
-| 0.0|(692,\[153,154,155...|(692,\[153,154,155...|
-
-| 0.0|(692,\[151,152,153...|(692,\[151,152,153...|
-
-| 1.0|(692,\[129,130,131...|(692,\[129,130,131...|
-
-| 0.0|(692,\[154,155,156...|(692,\[154,155,156...|
-
-| 1.0|(692,\[150,151,152...|(692,\[150,151,152...|
-
-| 0.0|(692,\[124,125,126...|(692,\[124,125,126...|
-
-| 0.0|(692,\[152,153,154...|(692,\[152,153,154...|
-
-| 1.0|(692,\[97,98,99,12...|(692,\[97,98,99,12...|
-
-| 1.0|(692,\[124,125,126...|(692,\[124,125,126...|
-
-\+-----+--------------------+--------------------+
-
++-----+--------------------+--------------------+
+| 0.0|(692,[127,128,129...|(692,[127,128,129...|
+| 1.0|(692,[158,159,160...|(692,[158,159,160...|
+| 1.0|(692,[124,125,126...|(692,[124,125,126...|
+| 1.0|(692,[152,153,154...|(692,[152,153,154...|
+| 1.0|(692,[151,152,153...|(692,[151,152,153...|
+| 0.0|(692,[129,130,131...|(692,[129,130,131...|
+| 1.0|(692,[158,159,160...|(692,[158,159,160...|
+| 1.0|(692,[99,100,101,...|(692,[99,100,101,...|
+| 0.0|(692,[154,155,156...|(692,[154,155,156...|
+| 0.0|(692,[127,128,129...|(692,[127,128,129...|
+| 1.0|(692,[154,155,156...|(692,[154,155,156...|
+| 0.0|(692,[153,154,155...|(692,[153,154,155...|
+| 0.0|(692,[151,152,153...|(692,[151,152,153...|
+| 1.0|(692,[129,130,131...|(692,[129,130,131...|
+| 0.0|(692,[154,155,156...|(692,[154,155,156...|
+| 1.0|(692,[150,151,152...|(692,[150,151,152...|
+| 0.0|(692,[124,125,126...|(692,[124,125,126...|
+| 0.0|(692,[152,153,154...|(692,[152,153,154...|
+| 1.0|(692,[97,98,99,12...|(692,[97,98,99,12...|
+| 1.0|(692,[124,125,126...|(692,[124,125,126...|
++-----+--------------------+--------------------+
 only showing top 20 rows
+```
 
 代码 4‑36
 
@@ -1746,67 +1276,50 @@ Rescaled(e_{i}) = \frac{e_{i} - E_{\min}}{E_{\max} - E_{\min}}*(max - min) + min
 
 对于\(E_{\max} = = E_{\min}\)情况下，\(Rescaled(e_{i}) = 0.5*(max + min)\)。请注意，由于零值可能会被转换为非零值，转换器的输出将是DenseVector，即使稀疏矩阵作为输入。下面的例子演示了如何加载libsvm格式的数据集，然后重新调整每个特征为\[0,1\]。
 
-scala\> import org.apache.spark.ml.feature.MinMaxScaler
-
+```scala
+scala> import org.apache.spark.ml.feature.MinMaxScaler
 import org.apache.spark.ml.feature.MinMaxScaler
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val dataFrame = spark.createDataFrame(Seq(
-
+scala> val dataFrame = spark.createDataFrame(Seq(
 | (0, Vectors.dense(1.0, 0.1, -1.0)),
-
 | (1, Vectors.dense(2.0, 1.1, 1.0)),
-
 | (2, Vectors.dense(3.0, 10.1, 3.0))
-
 | )).toDF("id", "features")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[id: int, features:
-vector\]
-
-scala\> val scaler = new
+dataFrame: org.apache.spark.sql.DataFrame = [id: int, features:
+vector]
+scala> val scaler = new
 MinMaxScaler().setInputCol("features").setOutputCol("scaledFeatures")
-
 scaler: org.apache.spark.ml.feature.MinMaxScaler =
-minMaxScal\_4c96b5ef3f2b
+minMaxScal_4c96b5ef3f2b
+```
 
 计算汇总统计产生MinMaxScalerModel：
 
-scala\> val scalerModel = scaler.fit(dataFrame)
-
+```scala
+scala> val scalerModel = scaler.fit(dataFrame)
 scalerModel: org.apache.spark.ml.feature.MinMaxScalerModel =
-minMaxScal\_4c96b5ef3f2b
+minMaxScal_4c96b5ef3f2b
+```
 
 重新按比例调整每个特征到范围\[min, max\]：
 
-scala\> val scaledData = scalerModel.transform(dataFrame)
-
-scaledData: org.apache.spark.sql.DataFrame = \[id: int, features: vector
-... 1 more field\]
-
-scala\> println(s"Features scaled to range: \[${scaler.getMin},
-${scaler.getMax}\]")
-
-Features scaled to range: \[0.0, 1.0\]
-
-scala\> scaledData.select("features", "scaledFeatures").show()
-
-\+--------------+--------------+
-
+```scala
+scala> val scaledData = scalerModel.transform(dataFrame)
+scaledData: org.apache.spark.sql.DataFrame = [id: int, features: vector
+... 1 more field]
+scala> println(s"Features scaled to range: [${scaler.getMin},
+${scaler.getMax}]")
+Features scaled to range: [0.0, 1.0]
+scala> scaledData.select("features", "scaledFeatures").show()
++--------------+--------------+
 | features|scaledFeatures|
-
-\+--------------+--------------+
-
-|\[1.0,0.1,-1.0\]| \[0.0,0.0,0.0\]|
-
-| \[2.0,1.1,1.0\]| \[0.5,0.1,0.5\]|
-
-|\[3.0,10.1,3.0\]| \[1.0,1.0,1.0\]|
-
-\+--------------+--------------+
++--------------+--------------+
+|[1.0,0.1,-1.0]| [0.0,0.0,0.0]|
+| [2.0,1.1,1.0]| [0.5,0.1,0.5]|
+|[3.0,10.1,3.0]| [1.0,1.0,1.0]|
++--------------+--------------+
+```
 
 代码 4‑37
 
@@ -1816,62 +1329,47 @@ MaxAbsScaler转换向量行的数据集，重新缩放每个特征到\[-1,1\]的
 
 MaxAbsScaler对数据集计算汇总统计，并产生MaxAbsScalerModel，然后该模型可以独立地转换每个特征为范围\[-1,1\]。下面的例子演示了如何加载LIBSVM格式的数据集，然后重新调整每个特征为\[-1,1\]。
 
-scala\> import org.apache.spark.ml.feature.MaxAbsScaler
-
+```scala
+scala> import org.apache.spark.ml.feature.MaxAbsScaler
 import org.apache.spark.ml.feature.MaxAbsScaler
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val dataFrame = spark.createDataFrame(Seq(
-
+scala> val dataFrame = spark.createDataFrame(Seq(
 | (0, Vectors.dense(1.0, 0.1, -8.0)),
-
 | (1, Vectors.dense(2.0, 1.0, -4.0)),
-
 | (2, Vectors.dense(4.0, 10.0, 8.0))
-
 | )).toDF("id", "features")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[id: int, features:
-vector\]
-
-scala\> val scaler = new
+dataFrame: org.apache.spark.sql.DataFrame = [id: int, features:
+vector]
+scala> val scaler = new
 MaxAbsScaler().setInputCol("features").setOutputCol("scaledFeatures")
-
 scaler: org.apache.spark.ml.feature.MaxAbsScaler =
-maxAbsScal\_26cca37ab1f7
+maxAbsScal_26cca37ab1f7
+```
 
 计算汇总统计并且产生MaxAbsScalerModel：
 
-scala\> val scalerModel = scaler.fit(dataFrame)
-
+```scala
+scala> val scalerModel = scaler.fit(dataFrame)
 scalerModel: org.apache.spark.ml.feature.MaxAbsScalerModel =
-maxAbsScal\_26cca37ab1f7
+maxAbsScal_26cca37ab1f7
+```
 
 重新按比例调整每个特征到范围\[-1, 1\]：
 
-scala\> val scaledData = scalerModel.transform(dataFrame)
-
-scaledData: org.apache.spark.sql.DataFrame = \[id: int, features: vector
-... 1 more field\]
-
-scala\> scaledData.select("features", "scaledFeatures").show()
-
-\+--------------+----------------+
-
+```scala
+scala> val scaledData = scalerModel.transform(dataFrame)
+scaledData: org.apache.spark.sql.DataFrame = [id: int, features: vector
+... 1 more field]
+scala> scaledData.select("features", "scaledFeatures").show()
++--------------+----------------+
 | features| scaledFeatures|
-
-\+--------------+----------------+
-
-|\[1.0,0.1,-8.0\]|\[0.25,0.01,-1.0\]|
-
-|\[2.0,1.0,-4.0\]| \[0.5,0.1,-0.5\]|
-
-|\[4.0,10.0,8.0\]| \[1.0,1.0,1.0\]|
-
-\+--------------+----------------+
++--------------+----------------+
+|[1.0,0.1,-8.0]|[0.25,0.01,-1.0]|
+|[2.0,1.0,-4.0]| [0.5,0.1,-0.5]|
+|[4.0,10.0,8.0]| [1.0,1.0,1.0]|
++--------------+----------------+
+```
 
 代码 4‑38
 
@@ -1886,63 +1384,44 @@ y共同确定，它的值范围为\[x,y\]，如果是最后一个桶，范围将
 
 注意,如果你并不知道目标列的上界和下界，我们应该添加Double.NegativeInfinity和Double.PositiveInfinity作为边界从而防止潜在的超过边界的异常，以下示例演示如何将一列双精度数据转换为另一个索引列。
 
-scala\> import org.apache.spark.ml.feature.Bucketizer
-
+```scala
+scala> import org.apache.spark.ml.feature.Bucketizer
 import org.apache.spark.ml.feature.Bucketizer
-
-scala\> val splits = Array(Double.NegativeInfinity, -0.5, 0.0, 0.5,
+scala> val splits = Array(Double.NegativeInfinity, -0.5, 0.0, 0.5,
 Double.PositiveInfinity)
-
-splits: Array\[Double\] = Array(-Infinity, -0.5, 0.0, 0.5, Infinity)
-
-scala\> val data = Array(-999.9, -0.5, -0.3, 0.0, 0.2, 999.9)
-
-data: Array\[Double\] = Array(-999.9, -0.5, -0.3, 0.0, 0.2, 999.9)
-
-scala\> val dataFrame =
+splits: Array[Double] = Array(-Infinity, -0.5, 0.0, 0.5, Infinity)
+scala> val data = Array(-999.9, -0.5, -0.3, 0.0, 0.2, 999.9)
+data: Array[Double] = Array(-999.9, -0.5, -0.3, 0.0, 0.2, 999.9)
+scala> val dataFrame =
 spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[features: double\]
-
-scala\> val bucketizer = new
+dataFrame: org.apache.spark.sql.DataFrame = [features: double]
+scala> val bucketizer = new
 Bucketizer().setInputCol("features").setOutputCol("bucketedFeatures").setSplits(splits)
-
 bucketizer: org.apache.spark.ml.feature.Bucketizer =
-bucketizer\_5c90c0ea99ee
+bucketizer_5c90c0ea99ee
+```
 
 转换原始数据为桶索引：
 
-scala\> val bucketedData = bucketizer.transform(dataFrame)
-
-bucketedData: org.apache.spark.sql.DataFrame = \[features: double,
-bucketedFeatures: double\]
-
-scala\> println(s"Bucketizer output with
+```scala
+scala> val bucketedData = bucketizer.transform(dataFrame)
+bucketedData: org.apache.spark.sql.DataFrame = [features: double,
+bucketedFeatures: double]
+scala> println(s"Bucketizer output with
 ${bucketizer.getSplits.length-1} buckets")
-
 Bucketizer output with 4 buckets
-
-scala\> bucketedData.show()
-
-\+--------+----------------+
-
+scala> bucketedData.show()
++--------+----------------+
 |features|bucketedFeatures|
-
-\+--------+----------------+
-
++--------+----------------+
 | -999.9| 0.0|
-
 | -0.5| 1.0|
-
 | -0.3| 1.0|
-
 | 0.0| 2.0|
-
 | 0.2| 2.0|
-
 | 999.9| 3.0|
-
-\+--------+----------------+
++--------+----------------+
+```
 
 代码 4‑39
 
@@ -1968,46 +1447,30 @@ v_{N}w_{N} \\
 
 下面这个例子展示了如何使用一个变换向量值转化向量。
 
-scala\> import org.apache.spark.ml.feature.ElementwiseProduct
-
+```scala
+scala> import org.apache.spark.ml.feature.ElementwiseProduct
 import org.apache.spark.ml.feature.ElementwiseProduct
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val dataFrame = spark.createDataFrame(Seq(
-
+scala> val dataFrame = spark.createDataFrame(Seq(
 | ("a", Vectors.dense(1.0, 2.0, 3.0)),
-
 | ("b", Vectors.dense(4.0, 5.0, 6.0)))).toDF("id", "vector")
-
-dataFrame: org.apache.spark.sql.DataFrame = \[id: string, vector:
-vector\]
-
-scala\> val transformingVector = Vectors.dense(0.0, 1.0, 2.0)
-
-transformingVector: org.apache.spark.ml.linalg.Vector = \[0.0,1.0,2.0\]
-
-scala\> val transformer = new
+dataFrame: org.apache.spark.sql.DataFrame = [id: string, vector:
+vector]
+scala> val transformingVector = Vectors.dense(0.0, 1.0, 2.0)
+transformingVector: org.apache.spark.ml.linalg.Vector = [0.0,1.0,2.0]
+scala> val transformer = new
 ElementwiseProduct().setScalingVec(transformingVector).setInputCol("vector").setOutputCol("transformedVector")
-
 transformer: org.apache.spark.ml.feature.ElementwiseProduct =
-elemProd\_1945a75a91ff
-
-scala\> transformer.transform(dataFrame).show()
-
-\+---+-------------+-----------------+
-
+elemProd_1945a75a91ff
+scala> transformer.transform(dataFrame).show()
++---+-------------+-----------------+
 | id| vector|transformedVector|
-
-\+---+-------------+-----------------+
-
-| a|\[1.0,2.0,3.0\]| \[0.0,2.0,6.0\]|
-
-| b|\[4.0,5.0,6.0\]| \[0.0,5.0,12.0\]|
-
-\+---+-------------+-----------------+
++---+-------------+-----------------+
+| a|[1.0,2.0,3.0]| [0.0,2.0,6.0]|
+| b|[4.0,5.0,6.0]| [0.0,5.0,12.0]|
++---+-------------+-----------------+
+```
 
 代码 4‑40
 
@@ -2035,57 +1498,45 @@ SELECT a, b, SUM(c) AS c\_sum FROM \_\_THIS\_\_ GROUP BY a, b
 
 id | v1 | v2
 
-\----|-----|-----
-
+```text
+----|-----|-----
 0 | 1.0 | 3.0
-
 2 | 2.0 | 5.0
+```
 
 那么SQLTransformerwith语句"SELECT \*, (v1 + v2) AS v3, (v1 \* v2) AS v4 FROM
 \_\_THIS\_\_"：输出为：
 
 id | v1 | v2 | v3 | v4
 
-\----|-----|-----|-----|-----
-
+```text
+----|-----|-----|-----|-----
 0 | 1.0 | 3.0 | 4.0 | 3.0
-
 2 | 2.0 | 5.0 | 7.0 |10.0
+```
 
 代码 4‑42
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.SQLTransformer
-
+```scala
+scala> import org.apache.spark.ml.feature.SQLTransformer
 import org.apache.spark.ml.feature.SQLTransformer
-
-scala\> val df = spark.createDataFrame(
-
+scala> val df = spark.createDataFrame(
 | Seq((0, 1.0, 3.0), (2, 2.0, 5.0))).toDF("id", "v1", "v2")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, v1: double ... 1 more
-field\]
-
-scala\> val sqlTrans = new SQLTransformer().setStatement(
-
-| "SELECT \*, (v1 + v2) AS v3, (v1 \* v2) AS v4 FROM \_\_THIS\_\_")
-
-sqlTrans: org.apache.spark.ml.feature.SQLTransformer = sql\_50ab9032d703
-
-scala\> sqlTrans.transform(df).show()
-
-\+---+---+---+---+----+
-
+df: org.apache.spark.sql.DataFrame = [id: int, v1: double ... 1 more
+field]
+scala> val sqlTrans = new SQLTransformer().setStatement(
+| "SELECT *, (v1 + v2) AS v3, (v1 * v2) AS v4 FROM __THIS__")
+sqlTrans: org.apache.spark.ml.feature.SQLTransformer = sql_50ab9032d703
+scala> sqlTrans.transform(df).show()
++---+---+---+---+----+
 | id| v1| v2| v3| v4|
-
-\+---+---+---+---+----+
-
++---+---+---+---+----+
 | 0|1.0|3.0|4.0| 3.0|
-
 | 2|2.0|5.0|7.0|10.0|
-
-\+---+---+---+---+----+
++---+---+---+---+----+
+```
 
 代码 4‑43
 
@@ -2095,9 +1546,10 @@ VectorAssembler是一个转换器，其结合给定列的列表到单一向量�
 
 id | hour | mobile | userFeatures | clicked
 
-\----|------|--------|------------------|---------
-
-0 | 18 | 1.0 | \[0.0, 10.0, 0.5\] | 1.0
+```text
+----|------|--------|------------------|---------
+0 | 18 | 1.0 | [0.0, 10.0, 0.5] | 1.0
+```
 
 代码 4‑44
 
@@ -2105,57 +1557,41 @@ userFeatures是包含三个用户特征的向量列。要结合hour、mobile和u
 
 id | hour | mobile | userFeatures | clicked | features
 
-\----|------|--------|------------------|---------|-----------------------------
-
-0 | 18 | 1.0 | \[0.0, 10.0, 0.5\] | 1.0 | \[18.0, 1.0, 0.0, 10.0, 0.5\]
+```text
+----|------|--------|------------------|---------|-----------------------------
+0 | 18 | 1.0 | [0.0, 10.0, 0.5] | 1.0 | [18.0, 1.0, 0.0, 10.0, 0.5]
+```
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.VectorAssembler
-
+```scala
+scala> import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.feature.VectorAssembler
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> val dataset = spark.createDataFrame(
-
+scala> val dataset = spark.createDataFrame(
 | Seq((0, 18, 1.0, Vectors.dense(0.0, 10.0, 0.5), 1.0))
-
 | ).toDF("id", "hour", "mobile", "userFeatures", "clicked")
-
-dataset: org.apache.spark.sql.DataFrame = \[id: int, hour: int ... 3
-more fields\]
-
-scala\> val assembler = new VectorAssembler().setInputCols(Array("hour",
+dataset: org.apache.spark.sql.DataFrame = [id: int, hour: int ... 3
+more fields]
+scala> val assembler = new VectorAssembler().setInputCols(Array("hour",
 "mobile", "userFeatures")).setOutputCol("features")
-
 assembler: org.apache.spark.ml.feature.VectorAssembler =
-vecAssembler\_65ad0e36e9ee
-
-scala\> val output = assembler.transform(dataset)
-
-output: org.apache.spark.sql.DataFrame = \[id: int, hour: int ... 4 more
-fields\]
-
-scala\> println("Assembled columns 'hour', 'mobile', 'userFeatures' to
+vecAssembler_65ad0e36e9ee
+scala> val output = assembler.transform(dataset)
+output: org.apache.spark.sql.DataFrame = [id: int, hour: int ... 4 more
+fields]
+scala> println("Assembled columns 'hour', 'mobile', 'userFeatures' to
 vector column 'features'")
-
 Assembled columns 'hour', 'mobile', 'userFeatures' to vector column
 'features'
-
-scala\> output.select("features", "clicked").show(false)
-
-\+-----------------------+-------+
-
+scala> output.select("features", "clicked").show(false)
++-----------------------+-------+
 |features |clicked|
-
-\+-----------------------+-------+
-
-|\[18.0,1.0,0.0,10.0,0.5\]|1.0 |
-
-\+-----------------------+-------+
++-----------------------+-------+
+|[18.0,1.0,0.0,10.0,0.5]|1.0 |
++-----------------------+-------+
+```
 
 代码 4‑45
 
@@ -2169,25 +1605,18 @@ NaN值：在QuantileDiscretizer过滤中，NaN值会从列中被除去。这将�
 
 id | hour
 
-\----|------
-
+```text
+----|------
 0 | 18.0
-
-\----|------
-
+----|------
 1 | 19.0
-
-\----|------
-
+----|------
 2 | 8.0
-
-\----|------
-
+----|------
 3 | 5.0
-
-\----|------
-
+----|------
 4 | 2.2
+```
 
 代码 4‑46
 
@@ -2195,74 +1624,50 @@ hour是具有双精度类型的连续特征，想将连续特征划分为类别�
 
 id | hour | result
 
-\----|------|------
-
+```text
+----|------|------
 0 | 18.0 | 2.0
-
-\----|------|------
-
+----|------|------
 1 | 19.0 | 2.0
-
-\----|------|------
-
+----|------|------
 2 | 8.0 | 1.0
-
-\----|------|------
-
+----|------|------
 3 | 5.0 | 1.0
-
-\----|------|------
-
+----|------|------
 4 | 2.2 | 0.0
+```
 
 代码 4‑47
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.QuantileDiscretizer
-
+```scala
+scala> import org.apache.spark.ml.feature.QuantileDiscretizer
 import org.apache.spark.ml.feature.QuantileDiscretizer
-
-scala\> val data = Array((0, 18.0), (1, 19.0), (2, 8.0), (3, 5.0), (4,
+scala> val data = Array((0, 18.0), (1, 19.0), (2, 8.0), (3, 5.0), (4,
 2.2))
-
-data: Array\[(Int, Double)\] = Array((0,18.0), (1,19.0), (2,8.0),
+data: Array[(Int, Double)] = Array((0,18.0), (1,19.0), (2,8.0),
 (3,5.0), (4,2.2))
-
-scala\> val df = spark.createDataFrame(data).toDF("id", "hour")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, hour: double\]
-
-scala\> val discretizer = new
+scala> val df = spark.createDataFrame(data).toDF("id", "hour")
+df: org.apache.spark.sql.DataFrame = [id: int, hour: double]
+scala> val discretizer = new
 QuantileDiscretizer().setInputCol("hour").setOutputCol("result").setNumBuckets(3)
-
 discretizer: org.apache.spark.ml.feature.QuantileDiscretizer =
-quantileDiscretizer\_90ae4654fb10
-
-scala\> val result = discretizer.fit(df).transform(df)
-
-result: org.apache.spark.sql.DataFrame = \[id: int, hour: double ... 1
-more field\]
-
-scala\> result.show()
-
-\+---+----+------+
-
+quantileDiscretizer_90ae4654fb10
+scala> val result = discretizer.fit(df).transform(df)
+result: org.apache.spark.sql.DataFrame = [id: int, hour: double ... 1
+more field]
+scala> result.show()
++---+----+------+
 | id|hour|result|
-
-\+---+----+------+
-
++---+----+------+
 | 0|18.0| 2.0|
-
 | 1|19.0| 2.0|
-
 | 2| 8.0| 1.0|
-
 | 3| 5.0| 1.0|
-
 | 4| 2.2| 0.0|
-
-\+---+----+------+
++---+----+------+
+```
 
 代码 4‑48
 
@@ -2272,17 +1677,14 @@ Imputer转换器添加数据集中的丢失值，或者使用丢失值所在列�
 
 a | b
 
-\------------|-----------
-
+```text
+------------|-----------
 1.0 | Double.NaN
-
 2.0 | Double.NaN
-
 Double.NaN | 3.0
-
 4.0 | 4.0
-
 5.0 | 5.0
+```
 
 代码 4‑49
 
@@ -2290,70 +1692,46 @@ Double.NaN | 3.0
 
 a | b | out\_a | out\_b
 
-\------------|------------|-------|-------
-
+```text
+------------|------------|-------|-------
 1.0 | Double.NaN | 1.0 | 4.0
-
 2.0 | Double.NaN | 2.0 | 4.0
-
 Double.NaN | 3.0 | 3.0 | 3.0
-
 4.0 | 4.0 | 4.0 | 4.0
-
 5.0 | 5.0 | 5.0 | 5.0
+```
 
 代码 4‑50
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.Imputer
-
+```scala
+scala> import org.apache.spark.ml.feature.Imputer
 import org.apache.spark.ml.feature.Imputer
-
-scala\> val df = spark.createDataFrame(Seq(
-
+scala> val df = spark.createDataFrame(Seq(
 | (1.0, Double.NaN),
-
 | (2.0, Double.NaN),
-
 | (Double.NaN, 3.0),
-
 | (4.0, 4.0),
-
 | (5.0, 5.0)
-
 | )).toDF("a", "b")
-
-df: org.apache.spark.sql.DataFrame = \[a: double, b: double\]
-
-scala\> val imputer = new Imputer().setInputCols(Array("a",
-"b")).setOutputCols(Array("out\_a", "out\_b"))
-
-imputer: org.apache.spark.ml.feature.Imputer = imputer\_143727445c95
-
-scala\> val model = imputer.fit(df)
-
-model: org.apache.spark.ml.feature.ImputerModel = imputer\_143727445c95
-
-scala\> model.transform(df).show()
-
-\+---+---+-----+-----+
-
-| a| b|out\_a|out\_b|
-
-\+---+---+-----+-----+
-
+df: org.apache.spark.sql.DataFrame = [a: double, b: double]
+scala> val imputer = new Imputer().setInputCols(Array("a",
+"b")).setOutputCols(Array("out_a", "out_b"))
+imputer: org.apache.spark.ml.feature.Imputer = imputer_143727445c95
+scala> val model = imputer.fit(df)
+model: org.apache.spark.ml.feature.ImputerModel = imputer_143727445c95
+scala> model.transform(df).show()
++---+---+-----+-----+
+| a| b|out_a|out_b|
++---+---+-----+-----+
 |1.0|NaN| 1.0| 4.0|
-
 |2.0|NaN| 2.0| 4.0|
-
 |NaN|3.0| 3.0| 3.0|
-
 |4.0|4.0| 4.0| 4.0|
-
 |5.0|5.0| 5.0| 5.0|
-
-\+---+---+-----+-----+
++---+---+-----+-----+
+```
 
 代码 4‑51
 
@@ -2371,9 +1749,10 @@ VectorSlicer是转换器，获取一个特征向量，并输出由原来特征�
 
 userFeatures
 
-\------------------
-
-\[0.0, 10.0, 0.5\]
+```text
+------------------
+[0.0, 10.0, 0.5]
+```
 
 代码 4‑52
 
@@ -2382,9 +1761,10 @@ userFeatures是包含三个用户的特征向量列。假设userFeatures的第�
 
 userFeatures | features
 
-\------------------|-----------------------------
-
-\[0.0, 10.0, 0.5\] | \[10.0, 0.5\]
+```text
+------------------|-----------------------------
+[0.0, 10.0, 0.5] | [10.0, 0.5]
+```
 
 代码 4‑53
 
@@ -2393,106 +1773,70 @@ userFeatures | features
 
 userFeatures | features
 
-\------------------|-----------------------------
-
-\[0.0, 10.0, 0.5\] | \[10.0, 0.5\]
-
-\["f1", "f2", "f3"\] | \["f2", "f3"\]
+```text
+------------------|-----------------------------
+[0.0, 10.0, 0.5] | [10.0, 0.5]
+["f1", "f2", "f3"] | ["f2", "f3"]
+```
 
 代码 4‑54
 
 代码如下：
 
-scala\> import java.util.Arrays
-
+```scala
+scala> import java.util.Arrays
 import java.util.Arrays
-
-scala\> import org.apache.spark.ml.attribute.{Attribute, AttributeGroup,
+scala> import org.apache.spark.ml.attribute.{Attribute, AttributeGroup,
 NumericAttribute}
-
 import org.apache.spark.ml.attribute.{Attribute, AttributeGroup,
 NumericAttribute}
-
-scala\> import org.apache.spark.ml.feature.VectorSlicer
-
+scala> import org.apache.spark.ml.feature.VectorSlicer
 import org.apache.spark.ml.feature.VectorSlicer
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> import org.apache.spark.sql.Row
-
+scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
-
-scala\> import org.apache.spark.sql.types.StructType
-
+scala> import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types.StructType
-
-scala\> val data = Arrays.asList(
-
+scala> val data = Arrays.asList(
 | Row(Vectors.sparse(3, Seq((0, -2.0), (1, 2.3)))),
-
 | Row(Vectors.dense(-2.0, 2.3, 0.0))
-
 | )
-
-data: java.util.List\[org.apache.spark.sql.Row\] =
-\[\[(3,\[0,1\],\[-2.0,2.3\])\], \[\[-2.0,2.3,0.0\]\]\]
-
-scala\> val defaultAttr = NumericAttribute.defaultAttr
-
+data: java.util.List[org.apache.spark.sql.Row] =
+[[(3,[0,1],[-2.0,2.3])], [[-2.0,2.3,0.0]]]
+scala> val defaultAttr = NumericAttribute.defaultAttr
 defaultAttr: org.apache.spark.ml.attribute.NumericAttribute =
 {"type":"numeric"}
-
-scala\> val attrs = Array("f1", "f2", "f3").map(defaultAttr.withName)
-
-attrs: Array\[org.apache.spark.ml.attribute.NumericAttribute\] =
+scala> val attrs = Array("f1", "f2", "f3").map(defaultAttr.withName)
+attrs: Array[org.apache.spark.ml.attribute.NumericAttribute] =
 Array({"type":"numeric","name":"f1"}, {"type":"numeric","name":"f2"},
 {"type":"numeric","name":"f3"})
-
-scala\> val attrGroup = new AttributeGroup("userFeatures",
-attrs.asInstanceOf\[Array\[Attribute\]\])
-
+scala> val attrGroup = new AttributeGroup("userFeatures",
+attrs.asInstanceOf[Array[Attribute]])
 attrGroup: org.apache.spark.ml.attribute.AttributeGroup =
-{"ml\_attr":{"attrs":{"numeric":\[{"idx":0,"name":"f1"},{"idx":1,"name":"f2"},{"idx":2,"name":"f3"}\]},"num\_attrs":3}}
-
-scala\> val dataset = spark.createDataFrame(data,
+{"ml_attr":{"attrs":{"numeric":[{"idx":0,"name":"f1"},{"idx":1,"name":"f2"},{"idx":2,"name":"f3"}]},"num_attrs":3}}
+scala> val dataset = spark.createDataFrame(data,
 StructType(Array(attrGroup.toStructField())))
-
-dataset: org.apache.spark.sql.DataFrame = \[userFeatures: vector\]
-
-scala\> val slicer = new
+dataset: org.apache.spark.sql.DataFrame = [userFeatures: vector]
+scala> val slicer = new
 VectorSlicer().setInputCol("userFeatures").setOutputCol("features")
-
 slicer: org.apache.spark.ml.feature.VectorSlicer =
-vectorSlicer\_0a05aca9c4df
-
-scala\> slicer.setIndices(Array(1)).setNames(Array("f3"))
-
-res35: slicer.type = vectorSlicer\_0a05aca9c4df
-
-scala\> // or slicer.setIndices(Array(1, 2)), or
+vectorSlicer_0a05aca9c4df
+scala> slicer.setIndices(Array(1)).setNames(Array("f3"))
+res35: slicer.type = vectorSlicer_0a05aca9c4df
+scala> // or slicer.setIndices(Array(1, 2)), or
 slicer.setNames(Array("f2", "f3"))
-
-scala\> val output = slicer.transform(dataset)
-
-output: org.apache.spark.sql.DataFrame = \[userFeatures: vector,
-features: vector\]
-
-scala\> output.show(false)
-
-\+--------------------+-------------+
-
+scala> val output = slicer.transform(dataset)
+output: org.apache.spark.sql.DataFrame = [userFeatures: vector,
+features: vector]
+scala> output.show(false)
++--------------------+-------------+
 |userFeatures |features |
-
-\+--------------------+-------------+
-
-|(3,\[0,1\],\[-2.0,2.3\])|(2,\[0\],\[2.3\])|
-
-|\[-2.0,2.3,0.0\] |\[2.3,0.0\] |
-
-\+--------------------+-------------+
++--------------------+-------------+
+|(3,[0,1],[-2.0,2.3])|(2,[0],[2.3])|
+|[-2.0,2.3,0.0] |[2.3,0.0] |
++--------------------+-------------+
+```
 
 代码 4‑55
 
@@ -2540,13 +1884,12 @@ RFormula产生一个特征矢量列和一个双精度或字符串的标签列。
 
 id | country | hour | clicked
 
-\---|---------|------|---------
-
+```text
+---|---------|------|---------
 7 | "US" | 18 | 1.0
-
 8 | "CA" | 12 | 0.0
-
 9 | "NZ" | 15 | 0.0
+```
 
 代码 4‑60
 
@@ -2555,61 +1898,43 @@ hour，这表明要基于country和hour预测clicked，改造后应该得到以�
 
 id | country | hour | clicked | features | label
 
-\---|---------|------|---------|------------------|-------
-
-7 | "US" | 18 | 1.0 | \[0.0, 0.0, 18.0\] | 1.0
-
-8 | "CA" | 12 | 0.0 | \[0.0, 1.0, 12.0\] | 0.0
-
-9 | "NZ" | 15 | 0.0 | \[1.0, 0.0, 15.0\] | 0.0
+```text
+---|---------|------|---------|------------------|-------
+7 | "US" | 18 | 1.0 | [0.0, 0.0, 18.0] | 1.0
+8 | "CA" | 12 | 0.0 | [0.0, 1.0, 12.0] | 0.0
+9 | "NZ" | 15 | 0.0 | [1.0, 0.0, 15.0] | 0.0
+```
 
 代码 4‑61
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.RFormula
-
+```scala
+scala> import org.apache.spark.ml.feature.RFormula
 import org.apache.spark.ml.feature.RFormula
-
-scala\> val dataset = spark.createDataFrame(Seq(
-
+scala> val dataset = spark.createDataFrame(Seq(
 | (7, "US", 18, 1.0),
-
 | (8, "CA", 12, 0.0),
-
 | (9, "NZ", 15, 0.0)
-
 | )).toDF("id", "country", "hour", "clicked")
-
-dataset: org.apache.spark.sql.DataFrame = \[id: int, country: string ...
-2 more fields\]
-
-scala\> val formula = new RFormula().setFormula("clicked \~ country +
+dataset: org.apache.spark.sql.DataFrame = [id: int, country: string ...
+2 more fields]
+scala> val formula = new RFormula().setFormula("clicked \~ country +
 hour").setFeaturesCol("features").setLabelCol("label")
-
 formula: org.apache.spark.ml.feature.RFormula = RFormula(clicked \~
-country + hour) (uid=rFormula\_7340c58620d2)
-
-scala\> val output = formula.fit(dataset).transform(dataset)
-
-output: org.apache.spark.sql.DataFrame = \[id: int, country: string ...
-4 more fields\]
-
-scala\> output.select("features", "label").show()
-
-\+--------------+-----+
-
+country + hour) (uid=rFormula_7340c58620d2)
+scala> val output = formula.fit(dataset).transform(dataset)
+output: org.apache.spark.sql.DataFrame = [id: int, country: string ...
+4 more fields]
+scala> output.select("features", "label").show()
++--------------+-----+
 | features|label|
-
-\+--------------+-----+
-
-|\[0.0,0.0,18.0\]| 1.0|
-
-|\[1.0,0.0,12.0\]| 0.0|
-
-|\[0.0,1.0,15.0\]| 0.0|
-
-\+--------------+-----+
++--------------+-----+
+|[0.0,0.0,18.0]| 1.0|
+|[1.0,0.0,12.0]| 0.0|
+|[0.0,1.0,15.0]| 0.0|
++--------------+-----+
+```
 
 代码 4‑62
 
@@ -2630,13 +1955,12 @@ rate）。默认情况下，选择方法是numTopFeatures，顶级要素的默�
 
 id | features | clicked
 
-\---|-----------------------|---------
-
-7 | \[0.0, 0.0, 18.0, 1.0\] | 1.0
-
-8 | \[0.0, 1.0, 12.0, 0.0\] | 0.0
-
-9 | \[1.0, 0.0, 15.0, 0.1\] | 0.0
+```text
+---|-----------------------|---------
+7 | [0.0, 0.0, 18.0, 1.0] | 1.0
+8 | [0.0, 1.0, 12.0, 0.0] | 0.0
+9 | [1.0, 0.0, 15.0, 0.1] | 0.0
+```
 
 代码 4‑63
 
@@ -2644,81 +1968,55 @@ id | features | clicked
 
 id | features | clicked | selectedFeatures
 
-\---|-----------------------|---------|------------------
-
-7 | \[0.0, 0.0, 18.0, 1.0\] | 1.0 | \[1.0\]
-
-8 | \[0.0, 1.0, 12.0, 0.0\] | 0.0 | \[0.0\]
-
-9 | \[1.0, 0.0, 15.0, 0.1\] | 0.0 | \[0.1\]
+```text
+---|-----------------------|---------|------------------
+7 | [0.0, 0.0, 18.0, 1.0] | 1.0 | [1.0]
+8 | [0.0, 1.0, 12.0, 0.0] | 0.0 | [0.0]
+9 | [1.0, 0.0, 15.0, 0.1] | 0.0 | [0.1]
+```
 
 代码 4‑64
 
 代码如下：
 
-scala\> import org.apache.spark.ml.feature.ChiSqSelector
-
+```scala
+scala> import org.apache.spark.ml.feature.ChiSqSelector
 import org.apache.spark.ml.feature.ChiSqSelector
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\>
-
-scala\> val data = Seq(
-
+scala>
+scala> val data = Seq(
 | (7, Vectors.dense(0.0, 0.0, 18.0, 1.0), 1.0),
-
 | (8, Vectors.dense(0.0, 1.0, 12.0, 0.0), 0.0),
-
 | (9, Vectors.dense(1.0, 0.0, 15.0, 0.1), 0.0)
-
 | )
-
-data: Seq\[(Int, org.apache.spark.ml.linalg.Vector, Double)\] =
-List((7,\[0.0,0.0,18.0,1.0\],1.0), (8,\[0.0,1.0,12.0,0.0\],0.0),
-(9,\[1.0,0.0,15.0,0.1\],0.0))
-
-scala\>
-
-scala\> val df = spark.createDataset(data).toDF("id", "features",
+data: Seq[(Int, org.apache.spark.ml.linalg.Vector, Double)] =
+List((7,[0.0,0.0,18.0,1.0],1.0), (8,[0.0,1.0,12.0,0.0],0.0),
+(9,[1.0,0.0,15.0,0.1],0.0))
+scala>
+scala> val df = spark.createDataset(data).toDF("id", "features",
 "clicked")
-
-df: org.apache.spark.sql.DataFrame = \[id: int, features: vector ... 1
-more field\]
-
-scala\> val selector = new
+df: org.apache.spark.sql.DataFrame = [id: int, features: vector ... 1
+more field]
+scala> val selector = new
 ChiSqSelector().setNumTopFeatures(1).setFeaturesCol("features").setLabelCol("clicked").setOutputCol("selectedFeatures")
-
 selector: org.apache.spark.ml.feature.ChiSqSelector =
-chiSqSelector\_060a4c0d78ed
-
-scala\> val result = selector.fit(df).transform(df)
-
-result: org.apache.spark.sql.DataFrame = \[id: int, features: vector ...
-2 more fields\]
-
-scala\> println(s"ChiSqSelector output with top
+chiSqSelector_060a4c0d78ed
+scala> val result = selector.fit(df).transform(df)
+result: org.apache.spark.sql.DataFrame = [id: int, features: vector ...
+2 more fields]
+scala> println(s"ChiSqSelector output with top
 ${selector.getNumTopFeatures} features selected")
-
 ChiSqSelector output with top 1 features selected
-
-scala\> result.show()
-
-\+---+------------------+-------+----------------+
-
+scala> result.show()
++---+------------------+-------+----------------+
 | id| features|clicked|selectedFeatures|
-
-\+---+------------------+-------+----------------+
-
-| 7|\[0.0,0.0,18.0,1.0\]| 1.0| \[18.0\]|
-
-| 8|\[0.0,1.0,12.0,0.0\]| 0.0| \[12.0\]|
-
-| 9|\[1.0,0.0,15.0,0.1\]| 0.0| \[15.0\]|
-
-\+---+------------------+-------+----------------+
++---+------------------+-------+----------------+
+| 7|[0.0,0.0,18.0,1.0]| 1.0| [18.0]|
+| 8|[0.0,1.0,12.0,0.0]| 0.0| [12.0]|
+| 9|[1.0,0.0,15.0,0.1]| 0.0| [15.0]|
++---+------------------+-------+----------------+
+```
 
 代码 4‑65
 
@@ -2793,140 +2091,80 @@ outputCol类型就是Seq\[Vector\]其中数组的长度等于numHashTables和向
 
 其中r是一个用户定义的桶长度。桶长度可以被用于控制散列桶的平均大小（以及桶的数量）。较大的桶长度（也是指更少的桶）增加了特征被哈希到同一桶中的概率（增加真假阳性的数量）。分时段的随机投影接受任意的向量作为输入的特征，并支持稀疏和密集向量。
 
-scala\> import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
-
+```scala
+scala> import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
 import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> import org.apache.spark.sql.functions.col
-
+scala> import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.col
-
-scala\> val dfA = spark.createDataFrame(Seq(
-
+scala> val dfA = spark.createDataFrame(Seq(
 | (0, Vectors.dense(1.0, 1.0)),
-
 | (1, Vectors.dense(1.0, -1.0)),
-
 | (2, Vectors.dense(-1.0, -1.0)),
-
 | (3, Vectors.dense(-1.0, 1.0))
-
 | )).toDF("id", "features")
-
-dfA: org.apache.spark.sql.DataFrame = \[id: int, features: vector\]
-
-scala\> val dfB = spark.createDataFrame(Seq(
-
+dfA: org.apache.spark.sql.DataFrame = [id: int, features: vector]
+scala> val dfB = spark.createDataFrame(Seq(
 | (4, Vectors.dense(1.0, 0.0)),
-
 | (5, Vectors.dense(-1.0, 0.0)),
-
 | (6, Vectors.dense(0.0, 1.0)),
-
 | (7, Vectors.dense(0.0, -1.0))
-
 | )).toDF("id", "features")
-
-dfB: org.apache.spark.sql.DataFrame = \[id: int, features: vector\]
-
-scala\> val key = Vectors.dense(1.0, 0.0)
-
-key: org.apache.spark.ml.linalg.Vector = \[1.0,0.0\]
-
-scala\> val brp = new
+dfB: org.apache.spark.sql.DataFrame = [id: int, features: vector]
+scala> val key = Vectors.dense(1.0, 0.0)
+key: org.apache.spark.ml.linalg.Vector = [1.0,0.0]
+scala> val brp = new
 BucketedRandomProjectionLSH().setBucketLength(2.0).setNumHashTables(3).setInputCol("features").setOutputCol("hashes")
-
 brp: org.apache.spark.ml.feature.BucketedRandomProjectionLSH =
-brp-lsh\_626478c9acf5
-
-scala\> val model = brp.fit(dfA)
-
+brp-lsh_626478c9acf5
+scala> val model = brp.fit(dfA)
 model: org.apache.spark.ml.feature.BucketedRandomProjectionLSHModel =
-brp-lsh\_626478c9acf5
-
-scala\> println("The hashed dataset where hashed values are stored in
+brp-lsh_626478c9acf5
+scala> println("The hashed dataset where hashed values are stored in
 the column 'hashes':")
-
 The hashed dataset where hashed values are stored in the column
 'hashes':
-
-scala\> model.transform(dfA).show(false)
-
-\+---+-----------+-----------------------+
-
+scala> model.transform(dfA).show(false)
++---+-----------+-----------------------+
 |id |features |hashes |
-
-\+---+-----------+-----------------------+
-
-|0 |\[1.0,1.0\] |\[\[0.0\], \[0.0\], \[-1.0\]\] |
-
-|1 |\[1.0,-1.0\] |\[\[-1.0\], \[-1.0\], \[0.0\]\]|
-
-|2 |\[-1.0,-1.0\]|\[\[-1.0\], \[-1.0\], \[0.0\]\]|
-
-|3 |\[-1.0,1.0\] |\[\[0.0\], \[0.0\], \[-1.0\]\] |
-
-\+---+-----------+-----------------------+
-
-scala\> println("Approximately joining dfA and dfB on Euclidean distance
++---+-----------+-----------------------+
+|0 |[1.0,1.0] |[[0.0], [0.0], [-1.0]] |
+|1 |[1.0,-1.0] |[[-1.0], [-1.0], [0.0]]|
+|2 |[-1.0,-1.0]|[[-1.0], [-1.0], [0.0]]|
+|3 |[-1.0,1.0] |[[0.0], [0.0], [-1.0]] |
++---+-----------+-----------------------+
+scala> println("Approximately joining dfA and dfB on Euclidean distance
 smaller than 1.5:")
-
 Approximately joining dfA and dfB on Euclidean distance smaller than
 1.5:
-
-scala\> model.approxSimilarityJoin(dfA, dfB, 1.5,
+scala> model.approxSimilarityJoin(dfA, dfB, 1.5,
 "EuclideanDistance").select(col("datasetA.id").alias("idA"),
-
 | col("datasetB.id").alias("idB"),
-
 | col("EuclideanDistance")).show(false)
-
-\+---+---+-----------------+
-
++---+---+-----------------+
 |idA|idB|EuclideanDistance|
-
-\+---+---+-----------------+
-
++---+---+-----------------+
 |1 |4 |1.0 |
-
 |0 |6 |1.0 |
-
 |1 |7 |1.0 |
-
 |3 |5 |1.0 |
-
 |0 |4 |1.0 |
-
 |3 |6 |1.0 |
-
 |2 |7 |1.0 |
-
 |2 |5 |1.0 |
-
-\+---+---+-----------------+
-
-scala\> println("Approximately searching dfA for 2 nearest neighbors of
++---+---+-----------------+
+scala> println("Approximately searching dfA for 2 nearest neighbors of
 the key:")
-
 Approximately searching dfA for 2 nearest neighbors of the key:
-
-scala\> model.approxNearestNeighbors(dfA, key, 2).show(false)
-
-\+---+----------+-----------------------+-------+
-
+scala> model.approxNearestNeighbors(dfA, key, 2).show(false)
++---+----------+-----------------------+-------+
 |id |features |hashes |distCol|
-
-\+---+----------+-----------------------+-------+
-
-|0 |\[1.0,1.0\] |\[\[0.0\], \[0.0\], \[-1.0\]\] |1.0 |
-
-|1 |\[1.0,-1.0\]|\[\[-1.0\], \[-1.0\], \[0.0\]\]|1.0 |
-
-\+---+----------+-----------------------+-------+
++---+----------+-----------------------+-------+
+|0 |[1.0,1.0] |[[0.0], [0.0], [-1.0]] |1.0 |
+|1 |[1.0,-1.0]|[[-1.0], [-1.0], [0.0]]|1.0 |
++---+----------+-----------------------+-------+
+```
 
 代码 4‑66
 
@@ -2954,130 +2192,78 @@ Vectors.sparse(10, Array\[(2, 1.0), (3, 1.0), (5, 1.0)\])
 
 注：MinHash不能转换空集，这意味着任何输入向量必须具有至少1非零项。
 
-scala\> import org.apache.spark.ml.feature.MinHashLSH
-
+```scala
+scala> import org.apache.spark.ml.feature.MinHashLSH
 import org.apache.spark.ml.feature.MinHashLSH
-
-scala\> import org.apache.spark.ml.linalg.Vectors
-
+scala> import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.linalg.Vectors
-
-scala\> import org.apache.spark.sql.functions.col
-
+scala> import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.functions.col
-
-scala\> val dfA = spark.createDataFrame(Seq(
-
+scala> val dfA = spark.createDataFrame(Seq(
 | (0, Vectors.sparse(6, Seq((0, 1.0), (1, 1.0), (2, 1.0)))),
-
 | (1, Vectors.sparse(6, Seq((2, 1.0), (3, 1.0), (4, 1.0)))),
-
 | (2, Vectors.sparse(6, Seq((0, 1.0), (2, 1.0), (4, 1.0))))
-
 | )).toDF("id", "features")
-
-dfA: org.apache.spark.sql.DataFrame = \[id: int, features: vector\]
-
-scala\> val dfB = spark.createDataFrame(Seq(
-
+dfA: org.apache.spark.sql.DataFrame = [id: int, features: vector]
+scala> val dfB = spark.createDataFrame(Seq(
 | (3, Vectors.sparse(6, Seq((1, 1.0), (3, 1.0), (5, 1.0)))),
-
 | (4, Vectors.sparse(6, Seq((2, 1.0), (3, 1.0), (5, 1.0)))),
-
 | (5, Vectors.sparse(6, Seq((1, 1.0), (2, 1.0), (4, 1.0))))
-
 | )).toDF("id", "features")
-
-dfB: org.apache.spark.sql.DataFrame = \[id: int, features: vector\]
-
-scala\> val key = Vectors.sparse(6, Seq((1, 1.0), (3, 1.0)))
-
-key: org.apache.spark.ml.linalg.Vector = (6,\[1,3\],\[1.0,1.0\])
-
-scala\> val mh = new
+dfB: org.apache.spark.sql.DataFrame = [id: int, features: vector]
+scala> val key = Vectors.sparse(6, Seq((1, 1.0), (3, 1.0)))
+key: org.apache.spark.ml.linalg.Vector = (6,[1,3],[1.0,1.0])
+scala> val mh = new
 MinHashLSH().setNumHashTables(5).setInputCol("features").setOutputCol("hashes")
-
-mh: org.apache.spark.ml.feature.MinHashLSH = mh-lsh\_923018668855
-
-scala\> val model = mh.fit(dfA)
-
+mh: org.apache.spark.ml.feature.MinHashLSH = mh-lsh_923018668855
+scala> val model = mh.fit(dfA)
 model: org.apache.spark.ml.feature.MinHashLSHModel =
-mh-lsh\_923018668855
-
-scala\> println("The hashed dataset where hashed values are stored in
+mh-lsh_923018668855
+scala> println("The hashed dataset where hashed values are stored in
 the column 'hashes':")
-
 The hashed dataset where hashed values are stored in the column
 'hashes':
-
-scala\> model.transform(dfA).show(false)
-
-\+---+-------------------------+---------------------------------------------------------------------------------------+
-
+scala> model.transform(dfA).show(false)
++---+-------------------------+---------------------------------------------------------------------------------------+
 |id |features |hashes |
-
-\+---+-------------------------+---------------------------------------------------------------------------------------+
-
-|0 |(6,\[0,1,2\],\[1.0,1.0,1.0\])|\[\[-2.031299587E9\],
-\[-1.974869772E9\], \[-1.974047307E9\], \[4.95314097E8\],
-\[7.01119548E8\]\] |
-
-|1 |(6,\[2,3,4\],\[1.0,1.0,1.0\])|\[\[-2.031299587E9\],
-\[-1.758749518E9\], \[-4.86208737E8\], \[1.247220523E9\],
-\[-1.59182918E9\]\]|
-
-|2 |(6,\[0,2,4\],\[1.0,1.0,1.0\])|\[\[-2.031299587E9\],
-\[-1.758749518E9\], \[-1.974047307E9\], \[4.95314097E8\],
-\[-1.59182918E9\]\]|
-
-\+---+-------------------------+---------------------------------------------------------------------------------------+
-
-scala\> println("Approximately joining dfA and dfB on Jaccard distance
++---+-------------------------+---------------------------------------------------------------------------------------+
+|0 |(6,[0,1,2],[1.0,1.0,1.0])|[[-2.031299587E9],
+[-1.974869772E9], [-1.974047307E9], [4.95314097E8],
+[7.01119548E8]] |
+|1 |(6,[2,3,4],[1.0,1.0,1.0])|[[-2.031299587E9],
+[-1.758749518E9], [-4.86208737E8], [1.247220523E9],
+[-1.59182918E9]]|
+|2 |(6,[0,2,4],[1.0,1.0,1.0])|[[-2.031299587E9],
+[-1.758749518E9], [-1.974047307E9], [4.95314097E8],
+[-1.59182918E9]]|
++---+-------------------------+---------------------------------------------------------------------------------------+
+scala> println("Approximately joining dfA and dfB on Jaccard distance
 smaller than 0.6:")
-
 Approximately joining dfA and dfB on Jaccard distance smaller than 0.6:
-
-scala\> model.approxSimilarityJoin(dfA, dfB, 0.6,
+scala> model.approxSimilarityJoin(dfA, dfB, 0.6,
 "JaccardDistance").select(col("datasetA.id").alias("idA"),
-
 | col("datasetB.id").alias("idB"),
-
 | col("JaccardDistance")).show()
-
-\+---+---+---------------+
-
++---+---+---------------+
 |idA|idB|JaccardDistance|
-
-\+---+---+---------------+
-
++---+---+---------------+
 | 0| 5| 0.5|
-
 | 1| 5| 0.5|
-
 | 2| 5| 0.5|
-
 | 1| 4| 0.5|
-
-\+---+---+---------------+
-
-scala\> println("Approximately searching dfA for 2 nearest neighbors of
++---+---+---------------+
+scala> println("Approximately searching dfA for 2 nearest neighbors of
 the key:")
-
 Approximately searching dfA for 2 nearest neighbors of the key:
-
-scala\> model.approxNearestNeighbors(dfA, key, 2).show(false)
-
-\+---+-------------------------+--------------------------------------------------------------------------------------+-------+
-
+scala> model.approxNearestNeighbors(dfA, key, 2).show(false)
++---+-------------------------+--------------------------------------------------------------------------------------+-------+
 |id |features |hashes |distCol|
-
-\+---+-------------------------+--------------------------------------------------------------------------------------+-------+
-
-|0 |(6,\[0,1,2\],\[1.0,1.0,1.0\])|\[\[-2.031299587E9\],
-\[-1.974869772E9\], \[-1.974047307E9\], \[4.95314097E8\],
-\[7.01119548E8\]\]|0.75 |
-
-\+---+-------------------------+--------------------------------------------------------------------------------------+-------+
++---+-------------------------+--------------------------------------------------------------------------------------+-------+
+|0 |(6,[0,1,2],[1.0,1.0,1.0])|[[-2.031299587E9],
+[-1.974869772E9], [-1.974047307E9], [4.95314097E8],
+[7.01119548E8]]|0.75 |
++---+-------------------------+--------------------------------------------------------------------------------------+-------+
+```
 
 代码 4‑68
 
@@ -3088,6 +2274,3 @@ MLlib中用于完成特征工程的工具集。根据具体问题，执行特征
 2
 Vec和Vectorizers用于文本分析问题，适合文本的特征选择；对于特征转换，可以使用各种缩放器、编码器和离散器；对于向量的子集，可以使用VectorSlicer和Chi-Square
 Selector，它们使用标记的分类特征来决定选择哪些特征。
-
-
-

@@ -48,103 +48,57 @@ GraphX由于底层是基于Spark来处理的，所以自然就是一个分布式
 为了更好地理解图的概念，让我们看一下通常使用社交软件的方式，每天都可以使用智能手机在朋友圈中张贴消息或更新状态，我们的朋友也可以发布了自己的消息，照片和视频。我们有朋友，朋友还会有朋友等等，社交软件的设置可让我们结交新朋友或从朋友列表中删除朋友。社交软件还具有权限设置的功能，可以对谁看到什么以及可以与谁进行通信进行精细控制。当考虑社交软件平台具有有十亿个用户时，管理所有用户以及用户之间的关系和权限变得非常庞大和复杂。我们需要建立有关用户和关系数据的存储和检索，以便允许回答这样的问题，例如：X是Y的朋友吗？X和Y是直接关联还是在两个步之内的间接关联？X有多少个朋友？我们可以从尝试从一个简单的数据结构开始，使每个人都有一个朋友数组，因此可以很容易就用数组的长度来回答第三个问题，也可以只扫描数组并快速回答第一个问题，而第二个问题将需要做更多的工作。如下面的示例所示，我们通过使用专门的数据结构来解决该问题，在代码
 4‑1中我们创建了一个案例类Person，然后添加朋友来建立John、Ken、Mary、Dan用户之间的关系：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 case class Person(name: String) {
-
-val friends = scala.collection.mutable.ArrayBuffer\[Person\]()
-
+val friends = scala.collection.mutable.ArrayBuffer[Person]()
 def numberOfFriends() = friends.length
-
-def isFriend(other: Person) = friends.find(\_.name == other.name)
-
+def isFriend(other: Person) = friends.find(_.name == other.name)
 def isConnectedWithin2Steps(other: Person) = {
-
-for {f \<- friends} yield {
-
+for {f <- friends} yield {
 f.name == other.name ||
-
 f.isFriend(other).isDefined
-
 }
-
-}.find(\_ == true).isDefined
-
+}.find(_ == true).isDefined
 }
-
 // Exiting paste mode, now interpreting.
-
 defined class Person
-
-scala\> val john = Person("John")
-
+scala> val john = Person("John")
 john: Person = Person(John)
-
-scala\> val ken = Person("Ken")
-
+scala> val ken = Person("Ken")
 ken: Person = Person(Ken)
-
-scala\> val mary = Person("Mary")
-
+scala> val mary = Person("Mary")
 mary: Person = Person(Mary)
-
-scala\> val dan = Person("Dan")
-
+scala> val dan = Person("Dan")
 dan: Person = Person(Dan)
-
-scala\> john.numberOfFriends
-
+scala> john.numberOfFriends
 res0: Int = 0
-
-scala\> john.friends += ken
-
+scala> john.friends += ken
 res1: john.friends.type = ArrayBuffer(Person(Ken))
-
-scala\> john.numberOfFriends
-
+scala> john.numberOfFriends
 res2: Int = 1
-
-scala\> ken.friends += mary
-
+scala> ken.friends += mary
 res3: ken.friends.type = ArrayBuffer(Person(Mary))
-
-scala\> ken.numberOfFriends
-
+scala> ken.numberOfFriends
 res4: Int = 1
-
-scala\> mary.friends += dan
-
+scala> mary.friends += dan
 res5: mary.friends.type = ArrayBuffer(Person(Dan))
-
-scala\> mary.numberOfFriends
-
+scala> mary.numberOfFriends
 res6: Int = 1
-
-scala\> john.isFriend(ken)
-
-res7: Option\[Person\] = Some(Person(Ken))
-
-scala\> john.isFriend(mary)
-
-res8: Option\[Person\] = None
-
-scala\> john.isFriend(dan)
-
-res9: Option\[Person\] = None
-
-scala\> john.isConnectedWithin2Steps(ken)
-
+scala> john.isFriend(ken)
+res7: Option[Person] = Some(Person(Ken))
+scala> john.isFriend(mary)
+res8: Option[Person] = None
+scala> john.isFriend(dan)
+res9: Option[Person] = None
+scala> john.isConnectedWithin2Steps(ken)
 res10: Boolean = true
-
-scala\> john.isConnectedWithin2Steps(mary)
-
+scala> john.isConnectedWithin2Steps(mary)
 res11: Boolean = true
-
-scala\> john.isConnectedWithin2Steps(dan)
-
+scala> john.isConnectedWithin2Steps(dan)
 res12: Boolean = false
+```
 
 代码 4‑1
 
@@ -207,28 +161,26 @@ GraphX是构建于Spark上的图计算模型，GraphX利用Spark框架提供的�
 
 首先，通过Spark的交互界面让我们创建一个小型的社交网络，并探索网络中不同人员之间的关系。工作流程是在交互界面中进行操作，需要导入GraphX和RDD包以便我们可以调用其API：
 
-scala\> import org.apache.spark.graphx.\_
-
-import org.apache.spark.graphx.\_
-
-scala\> import org.apache.spark.rdd.RDD
-
+```scala
+scala> import org.apache.spark.graphx._
+import org.apache.spark.graphx._
+scala> import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD
+```
 
 代码 4‑2
 
 SparkContext可以作为Spark程序的主要入口点，是在Spark
 交互界面中自动创建的，还提供了有用的方法来通过集合创建RDD，或将本地或Hadoop文件系统中的数据加载到RDD中并将输出数据保存在磁盘上。在此示例中，我们将使用两个CSV文件people.csv和links.csv，包含在目录/data中，键入以下命令以将这些文件加载到Spark中：
 
-scala\> val people = sc.textFile("/data/people.csv")
-
-people: org.apache.spark.rdd.RDD\[String\] = /data/people.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:28
-
-scala\> val links = sc.textFile("/data/links.csv")
-
-links: org.apache.spark.rdd.RDD\[String\] = /data/links.csv
-MapPartitionsRDD\[3\] at textFile at \<console\>:28
+```scala
+scala> val people = sc.textFile("/data/people.csv")
+people: org.apache.spark.rdd.RDD[String] = /data/people.csv
+MapPartitionsRDD[1] at textFile at <console>:28
+scala> val links = sc.textFile("/data/links.csv")
+links: org.apache.spark.rdd.RDD[String] = /data/links.csv
+MapPartitionsRDD[3] at textFile at <console>:28
+```
 
 代码 4‑3
 
@@ -252,33 +204,31 @@ val edges: EdgeRDD\[ED,VD\]
 
 （1）定义一个案例类Person，具有名称和年龄作为类参数，以后需要对Person进行模式匹配时，案例类非常有用：
 
-scala\> case class Person(name: String, age: Int)
-
+```scala
+scala> case class Person(name: String, age: Int)
 defined class Person
+```
 
 代码 4‑5
 
 （2）将两个CSV文件中的每一行，分别解析为Person和Edge类型的新对象，并结果集合定义为RDD \[(VertexId,
 Person)\]和RDD \[Edge \[String\]\]：
 
-scala\> val peopleRDD: RDD\[(VertexId, Person)\] =
-people.map(\_.split(',')).map(row =\> (row(0).toInt, Person(row(1),
+```scala
+scala> val peopleRDD: RDD[(VertexId, Person)] =
+people.map(_.split(',')).map(row => (row(0).toInt, Person(row(1),
 row(2).toInt)))
-
-peopleRDD: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-Person)\] = MapPartitionsRDD\[5\] at map at \<console\>:31
-
-scala\> type Connection = String
-
+peopleRDD: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+Person)] = MapPartitionsRDD[5] at map at <console>:31
+scala> type Connection = String
 defined type alias Connection
-
-scala\> val linksRDD: RDD\[Edge\[Connection\]\] =
-links.map(\_.split(',')).map(row =\> Edge(row(0).toInt, row(1).toInt,
+scala> val linksRDD: RDD[Edge[Connection]] =
+links.map(_.split(',')).map(row => Edge(row(0).toInt, row(1).toInt,
 row(2)))
-
 linksRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Connection\]\] =
-MapPartitionsRDD\[7\] at map at \<console\>:31
+org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Connection]] =
+MapPartitionsRDD[7] at map at <console>:31
+```
 
 代码 4‑6
 
@@ -290,11 +240,12 @@ class Edge(srcId:VertexId, dstId:VertexId, attr:ED)
 
 （3）使用工厂方法Graph()创建社交网络图，并将其命名为tinySocial：
 
-scala\> val tinySocial: Graph\[Person, Connection\] = Graph(peopleRDD,
+```scala
+scala> val tinySocial: Graph[Person, Connection] = Graph(peopleRDD,
 linksRDD)
-
-tinySocial: org.apache.spark.graphx.Graph\[Person,Connection\] =
+tinySocial: org.apache.spark.graphx.Graph[Person,Connection] =
 <org.apache.spark.graphx.impl.GraphImpl@2dfc833b>
+```
 
 代码 4‑7
 
@@ -307,92 +258,74 @@ VD\]分别是RDD\[(VertexId, Person)\]和RDD\[Edge \[Connection\]\]的子类。
 此外，VertexRDD \[VD\]和EdgeRDD \[ED,
 VD\]提供了其他几种操作来转换点和边属性，我们将在后面的章节中看到更多这些内容。最后，我们将通过collect()方法来查看网络中的点和边：
 
-scala\> tinySocial.vertices.collect()
-
-res0: Array\[(org.apache.spark.graphx.VertexId, Person)\] =
+```scala
+scala> tinySocial.vertices.collect()
+res0: Array[(org.apache.spark.graphx.VertexId, Person)] =
 Array((4,Person(Dave,25)), (6,Person(Faith,21)), (8,Person(Harvey,47)),
 (2,Person(Bob,18)), (1,Person(Alice,20)), (3,Person(Charlie,30)),
 (7,Person(George,34)), (9,Person(Ivy,21)), (5,Person(Eve,30)))
-
-scala\> tinySocial.edges.collect()
-
-res1: Array\[org.apache.spark.graphx.Edge\[Connection\]\] =
+scala> tinySocial.edges.collect()
+res1: Array[org.apache.spark.graphx.Edge[Connection]] =
 Array(Edge(1,2,friend), Edge(1,3,sister), Edge(2,4,brother),
 Edge(3,2,boss), Edge(4,5,client), Edge(1,9,friend), Edge(6,7,cousin),
 Edge(7,9,coworker), Edge(8,9,father))
+```
 
 代码 4‑8
 
 现在，我们只想打印出tinySocial中特定的用户关系，需要定义一个关系列表profLinks：
 
-scala\> val profLinks: List\[Connection\] = List("coworker", "boss",
+```scala
+scala> val profLinks: List[Connection] = List("coworker", "boss",
 "employee", "client", "supplier")
-
-profLinks: List\[Connection\] = List(coworker, boss, employee, client,
+profLinks: List[Connection] = List(coworker, boss, employee, client,
 supplier)
+```
 
 代码 4‑9
 
 我们可以通过filter()方法过滤出特定关系的边，然后遍历过滤后的边，提取相应点的名称，并打印起始点和目标点之间的连接，以下代码中实现了这种方法：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val profNetwork = tinySocial.edges.filter {
-
-case Edge(\_, \_, link) =\> profLinks.contains(link)
-
+case Edge(_, _, link) => profLinks.contains(link)
 }
-
-for {Edge(src, dst, link) \<- profNetwork.collect()
-
-srcName = (peopleRDD.filter { case (id, person) =\> id == src }
-first).\_2.name
-
-dstName = (peopleRDD.filter { case (id, person) =\> id == dst }
-first).\_2.name
-
+for {Edge(src, dst, link) <- profNetwork.collect()
+srcName = (peopleRDD.filter { case (id, person) => id == src }
+first)._2.name
+dstName = (peopleRDD.filter { case (id, person) => id == dst }
+first)._2.name
 } println(srcName + " is a " + link + " of " + dstName)
-
 // Exiting paste mode, now interpreting.
-
 warning: there were two feature warnings; re-run with -feature for
 details
-
 Charlie is a boss of Bob
-
 Dave is a client of Eve
-
 George is a coworker of Ivy
-
 profNetwork:
-org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Connection\]\] =
-MapPartitionsRDD\[38\] at filter at \<pastie\>:35
+org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Connection]] =
+MapPartitionsRDD[38] at filter at <pastie>:35
+```
 
 代码 4‑10
 
 代码
 4‑10有两个问题。首先不是很简洁和富有表现力，其次for循环中的过滤操作效率不高，需要读取两遍图中数据。GraphX库提供了两种查看数据的方式：以图的方式或以表的方式，表中可以分别为边、点或三元组。对于每种方式，GraphX库都提供了一系列丰富的操作，并进行了优化。我们通常可以轻松地使用预定义的图操作或算法来处理图形，例如可以简化前面的代码并使之更高效，如下所示：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-tinySocial.subgraph(epred = (edge) =\> profLinks.contains(edge.attr))
-
+tinySocial.subgraph(epred = (edge) => profLinks.contains(edge.attr))
 .triplets
-
-.foreach(t =\> println(t.srcAttr.name + " is a " + t.attr + " of " +
+.foreach(t => println(t.srcAttr.name + " is a " + t.attr + " of " +
 t.dstAttr.name))
-
 // Exiting paste mode, now interpreting.
-
 Charlie is a boss of Bob
-
 George is a coworker of Ivy
-
 Dave is a client of Eve
+```
 
 代码 4‑11
 
@@ -625,33 +558,29 @@ uniqueEdges: Option\[PartitionStrategy\] = None)
 现在让我们打开Spark交互界面构建三种类型的图：电邮通信网络有向图、成分与化合物连接的二分图，以及使用构建器产生的多图。我们将建立的第一个图是电邮通信网络。如果重新启动了Spark
 Shell，则需要再次导入GraphX库。首先，在虚拟实验环境中有一个数据集/data/emailEnron.txt，包含员工之间电子邮件通信的邻接列表，表示了邮件之间的传递关系，我们可以将文件路径传递给GraphLoader.edgeListFile方法：
 
-scala\> import org.apache.spark.graphx.\_
-
-import org.apache.spark.graphx.\_
-
-scala\> import org.apache.spark.rdd.\_
-
-import org.apache.spark.rdd.\_
-
-scala\> val emailGraph = GraphLoader.edgeListFile(sc,
+```scala
+scala> import org.apache.spark.graphx._
+import org.apache.spark.graphx._
+scala> import org.apache.spark.rdd._
+import org.apache.spark.rdd._
+scala> val emailGraph = GraphLoader.edgeListFile(sc,
 "/data/emailEnron.txt")
-
-emailGraph: org.apache.spark.graphx.Graph\[Int,Int\] =
+emailGraph: org.apache.spark.graphx.Graph[Int,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@7d6c383d>
+```
 
 代码 4‑25
 
 请注意，GraphLoader.edgeListFile方法始终返回图对象，其点和边属性的类型为Int，的默认值为1，可以通过查看图表中的前五个点和边来进行检查：
 
-scala\> emailGraph.vertices.take(5)
-
-res15: Array\[(org.apache.spark.graphx.VertexId, Int)\] =
+```scala
+scala> emailGraph.vertices.take(5)
+res15: Array[(org.apache.spark.graphx.VertexId, Int)] =
 Array((18624,1), (32196,1), (32432,1), (9166,1), (7608,1))
-
-scala\> emailGraph.edges.take(5)
-
-res16: Array\[org.apache.spark.graphx.Edge\[Int\]\] = Array(Edge(0,1,1),
+scala> emailGraph.edges.take(5)
+res16: Array[org.apache.spark.graphx.Edge[Int]] = Array(Edge(0,1,1),
 Edge(1,0,1), Edge(1,2,1), Edge(1,3,1), Edge(1,4,1))
+```
 
 代码 4‑26
 
@@ -659,127 +588,95 @@ Edge(1,0,1), Edge(1,2,1), Edge(1,3,1), Edge(1,4,1))
 (0,1,1)表示起始点为0和目标点为1之间的通信，边具有方向。
 为了表达无向图或双向图，我们可以在两个方向上链接每个点，例如在电子邮件网络中，我们可以验证19021节点同时具有传入和传出链接，首先我们收集与节点19021通信的目标节点：
 
-scala\> emailGraph.edges.filter(\_.srcId ==
-19021).map(\_.dstId).collect()
-
-res17: Array\[org.apache.spark.graphx.VertexId\] = Array(696, 4232,
+```scala
+scala> emailGraph.edges.filter(_.srcId ==
+19021).map(_.dstId).collect()
+res17: Array[org.apache.spark.graphx.VertexId] = Array(696, 4232,
 6811, 8315, 26007)
+```
 
 代码 4‑27
 
 事实证明，这些相同的节点也是19021的传入边的起始节点：
 
-scala\> emailGraph.edges.filter(\_.dstId ==
-19021).map(\_.srcId).collect()
-
-res18: Array\[org.apache.spark.graphx.VertexId\] = Array(696, 4232,
+```scala
+scala> emailGraph.edges.filter(_.dstId ==
+19021).map(_.srcId).collect()
+res18: Array[org.apache.spark.graphx.VertexId] = Array(696, 4232,
 6811, 8315, 26007)
+```
 
 代码 4‑28
 
 在某些应用程序中，将系统视图表示为二分图很有用，二分图由两组节点组成，同一组中的节点不能连接，只能连接属于不同组的节点。这种图的一个示例是食品成分与化合物网络。在这里我们将处理文件ingr\_info.tsv、comp\_info.tsv和ingr\_comp.tsv，这些文件位于/data文件夹中，前两个文件分别包含有关食品成分和化合物的信息。让我们使用scala.io.Source的Source.fromFile()方法快速查看这两个文件的第一行，对该方法的唯一要求是简单地检查文本文件的开头：
 
-scala\> import scala.io.Source
-
+```scala
+scala> import scala.io.Source
 import scala.io.Source
-
-scala\>
-Source.fromFile("/data/ingr\_info.tsv").getLines().take(7).foreach(println)
-
-\# id ingredient name category
-
-0 magnolia\_tripetala flower
-
-1 calyptranthes\_parriculata plant
-
-2 chamaecyparis\_pisifera\_oil plant derivative
-
+scala>
+Source.fromFile("/data/ingr_info.tsv").getLines().take(7).foreach(println)
+# id ingredient name category
+0 magnolia_tripetala flower
+1 calyptranthes_parriculata plant
+2 chamaecyparis_pisifera_oil plant derivative
 3 mackerel fish/seafood
-
-4 mimusops\_elengi\_flower flower
-
+4 mimusops_elengi_flower flower
 5 hyssop herb
-
-scala\>
-Source.fromFile("/data/comp\_info.tsv").getLines().take(7).foreach(println)
-
-\# id Compound name CAS number
-
+scala>
+Source.fromFile("/data/comp_info.tsv").getLines().take(7).foreach(println)
+# id Compound name CAS number
 0 jasmone 488-10-8
-
-1 5-methylhexanoic\_acid 628-46-6
-
+1 5-methylhexanoic_acid 628-46-6
 2 l-glutamine 56-85-9
-
 3 1-methyl-3-methoxy-4-isopropylbenzene 1076-56-8
-
 4 methyl-3-phenylpropionate 103-25-3
-
-5 3-mercapto-2-methylpentan-1-ol\_(racemic) 227456-27-1
-
-scala\>
-Source.fromFile("/data/ingr\_comp.tsv").getLines().take(7).foreach(println)
-
-\# ingredient id compound id
-
+5 3-mercapto-2-methylpentan-1-ol_(racemic) 227456-27-1
+scala>
+Source.fromFile("/data/ingr_comp.tsv").getLines().take(7).foreach(println)
+# ingredient id compound id
 1392 906
-
 1259 861
-
 1079 673
-
 22 906
-
 103 906
-
 1005 906
+```
 
 代码 4‑29
 
 实际上，当前数据集没有以图构建器期望的形式出现。数据集有两个问题，首先不能简单地从邻接列表中创建图，因为成分和化合物的索引都从零开始并且彼此重叠，如果两个节点碰巧具有相同的点ID，则无法区分两个节点，其次有两种节点：成分和化合物。为了创建二分图，我们首先需要创建名为Ingredient和Compound的案例类，并使用Scala的继承，以便这两个类成为FNNode类的子级。
 
-scala\> class FNNode(val name: String) extends Serializable
-
+```scala
+scala> class FNNode(val name: String) extends Serializable
 defined class FNNode
-
-scala\> case class Ingredient(override val name: String, category:
+scala> case class Ingredient(override val name: String, category:
 String) extends FNNode(name)
-
 defined class Ingredient
-
-scala\> case class Compound(override val name: String, cas: String)
+scala> case class Compound(override val name: String, cas: String)
 extends FNNode(name)
-
 defined class Compound
+```
 
 代码 4‑30
 
 之后，我们需要将所有Compound和Ingredients对象加载到RDD \[FNNode\]集合中，这部分需要一些数据处理：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val ingredients: RDD\[(VertexId, FNNode)\] =
-sc.textFile("/data/ingr\_info.tsv")
-
-.filter(\!\_.startsWith("\#"))
-
+val ingredients: RDD[(VertexId, FNNode)] =
+sc.textFile("/data/ingr_info.tsv")
+.filter(!_.startsWith("#"))
 .map {
-
-line =\>
-
-val row = line split '\\t'
-
+line =>
+val row = line split '\t'
 (row(0).toInt, Ingredient(row(1), row(2)))
-
 }
-
 // Exiting paste mode, now interpreting.
-
 ingredients:
-org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId, FNNode)\] =
-MapPartitionsRDD\[3\] at map at \<pastie\>:35
+org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId, FNNode)] =
+MapPartitionsRDD[3] at map at <pastie>:35
+```
 
 代码 4‑31
 
@@ -788,95 +685,73 @@ MapPartitionsRDD\[3\] at map at \<pastie\>:35
 FNNode)\]类型的ingredients，然后对comp\_info.tsv实现相似的操作，并创建一个RDD\[(VertexId,
 FNNode)\]类型的compounds：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val compounds: RDD\[(VertexId, FNNode)\] =
-sc.textFile("/data/comp\_info.tsv")
-
-.filter(\!\_.startsWith("\#"))
-
+val compounds: RDD[(VertexId, FNNode)] =
+sc.textFile("/data/comp_info.tsv")
+.filter(!_.startsWith("#"))
 .map {
-
-line =\>
-
-val row = line.split('\\t')
-
+line =>
+val row = line.split('\t')
 (10000L + row(0).toInt, Compound(row(1), row(2)))
-
 }
-
 // Exiting paste mode, now interpreting.
-
-compounds: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-FNNode)\] = MapPartitionsRDD\[7\] at map at \<pastie\>:35
+compounds: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+FNNode)] = MapPartitionsRDD[7] at map at <pastie>:35
+```
 
 代码 4‑32
 
 由于每个节点的索引应该唯一，因此必须将compounds索引的范围移动10000L，以使没有索引同时指向一种成分和一种化合物。接下来，我们创建一个RDD
 \[Edge \[Int\]\] 集合，自名为ingr\_comp.tsv的数据集：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val links: RDD\[Edge\[Int\]\] = sc.textFile("/data/ingr\_comp.tsv")
-
-.filter(\!\_.startsWith("\#"))
-
+val links: RDD[Edge[Int]] = sc.textFile("/data/ingr_comp.tsv")
+.filter(!_.startsWith("#"))
 .map {
-
-line =\>
-
-val row = line.split('\\t')
-
+line =>
+val row = line.split('\t')
 Edge(row(0).toInt, 10000L + row(1).toInt, 1)
-
 }
-
 // Exiting paste mode, now interpreting.
-
-links: org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Int\]\] =
-MapPartitionsRDD\[11\] at map at \<pastie\>:32
+links: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
+MapPartitionsRDD[11] at map at <pastie>:32
+```
 
 代码 4‑33
 
 解析数据集中邻接列表的行时，要将化合物的索引移动10000L，因为我们事先从数据集描述中知道了数据集中有多少种成分和化合物。接下来，由于成分和化合物之间的链接不包含任何权重或有意义的属性，因此我们仅将Edge类的参数设置为Int类型，并将每个链接属性的默认值设置为1，最后将两组节点集合ingredients和compounds连接起来形成一个RDD，并将其与links一起传递给Graph()工厂方法：
 
-scala\> val nodes = ingredients ++ compounds
-
-nodes: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-FNNode)\] = UnionRDD\[12\] at $plus$plus at \<console\>:33
-
-scala\> val foodNetwork = Graph(nodes, links)
-
-foodNetwork: org.apache.spark.graphx.Graph\[FNNode,Int\] =
+```scala
+scala> val nodes = ingredients ++ compounds
+nodes: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+FNNode)] = UnionRDD[12] at $plus$plus at <console>:33
+scala> val foodNetwork = Graph(nodes, links)
+foodNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@1435103b>
+```
 
 代码 4‑34
 
 让我们看一下成分与化合物图foodNetwork的内部数据：
 
-scala\> def showTriplet(t: EdgeTriplet\[FNNode, Int\]): String = "The
+```scala
+scala> def showTriplet(t: EdgeTriplet[FNNode, Int]): String = "The
 ingredient " ++ t.srcAttr.name ++ " contains " ++ t.dstAttr.name
-
 showTriplet: (t:
-org.apache.spark.graphx.EdgeTriplet\[FNNode,Int\])String
-
-scala\> foodNetwork.triplets.take(5).foreach(showTriplet \_ andThen
-println \_)
-
-The ingredient calyptranthes\_parriculata contains citral\_(neral)
-
-The ingredient chamaecyparis\_pisifera\_oil contains undecanoic\_acid
-
-The ingredient hyssop contains myrtenyl\_acetate
-
+org.apache.spark.graphx.EdgeTriplet[FNNode,Int])String
+scala> foodNetwork.triplets.take(5).foreach(showTriplet _ andThen
+println _)
+The ingredient calyptranthes_parriculata contains citral_(neral)
+The ingredient chamaecyparis_pisifera_oil contains undecanoic_acid
+The ingredient hyssop contains myrtenyl_acetate
 The ingredient hyssop contains
 4-(2,6,6-trimethyl-cyclohexa-1,3-dienyl)but-2-en-4-one
-
 The ingredient buchu contains menthol
+```
 
 代码 4‑35
 
@@ -894,55 +769,42 @@ ego.featnames：这是每个特征维度的名称。如果用户的个人资料�
 
 首先，从Breeze库中导入绝对值函数和SparseVector类，我们将使用它们：
 
-scala\> import scala.math.abs
-
+```scala
+scala> import scala.math.abs
 import scala.math.abs
-
-scala\> import breeze.linalg.SparseVector
-
+scala> import breeze.linalg.SparseVector
 import breeze.linalg.SparseVector
+```
 
 代码 4‑36
 
 然后，我们还为SparseVector \[Int\]定义一个名为Feature的类型同义词：
 
-scala\> type Feature = breeze.linalg.SparseVector\[Int\]
-
+```scala
+scala> type Feature = breeze.linalg.SparseVector[Int]
 defined type alias Feature
+```
 
 代码 4‑37
 
 使用以下代码，我们可以读取ego.feat文件中的特征并将其放入到键值对集合中，键和值分别为Long和Feature类型：
 
-scala\> import scala.io.Source
-
+```scala
+scala> import scala.io.Source
 import scala.io.Source
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val featureMap: Map\[Long, Feature\] = Source.fromFile("/data/ego.feat")
-
+val featureMap: Map[Long, Feature] = Source.fromFile("/data/ego.feat")
 .getLines()
-
 .map {
-
-line =\>
-
+line =>
 val row = line.split(' ')
-
 val key = abs(row.head.hashCode.toLong)
-
-val feat = SparseVector(row.tail.map(\_.toInt))
-
+val feat = SparseVector(row.tail.map(_.toInt))
 (key, feat)
-
 }.toMap
-
 // Exiting paste mode, now interpreting.
-
-featureMap: Map\[Long,Feature\] = Map(421252149 -\>
+featureMap: Map[Long,Feature] = Map(421252149 ->
 SparseVector(1319)((0,0), (1,1), (2,0), (3,0), (4,0), (5,0), (6,0),
 (7,0), (8,0), (9,0), (10,0), (11,0), (12,0), (13,0), (14,0), (15,0),
 (16,0), (17,0), (18,0), (19,0), (20,0), (21,0), (22,0), (23,0), (24,0),
@@ -954,6 +816,7 @@ SparseVector(1319)((0,0), (1,1), (2,0), (3,0), (4,0), (5,0), (6,0),
 (70,0), (71,0), (72,0), (73,0), (74,0), (75,0), (76,0), (77,0), (78,0),
 (79,0), (80,0), (81,0), (82,0), (83,0), (84,0), (85,0), (86,0), (87,0),
 (88,0), (89,0), (90,0), (91,0), (92...
+```
 
 代码 4‑38
 
@@ -973,62 +836,48 @@ val key = abs(row.head.hashCode.toLong)
 \[Edge
 \[Int\]\]。相对于之前的示例，我们将自我中心网络建模为加权图。精确地，每个链接的属性将对应于每个连接节点对具有的共同特征的数量（计算两个节点特征向量的内积），通过以下转换完成的：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val edges: RDD\[Edge\[Int\]\] = sc.textFile("/data/ego.edges")
-
+val edges: RDD[Edge[Int]] = sc.textFile("/data/ego.edges")
 .map {
-
-line =\>
-
+line =>
 val row = line split ' '
-
 val srcId = abs(row(0).hashCode.toLong)
-
 val dstId = abs(row(1).hashCode.toLong)
-
 val srcFeat = featureMap(srcId)
-
 val dstFeat = featureMap(dstId)
-
 val numCommonFeats = srcFeat dot dstFeat
-
 Edge(srcId, dstId, numCommonFeats)
-
 }
-
 // Exiting paste mode, now interpreting.
-
-edges: org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Int\]\] =
-MapPartitionsRDD\[32\] at map at \<pastie\>:36
+edges: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
+MapPartitionsRDD[32] at map at <pastie>:36
+```
 
 代码 4‑40
 
 最后，我们现在可以使用Graph.fromEdges()函数创建一个自我中心网络，此函数将RDD \[Edge
 \[Int\]\]集合和点的默认值作为参数：
 
-scala\> val egoNetwork: Graph\[Int, Int\] = Graph.fromEdges(edges, 1)
-
-egoNetwork: org.apache.spark.graphx.Graph\[Int,Int\] =
+```scala
+scala> val egoNetwork: Graph[Int, Int] = Graph.fromEdges(edges, 1)
+egoNetwork: org.apache.spark.graphx.Graph[Int,Int] =
 org.apache.spark.graphx.impl.GraphImpl@659d6f74
+```
 
 代码 4‑41
 
 然后，我们可以检查自我中心网络中具有共同特征的链接数量：
 
-scala\> egoNetwork.edges.filter(\_.attr == 3).count()
-
+```scala
+scala> egoNetwork.edges.filter(_.attr == 3).count()
 res2: Long = 1852
-
-scala\> egoNetwork.edges.filter(\_.attr == 2).count()
-
+scala> egoNetwork.edges.filter(_.attr == 2).count()
 res3: Long = 9353
-
-scala\> egoNetwork.edges.filter(\_.attr == 1).count()
-
+scala> egoNetwork.edges.filter(_.attr == 1).count()
 res4: Long = 107934
+```
 
 代码 4‑42
 
@@ -1036,120 +885,103 @@ res4: Long = 107934
 
 现在，我们将探索这三个图，并介绍网络节点的重要属性，即节点的度。节点的度代表其与其他节点的链接数。在有向图中，我们可以区分节点的传入度或入度（即其传入链接的数量）与节点的传出度或出度（即其传出链接的数量），我们将探讨三个示例网络的度分布。
 
-scala\> emailGraph.numEdges
-
+```scala
+scala> emailGraph.numEdges
 res15: Long = 367662
-
-scala\> emailGraph.numVertices
-
+scala> emailGraph.numVertices
 res16: Long = 36692
+```
 
 代码 4‑43
 
 实际上，在此示例中员工的入度和出度完全相同，因为电子邮件网络图是双向的，可以通过查看平均度来确认：
 
-scala\> emailGraph.inDegrees.map(\_.\_2).sum / emailGraph.numVertices
-
+```scala
+scala> emailGraph.inDegrees.map(_._2).sum / emailGraph.numVertices
 res17: Double = 10.020222391802028
-
-scala\> emailGraph.outDegrees.map(\_.\_2).sum / emailGraph.numVertices
-
+scala> emailGraph.outDegrees.map(_._2).sum / emailGraph.numVertices
 res18: Double = 10.020222391802028
+```
 
 代码 4‑44
 
 如果我们想找到发送电子邮件给最多人的人，则可以定义并使用以下max函数：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 def max(a: (VertexId, Int), b: (VertexId, Int)): (VertexId, Int) = {
-
-if (a.\_2 \> b.\_2) a else b
-
+if (a._2 > b._2) a else b
 }
-
 // Exiting paste mode, now interpreting.
-
 max: (a: (org.apache.spark.graphx.VertexId, Int), b:
 (org.apache.spark.graphx.VertexId,
 Int))(org.apache.spark.graphx.VertexId, Int)
+```
 
 代码 4‑45
 
 让我们看一下输出：
 
-scala\> emailGraph.outDegrees.reduce(max)
-
+```scala
+scala> emailGraph.outDegrees.reduce(max)
 res19: (org.apache.spark.graphx.VertexId, Int) = (5038,1383)
+```
 
 代码 4‑46
 
 此人可以是管理员工或普通员工，其已经充当了组织的枢纽。同样，我们可以定义一个min函数来查找人。现在，让我们使用以下代码检查电邮通讯网络中是否有一些孤立的员工组：
 
-scala\> emailGraph.outDegrees.filter(\_.\_2 \<= 1).count
-
+```scala
+scala> emailGraph.outDegrees.filter(_._2 <= 1).count
 res20: Long = 11211
+```
 
 代码 4‑47
 
 似乎有很多员工仅从一位员工（也许是老板或人力资源部门）接收电子邮件。对于二分图成分与化合物，我们还可以研究哪种食物中化合物的数量最多，或者哪种化合物在我们的成分列表中最普遍：
 
-scala\> foodNetwork.outDegrees.reduce(max)
-
+```scala
+scala> foodNetwork.outDegrees.reduce(max)
 res21: (org.apache.spark.graphx.VertexId, Int) = (908,239)
-
-scala\> foodNetwork.vertices.filter(\_.\_1 == 908).collect()
-
-res22: Array\[(org.apache.spark.graphx.VertexId, FNNode)\] =
-Array((908,Ingredient(black\_tea,plant derivative)))
-
-scala\> foodNetwork.inDegrees.reduce(max)
-
+scala> foodNetwork.vertices.filter(_._1 == 908).collect()
+res22: Array[(org.apache.spark.graphx.VertexId, FNNode)] =
+Array((908,Ingredient(black_tea,plant derivative)))
+scala> foodNetwork.inDegrees.reduce(max)
 res23: (org.apache.spark.graphx.VertexId, Int) = (10292,299)
-
-scala\> foodNetwork.vertices.filter(\_.\_1 == 10292).collect()
-
-res24: Array\[(org.apache.spark.graphx.VertexId, FNNode)\] =
+scala> foodNetwork.vertices.filter(_._1 == 10292).collect()
+res24: Array[(org.apache.spark.graphx.VertexId, FNNode)] =
 Array((10292,Compound(1-octanol,111-87-5)))
+```
 
 代码 4‑48
 
 前面两个问题的答案就是红茶（black\_tea）和化合物1-辛醇（1-octanol）。同样，我们可以计算自我网络中的连接度，让我们看一下网络中的最大和最小度：
 
-scala\> egoNetwork.degrees.reduce(max)
-
+```scala
+scala> egoNetwork.degrees.reduce(max)
 res25: (org.apache.spark.graphx.VertexId, Int) = (1643293729,1084)
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 def min(a: (VertexId, Int), b: (VertexId, Int)): (VertexId, Int) = {
-
-if (a.\_2 \< b.\_2) a else b
-
+if (a._2 < b._2) a else b
 }
-
 // Exiting paste mode, now interpreting.
-
 min: (a: (org.apache.spark.graphx.VertexId, Int), b:
 (org.apache.spark.graphx.VertexId,
 Int))(org.apache.spark.graphx.VertexId, Int)
-
-scala\> egoNetwork.degrees.reduce(min)
-
+scala> egoNetwork.degrees.reduce(min)
 res26: (org.apache.spark.graphx.VertexId, Int) = (687907923,1)
+```
 
 代码 4‑49
 
 假设我们现在要获得度的直方图数据，然后我们可以编写以下代码来做到这一点：
 
-scala\> egoNetwork.degrees.map(t =\> (t.\_2, t.\_1)).groupByKey.map(t
-=\> (t.\_1, t.\_2.size)).sortBy(\_.\_1).collect()
-
-res27: Array\[(Int, Int)\] = Array((1,15), (2,19), (3,12), (4,17),
+```scala
+scala> egoNetwork.degrees.map(t => (t._2, t._1)).groupByKey.map(t
+=> (t._1, t._2.size)).sortBy(_._1).collect()
+res27: Array[(Int, Int)] = Array((1,15), (2,19), (3,12), (4,17),
 (5,11), (6,19), (7,14), (8,9), (9,8), (10,10), (11,1), (12,9), (13,6),
 (14,7), (15,8), (16,6), (17,5), (18,5), (19,7), (20,6), (21,8), (22,5),
 (23,8), (24,1), (25,2), (26,5), (27,8), (28,4), (29,6), (30,7), (31,5),
@@ -1161,6 +993,7 @@ res27: Array\[(Int, Int)\] = Array((1,15), (2,19), (3,12), (4,17),
 (75,6), (76,7), (77,10), (78,7), (79,9), (80,5), (81,3), (82,4), (83,7),
 (84,7), (85,4), (86,6), (87,6), (88,10), (89,4), (90,6), (91,3), (92,4),
 (93,7), (94,4), (95,6)...
+```
 
 代码 4‑50
 
@@ -1359,88 +1192,68 @@ VD)，并在点满足判定条件时返回true。使用这些判定条件，subg
 
 （1）为点创建RDD
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val users: RDD\[(VertexId, (String, String))\] =
-
+val users: RDD[(VertexId, (String, String))] =
 sc.parallelize(Array((3L, ("rxin", "student")), (7L, ("jgonzal",
 "postdoc")),
-
 (5L, ("franklin", "prof")), (2L, ("istoica", "prof")),
-
 (4L, ("peter", "student"))))
-
 // Exiting paste mode, now interpreting.
-
-users: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-(String, String))\] = ParallelCollectionRDD\[100\] at parallelize at
-\<pastie\>:34
+users: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+(String, String))] = ParallelCollectionRDD[100] at parallelize at
+<pastie>:34
+```
 
 代码 4‑56
 
 （2）为边创建RDD
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val relationships: RDD\[Edge\[String\]\] =
-
+val relationships: RDD[Edge[String]] =
 sc.parallelize(Array(Edge(3L, 7L, "collab"), Edge(5L, 3L, "advisor"),
-
 Edge(2L, 5L, "colleague"), Edge(5L, 7L, "pi"),
-
 Edge(4L, 0L, "student"), Edge(5L, 0L, "colleague")))
-
 // Exiting paste mode, now interpreting.
-
 relationships:
-org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[String\]\] =
-ParallelCollectionRDD\[101\] at parallelize at \<pastie\>:34
+org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[String]] =
+ParallelCollectionRDD[101] at parallelize at <pastie>:34
+```
 
 代码 4‑57
 
 （3）定义缺省的用户
 
-scala\> val defaultUser = ("John Doe", "Missing")
-
+```scala
+scala> val defaultUser = ("John Doe", "Missing")
 defaultUser: (String, String) = (John Doe,Missing)
+```
 
 代码 4‑58
 
 （4）构建初始Graph
 
-scala\> val graph = Graph(users, relationships, defaultUser)
-
-graph: org.apache.spark.graphx.Graph\[(String, String),String\] =
+```scala
+scala> val graph = Graph(users, relationships, defaultUser)
+graph: org.apache.spark.graphx.Graph[(String, String),String] =
 org.apache.spark.graphx.impl.GraphImpl@3517a60
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 graph.triplets.map(
-
-triplet =\> triplet.srcAttr.\_1 + " is the " + triplet.attr + " of " +
-triplet.dstAttr.\_1
-
-).collect.foreach(println(\_))
-
+triplet => triplet.srcAttr._1 + " is the " + triplet.attr + " of " +
+triplet.dstAttr._1
+).collect.foreach(println(_))
 // Exiting paste mode, now interpreting.
-
 rxin is the collab of jgonzal
-
 franklin is the advisor of rxin
-
 istoica is the colleague of franklin
-
 franklin is the pi of jgonzal
-
 peter is the student of John Doe
-
 franklin is the colleague of John Doe
+```
 
 代码 4‑59
 
@@ -1448,44 +1261,29 @@ franklin is the colleague of John Doe
 
 （5）移除缺失点以及连接到它们的边，通过移出用户0L断开与用户4L（peter）和5L（franklin）的连接
 
-scala\> val validGraph = graph.subgraph(vpred = (id, attr) =\> attr.\_2
-\!= "Missing")
-
-validGraph: org.apache.spark.graphx.Graph\[(String, String),String\] =
+```scala
+scala> val validGraph = graph.subgraph(vpred = (id, attr) => attr._2
+!= "Missing")
+validGraph: org.apache.spark.graphx.Graph[(String, String),String] =
 org.apache.spark.graphx.impl.GraphImpl@43995813
-
-scala\> validGraph.vertices.collect.foreach(println(\_))
-
+scala> validGraph.vertices.collect.foreach(println(_))
 (2,(istoica,prof))
-
 (3,(rxin,student))
-
 (4,(peter,student))
-
 (5,(franklin,prof))
-
 (7,(jgonzal,postdoc))
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 validGraph.triplets.map(
-
-triplet =\> triplet.srcAttr.\_1 + " is the " + triplet.attr + " of " +
-triplet.dstAttr.\_1
-
-).collect.foreach(println(\_))
-
+triplet => triplet.srcAttr._1 + " is the " + triplet.attr + " of " +
+triplet.dstAttr._1
+).collect.foreach(println(_))
 // Exiting paste mode, now interpreting.
-
 rxin is the collab of jgonzal
-
 franklin is the advisor of rxin
-
 istoica is the colleague of franklin
-
 franklin is the pi of jgonzal
+```
 
 代码 4‑60
 
@@ -1493,65 +1291,51 @@ mask()运算符通过图进行过滤，由图中的点和边构建子图，例�
 
 （1）获得连接的部分
 
-scala\> val ccGraph = graph.connectedComponents()
-
+```scala
+scala> val ccGraph = graph.connectedComponents()
 ccGraph:
-org.apache.spark.graphx.Graph\[org.apache.spark.graphx.VertexId,String\]
+org.apache.spark.graphx.Graph[org.apache.spark.graphx.VertexId,String]
 = <org.apache.spark.graphx.impl.GraphImpl@5025b871>
-
-scala\> ccGraph.edges.collect.foreach(println(\_))
-
+scala> ccGraph.edges.collect.foreach(println(_))
 Edge(3,7,collab)
-
 Edge(5,3,advisor)
-
 Edge(2,5,colleague)
-
 Edge(5,7,pi)
-
 Edge(4,0,student)
-
 Edge(5,0,colleague)
+```
 
 代码 4‑61
 
 （2）移除缺失属性信息的点点以及连接到它们的边
 
-scala\> val validGraph = graph.subgraph(vpred = (id, attr) =\> attr.\_2
-\!= "Missing")
-
-validGraph: org.apache.spark.graphx.Graph\[(String, String),String\] =
+```scala
+scala> val validGraph = graph.subgraph(vpred = (id, attr) => attr._2
+!= "Missing")
+validGraph: org.apache.spark.graphx.Graph[(String, String),String] =
 org.apache.spark.graphx.impl.GraphImpl@54d1dfa1
-
-scala\> validGraph.edges.collect.foreach(println(\_))
-
+scala> validGraph.edges.collect.foreach(println(_))
 Edge(3,7,collab)
-
 Edge(5,3,advisor)
-
 Edge(2,5,colleague)
-
 Edge(5,7,pi)
+```
 
 代码 4‑62
 
 （3）使用子图过滤
 
-scala\> val validCCGraph = ccGraph.mask(validGraph)
-
+```scala
+scala> val validCCGraph = ccGraph.mask(validGraph)
 validCCGraph:
-org.apache.spark.graphx.Graph\[org.apache.spark.graphx.VertexId,String\]
+org.apache.spark.graphx.Graph[org.apache.spark.graphx.VertexId,String]
 = org.apache.spark.graphx.impl.GraphImpl@17645849
-
-scala\> validCCGraph.edges.collect.foreach(println(\_))
-
+scala> validCCGraph.edges.collect.foreach(println(_))
 Edge(3,7,collab)
-
 Edge(5,3,advisor)
-
 Edge(2,5,colleague)
-
 Edge(5,7,pi)
+```
 
 代码 4‑63
 
@@ -1630,251 +1414,202 @@ str1 + str2 = Hello, Scala\!
 
 我们现在用一个例子来说明这两个联结运算符的差异，让我们制作一个电影演员的信息图：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val actors: RDD\[(VertexId, String)\] = sc.parallelize(List(
-
+val actors: RDD[(VertexId, String)] = sc.parallelize(List(
 (1L, "George Clooney"), (2L, "Julia Stiles"),
-
 (3L, "Will Smith"), (4L, "Matt Damon"),
-
 (5L, "Salma Hayek")))
-
 // Exiting paste mode, now interpreting.
-
-actors: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-String)\] = ParallelCollectionRDD\[277\] at parallelize at \<pastie\>:33
+actors: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+String)] = ParallelCollectionRDD[277] at parallelize at <pastie>:33
+```
 
 代码 4‑69
 
 如果两个人一起出现在电影中出现，则图中的两个人将建立联系，每个边的属性将包含电影标题，让我们将该信息加载到称为movies的边RDD中：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val movies: RDD\[Edge\[String\]\] = sc.parallelize(List(
-
+val movies: RDD[Edge[String]] = sc.parallelize(List(
 Edge(1L, 4L, "Ocean's Eleven"), Edge(2L, 4L, "Bourne Ultimatum"),
-
 Edge(3L, 5L, "Wild Wild West"), Edge(1L, 5L, "From Dusk Till Dawn"),
-
 Edge(3L, 4L, "The Legend of Bagger Vance")))
-
 // Exiting paste mode, now interpreting.
-
 movies:
-org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[String\]\] =
-ParallelCollectionRDD\[278\] at parallelize at \<pastie\>:33
+org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[String]] =
+ParallelCollectionRDD[278] at parallelize at <pastie>:33
+```
 
 代码 4‑70
 
 现在，我们可以构建图并查看其中的内容：
 
-scala\> val movieGraph = Graph(actors, movies)
-
-movieGraph: org.apache.spark.graphx.Graph\[String,String\] =
+```scala
+scala> val movieGraph = Graph(actors, movies)
+movieGraph: org.apache.spark.graphx.Graph[String,String] =
 org.apache.spark.graphx.impl.GraphImpl@24e3ff69
-
-scala\> movieGraph.triplets.foreach(t =\> println(t.srcAttr + " & " +
+scala> movieGraph.triplets.foreach(t => println(t.srcAttr + " & " +
 t.dstAttr + " appeared in " + t.attr))
-
 Julia Stiles & Matt Damon appeared in Bourne Ultimatum
-
 Will Smith & Salma Hayek appeared in Wild Wild West
-
 George Clooney & Salma Hayek appeared in From Dusk Till Dawn
-
 George Clooney & Matt Damon appeared in Ocean's Eleven
-
 Will Smith & Matt Damon appeared in The Legend of Bagger Vance
+```
 
 代码 4‑71
 
 现在，图中的点仅包含每个演员的名称：
 
-scala\> movieGraph.vertices.foreach(println)
-
+```scala
+scala> movieGraph.vertices.foreach(println)
 (2,Julia Stiles)
-
 (4,Matt Damon)
-
 (3,Will Smith)
-
 (5,Salma Hayek)
-
 (1,George Clooney)
+```
 
 代码 4‑72
 
 假设我们可以访问演员简介的数据集，将这样的数据集加载到顶点RDD中：
 
-scala\> case class Biography(birthname: String, hometown: String)
-
+```scala
+scala> case class Biography(birthname: String, hometown: String)
 defined class Biography
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val bio: RDD\[(VertexId, Biography)\] = sc.parallelize(List(
-
+val bio: RDD[(VertexId, Biography)] = sc.parallelize(List(
 (2, Biography("Julia O'Hara Stiles", "NY City, NY, USA")),
-
 (3, Biography("Willard Christopher Smith Jr.", "Philadelphia, PA,
 USA")),
-
 (4, Biography("Matthew Paige Damon", "Boston, MA, USA")),
-
 (5, Biography("Salma Valgarma Hayek-Jimenez", "Coatzacoalcos, Veracruz,
 Mexico")),
-
 (6, Biography("José Antonio Domínguez Banderas", "Málaga, Andalucía,
 Spain")),
-
 (7, Biography("Paul William Walker IV", "Glendale, CA, USA"))))
-
 // Exiting paste mode, now interpreting.
-
-bio: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-Biography)\] = ParallelCollectionRDD\[296\] at parallelize at
-\<pastie\>:35
+bio: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+Biography)] = ParallelCollectionRDD[296] at parallelize at
+<pastie>:35
+```
 
 代码 4‑73
 
 我们将使用joinVertices()将此信息加入到movieGraph中，为此让我们创建一个用户定义的函数，该函数将演员的家乡附加到他们的名字之后：
 
-scala\> def appendHometown(id: VertexId, name: String, bio: Biography):
+```scala
+scala> def appendHometown(id: VertexId, name: String, bio: Biography):
 String = name + ":" + bio.hometown
-
 appendHometown: (id: org.apache.spark.graphx.VertexId, name: String,
 bio: Biography)String
+```
 
 代码 4‑74
 
 请记住，对于joinVertices()映射函数应返回一个字符串，因为这是原始图的点属性类型为字符串。现在，我们可以将演员介绍加入movieGraph的点属性中：
 
-scala\> val movieJoinedGraph =
+```scala
+scala> val movieJoinedGraph =
 movieGraph.joinVertices(bio)(appendHometown)
-
-movieJoinedGraph: org.apache.spark.graphx.Graph\[String,String\] =
+movieJoinedGraph: org.apache.spark.graphx.Graph[String,String] =
 org.apache.spark.graphx.impl.GraphImpl@808a07b
-
-scala\> movieJoinedGraph.vertices.foreach(println)
-
+scala> movieJoinedGraph.vertices.foreach(println)
 (1,George Clooney)
-
 (5,Salma Hayek:Coatzacoalcos, Veracruz, Mexico)
-
 (3,Will Smith:Philadelphia, PA, USA)
-
 (4,Matt Damon:Boston, MA, USA)
-
 (2,Julia Stiles:NY City, NY, USA)
+```
 
 代码 4‑75
 
 接下来，让我们使用outerJoinVertices()远算符，然后查看两者之间的差异。这次，我们将直接传递匿名映射函数联结演员名字和介绍，并返回一个包含这两个值的二元组：
 
-scala\> val movieOuterJoinedGraph =
-movieGraph.outerJoinVertices(bio)((\_, name, bio) =\> (name, bio))
-
-movieOuterJoinedGraph: org.apache.spark.graphx.Graph\[(String,
-Option\[Biography\]),String\] =
+```scala
+scala> val movieOuterJoinedGraph =
+movieGraph.outerJoinVertices(bio)((_, name, bio) => (name, bio))
+movieOuterJoinedGraph: org.apache.spark.graphx.Graph[(String,
+Option[Biography]),String] =
 <org.apache.spark.graphx.impl.GraphImpl@5abf71b5>
+```
 
 代码 4‑76
 
 请注意，outerJoinVertices()如何将点的属性类型从字符串更改为元组(String, Option
 \[Biography\])，现在打印出点：
 
-scala\> movieOuterJoinedGraph.vertices.foreach(println)
-
+```scala
+scala> movieOuterJoinedGraph.vertices.foreach(println)
 (3,(Will Smith,Some(Biography(Willard Christopher Smith
 Jr.,Philadelphia, PA, USA))))
-
 (5,(Salma Hayek,Some(Biography(Salma Valgarma
 Hayek-Jimenez,Coatzacoalcos, Veracruz, Mexico))))
-
 (1,(George Clooney,None))
-
 (4,(Matt Damon,Some(Biography(Matthew Paige Damon,Boston, MA, USA))))
-
 (2,(Julia Stiles,Some(Biography(Julia O'Hara Stiles,NY City, NY, USA))))
+```
 
 代码 4‑77
 
 如前所述，即使在传递给outerJoinVertices()的简介数据集中没有“George
 Clooney”，其新属性也已更改为None，这是可选类型Option\[Biography\]的有效实例，有时可以在Option\[T\]上定义getOrElse方法从可选值之中提取信息，为不存在的点提供默认的新属性值：
 
-scala\> val movieOuterJoinedGraph =
-movieGraph.outerJoinVertices(bio)((\_, name, bio) =\> (name,
+```scala
+scala> val movieOuterJoinedGraph =
+movieGraph.outerJoinVertices(bio)((_, name, bio) => (name,
 bio.getOrElse(Biography("NA", "NA"))))
-
-movieOuterJoinedGraph: org.apache.spark.graphx.Graph\[(String,
-Biography),String\] = org.apache.spark.graphx.impl.GraphImpl@59aac4dd
-
-scala\> movieOuterJoinedGraph.vertices.foreach(println)
-
+movieOuterJoinedGraph: org.apache.spark.graphx.Graph[(String,
+Biography),String] = org.apache.spark.graphx.impl.GraphImpl@59aac4dd
+scala> movieOuterJoinedGraph.vertices.foreach(println)
 (1,(George Clooney,Biography(NA,NA)))
-
 (5,(Salma Hayek,Biography(Salma Valgarma Hayek-Jimenez,Coatzacoalcos,
 Veracruz, Mexico)))
-
 (3,(Will Smith,Biography(Willard Christopher Smith Jr.,Philadelphia, PA,
 USA)))
-
 (2,(Julia Stiles,Biography(Julia O'Hara Stiles,NY City, NY, USA)))
-
 (4,(Matt Damon,Biography(Matthew Paige Damon,Boston, MA, USA)))
+```
 
 代码 4‑78
 
 或者，可以为联结的点创建新的返回类型，例如我们可以创建一个Actor类型，然后生成一个新图，类型为Graph\[Actor,
 String\]，如下所示：
 
-scala\> case class Actor(name: String, birthname: String, hometown:
+```scala
+scala> case class Actor(name: String, birthname: String, hometown:
 String)
-
 defined class Actor
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val movieOuterJoinedGraph = movieGraph.outerJoinVertices(bio)((\_, name,
-b) =\> b match {
-
-case Some(bio) =\> Actor(name, bio.birthname, bio.hometown)
-
-case None =\> Actor(name, "", "")
-
+val movieOuterJoinedGraph = movieGraph.outerJoinVertices(bio)((_, name,
+b) => b match {
+case Some(bio) => Actor(name, bio.birthname, bio.hometown)
+case None => Actor(name, "", "")
 })
-
 // Exiting paste mode, now interpreting.
-
-movieOuterJoinedGraph: org.apache.spark.graphx.Graph\[Actor,String\] =
+movieOuterJoinedGraph: org.apache.spark.graphx.Graph[Actor,String] =
 <org.apache.spark.graphx.impl.GraphImpl@3f13c612>
+```
 
 代码 4‑79
 
 列出新图中的点，看一看是不是得到预期的结果：
 
-scala\> movieOuterJoinedGraph.vertices.foreach(println)
-
+```scala
+scala> movieOuterJoinedGraph.vertices.foreach(println)
 (1,Actor(George Clooney,,))
-
 (5,Actor(Salma Hayek,Salma Valgarma Hayek-Jimenez,Coatzacoalcos,
 Veracruz, Mexico))
-
 (4,Actor(Matt Damon,Matthew Paige Damon,Boston, MA, USA))
-
 (3,Actor(Will Smith,Willard Christopher Smith Jr.,Philadelphia, PA,
 USA))
-
 (2,Actor(Julia Stiles,Julia O'Hara Stiles,NY City, NY, USA))
+```
 
 代码 4‑80
 
@@ -1895,53 +1630,42 @@ VD)类型的作为输入，新顶点属性的类型可以与VD类型不同。
 
 为了说明问题，让我们获取movieJoinedGraph 中明星和简介的VertexRDD集合：
 
-scala\> val actorsBio = movieJoinedGraph.vertices
-
-actorsBio: org.apache.spark.graphx.VertexRDD\[String\] =
-VertexRDDImpl\[299\] at RDD at VertexRDD.scala:57
-
-scala\> actorsBio.foreach(println)
-
+```scala
+scala> val actorsBio = movieJoinedGraph.vertices
+actorsBio: org.apache.spark.graphx.VertexRDD[String] =
+VertexRDDImpl[299] at RDD at VertexRDD.scala:57
+scala> actorsBio.foreach(println)
 (2,Julia Stiles:NY City, NY, USA)
-
 (5,Salma Hayek:Coatzacoalcos, Veracruz, Mexico)
-
 (1,George Clooney)
-
 (3,Will Smith:Philadelphia, PA, USA)
-
 (4,Matt Damon:Boston, MA, USA)
+```
 
 代码 4‑81
 
 现在，我们可以使用mapValues()将其名称提取到新的VertexRDD集合中：
 
-scala\> actorsBio.mapValues(s =\> s.split(':')(0)).foreach(println)
-
+```scala
+scala> actorsBio.mapValues(s => s.split(':')(0)).foreach(println)
 (4,Matt Damon)
-
 (2,Julia Stiles)
-
 (3,Will Smith)
-
 (1,George Clooney)
-
 (5,Salma Hayek)
+```
 
 使用重载的mapValues()方法，可以将点ID包含在map()函数的输入参数中，并且仍然得到类似的结果：
 
-scala\> actorsBio.mapValues((vid,s) =\>
+```scala
+scala> actorsBio.mapValues((vid,s) =>
 s.split(':')(0)).foreach(println)
-
 (4,Matt Damon)
-
 (1,George Clooney)
-
 (5,Salma Hayek)
-
 (3,Will Smith)
-
 (2,Julia Stiles)
+```
 
 代码 4‑82
 
@@ -1973,21 +1697,17 @@ GraphX没有为EdgeRDD集合提供类似的filter()操作，因为使用结构�
 第一个运算符是innerJoin()，可以将VertexRDD和用户定义的函数f()作为输入参数，使用此功能将原始集合和输入VertexRDD集合中都存在的点属性结合在一起。换句话说，innerJoin()返回点的相交集合并根据f()函数合并其属性，因此给定moviegraph的点RDD，innerJoin()的结果将不包含“George
 Clooney”、“Paul Walker”和“Jose AntonioDomínguezBanderas”：
 
-scala\> val actors = movieGraph.vertices
-
-actors: org.apache.spark.graphx.VertexRDD\[String\] =
-VertexRDDImpl\[288\] at RDD at VertexRDD.scala:57
-
-scala\> actors.innerJoin(bio)((vid, name, b) =\> name + " is from " +
+```scala
+scala> val actors = movieGraph.vertices
+actors: org.apache.spark.graphx.VertexRDD[String] =
+VertexRDDImpl[288] at RDD at VertexRDD.scala:57
+scala> actors.innerJoin(bio)((vid, name, b) => name + " is from " +
 b.hometown).foreach(println)
-
 (4,Matt Damon is from Boston, MA, USA)
-
 (2,Julia Stiles is from NY City, NY, USA)
-
 (5,Salma Hayek is from Coatzacoalcos, Veracruz, Mexico)
-
 (3,Will Smith is from Philadelphia, PA, USA)
+```
 
 代码 4‑83
 
@@ -1997,29 +1717,20 @@ VD, Option \[U\])=\> VD2的用户定义函数f()。 生成的VertexRDD也将包�
 由于函数f()的第三个输入参数是Option
 \[U\]，因此它可以处理原始VertexRDD集合中不存在的点。使用前面的示例，我们将执行以下操作：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-actors.leftJoin(bio)((vid, name, b) =\> b match {
-
-case Some(bio) =\> name + " is from " + bio.hometown
-
-case None =\> name + "\\'s hometown is unknown"
-
+actors.leftJoin(bio)((vid, name, b) => b match {
+case Some(bio) => name + " is from " + bio.hometown
+case None => name + "\'s hometown is unknown"
 }).foreach(println)
-
 // Exiting paste mode, now interpreting.
-
 (3,Will Smith is from Philadelphia, PA, USA)
-
 (5,Salma Hayek is from Coatzacoalcos, Veracruz, Mexico)
-
 (2,Julia Stiles is from NY City, NY, USA)
-
 (4,Matt Damon is from Boston, MA, USA)
-
 (1,George Clooney's hometown is unknown)
+```
 
 代码 4‑84
 
@@ -2037,55 +1748,43 @@ case None =\> name + "\\'s hometown is unknown"
 
 例如，我们知道图属性在GraphX中是有方向的，建模无向图的唯一方法是为每个边添加反向链接，使用reverse()运算符轻松完成此操作。如下所示，首先我们将movieGraph图的边提取到EdgeRDD中：
 
-scala\> val movies = movieGraph.edges
-
-movies: org.apache.spark.graphx.EdgeRDD\[String\] = EdgeRDDImpl\[290\]
+```scala
+scala> val movies = movieGraph.edges
+movies: org.apache.spark.graphx.EdgeRDD[String] = EdgeRDDImpl[290]
 at RDD at EdgeRDD.scala:41
-
-scala\> movies.foreach(println)
-
+scala> movies.foreach(println)
 Edge(1,4,Ocean's Eleven)
-
 Edge(2,4,Bourne Ultimatum)
-
 Edge(3,5,Wild Wild West)
-
 Edge(3,4,The Legend of Bagger Vance)
-
 Edge(1,5,From Dusk Till Dawn)
+```
 
 代码 4‑85
 
 然后，我们创建一个反向链接的新EdgeRDD集合，然后使用这两个EdgeRDD集合的并集获得双向图：
 
-scala\> val bidirectedGraph = Graph(actors, movies union movies.reverse)
-
-bidirectedGraph: org.apache.spark.graphx.Graph\[String,String\] =
+```scala
+scala> val bidirectedGraph = Graph(actors, movies union movies.reverse)
+bidirectedGraph: org.apache.spark.graphx.Graph[String,String] =
 org.apache.spark.graphx.impl.GraphImpl@152c0025
+```
 
 打印出新的边集合：
 
-scala\> bidirectedGraph.edges.foreach(println)
-
+```scala
+scala> bidirectedGraph.edges.foreach(println)
 Edge(2,4,Bourne Ultimatum)
-
 Edge(1,5,From Dusk Till Dawn)
-
 Edge(4,2,Bourne Ultimatum)
-
 Edge(5,1,From Dusk Till Dawn)
-
 Edge(3,5,Wild Wild West)
-
 Edge(5,3,Wild Wild West)
-
 Edge(1,4,Ocean's Eleven)
-
 Edge(4,1,Ocean's Eleven)
-
 Edge(3,4,The Legend of Bagger Vance)
-
 Edge(4,3,The Legend of Bagger Vance)
+```
 
 代码 4‑86
 
@@ -2109,112 +1808,103 @@ Edge.Direction.Either：每个顶点都收集其所有邻居的属性
 
 Edge.Direction.Both：每个顶点都收集同时具有传入和传出链接的相邻属性
 
-scala\> val nodes = ingredients ++ compounds
-
-nodes: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-FNNode)\] = UnionRDD\[345\] at $plus$plus at \<console\>:36
-
-scala\> val foodNetwork = Graph(nodes, links)
-
-foodNetwork: org.apache.spark.graphx.Graph\[FNNode,Int\] =
+```scala
+scala> val nodes = ingredients ++ compounds
+nodes: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+FNNode)] = UnionRDD[345] at $plus$plus at <console>:36
+scala> val foodNetwork = Graph(nodes, links)
+foodNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@176ec7ba>
+```
 
 代码 4‑87
 
 要创建新的调料网络，我们需要知道哪些成分共享某些合成物。这可以通过首先收集foodNetwork图中每个合成物节点的成分ID来完成，就是将具有相同合成物的成分ID收集并分组到元组的RDD集合中(compound
 id, Array\[ingredient id\])，如下所示：
 
-scala\> val similarIngr: RDD\[(VertexId, Array\[VertexId\])\] =
+```scala
+scala> val similarIngr: RDD[(VertexId, Array[VertexId])] =
 foodNetwork.collectNeighborIds(EdgeDirection.In)
-
 similarIngr:
-org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-Array\[org.apache.spark.graphx.VertexId\])\] = VertexRDDImpl\[363\] at
+org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+Array[org.apache.spark.graphx.VertexId])] = VertexRDDImpl[363] at
 RDD at VertexRDD.scala:57
+```
 
 代码 4‑88
 
 接下来，我们创建一个函数pairIngredients()，参数的类型为(compound id, Array\[ingredient
 id\])，并在数组中的每对成分之间创建一条边：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-def pairIngredients(ingPerComp: (VertexId, Array\[VertexId\])):
-Seq\[Edge\[Int\]\] =
-
+def pairIngredients(ingPerComp: (VertexId, Array[VertexId])):
+Seq[Edge[Int]] =
 for {
-
-x \<- ingPerComp.\_2
-
-y \<- ingPerComp.\_2
-
-if x \!= y
-
+x <- ingPerComp._2
+y <- ingPerComp._2
+if x != y
 } yield Edge(x, y, 1)
-
 // Exiting paste mode, now interpreting.
-
 pairIngredients: (ingPerComp: (org.apache.spark.graphx.VertexId,
-Array\[org.apache.spark.graphx.VertexId\]))Seq\[org.apache.spark.graphx.Edge\[Int\]\]
+Array[org.apache.spark.graphx.VertexId]))Seq[org.apache.spark.graphx.Edge[Int]]
+```
 
 代码 4‑89
 
 一旦有了这些信息，我们就可以为每对共享网络中相同合成物的成分创建EdgeRDD集合，如下所示：
 
-scala\> val flavorPairsRDD: RDD\[Edge\[Int\]\] = similarIngr flatMap
+```scala
+scala> val flavorPairsRDD: RDD[Edge[Int]] = similarIngr flatMap
 pairIngredients
-
 flavorPairsRDD:
-org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Int\]\] =
-MapPartitionsRDD\[364\] at flatMap at \<console\>:36
+org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
+MapPartitionsRDD[364] at flatMap at <console>:36
+```
 
 代码 4‑90
 
 最后，我们可以创建新的调料网络：
 
-scala\> val flavorNetwork = Graph(ingredients, flavorPairsRDD).cache
-
-flavorNetwork: org.apache.spark.graphx.Graph\[FNNode,Int\] =
+```scala
+scala> val flavorNetwork = Graph(ingredients, flavorPairsRDD).cache
+flavorNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@38ffea9f>
+```
 
 代码 4‑91
 
 让我们在flavorNetwork中打印前5个三元组：
 
-scala\> flavorNetwork.triplets.take(5).foreach(println)
-
-((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut\_butter,plant
+```scala
+scala> flavorNetwork.triplets.take(5).foreach(println)
+((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut_butter,plant
 derivative)),1)
-
-((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut\_butter,plant
+((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut_butter,plant
 derivative)),1)
-
-((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut\_butter,plant
+((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut_butter,plant
 derivative)),1)
-
-((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut\_butter,plant
+((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut_butter,plant
 derivative)),1)
-
-((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut\_butter,plant
+((3,Ingredient(mackerel,fish/seafood)),(9,Ingredient(peanut_butter,plant
 derivative)),1)
+```
 
 代码 4‑92
 
 我们会发现很多成分之间共享相同的合成物，当一对成分共享一个以上的化合物时，可能会出现重复的边。假设我们要将每对成分之间的平行边分组为一个边，该边包含两种成分之间共享的化合物的数量。
 我们可以使用groupEdges方法做到这一点：
 
-scala\> val flavorWeightedNetwork =
+```scala
+scala> val flavorWeightedNetwork =
 flavorNetwork.partitionBy(PartitionStrategy.EdgePartition2D).groupEdges((x,
-y) =\> x + y)
-
-flavorWeightedNetwork: org.apache.spark.graphx.Graph\[FNNode,Int\] =
+y) => x + y)
+flavorWeightedNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 org.apache.spark.graphx.impl.GraphImpl@7289694e
-
-scala\> :paste
-
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
+```
 
 代码 4‑93
 
@@ -2263,121 +1953,100 @@ Computing Model，BSP）计算过程包括一系列全局超步，所谓的超�
 在介绍Pregel
 API之前，让我们用一个假设的社交网络示例来说明这些概念。我们假设每个人都需要一种算法来尝试使自己的财富平均化，当然这只是一个例子，但这将有助于阐明Pregel的工作方式。从本质上讲，每个人都会将自己的财富与朋友进行比较，然后将其中的一些财富发送给那些财富少的人。在这种情况下，我们可以使用Double作为算法的消息类型，在每次迭代的开始，每个人都会首先收到朋友在上一次迭代中捐赠的款项。根据他们对朋友现在拥有的资产的了解，他们会将自己的新财富与朋友的状况进行比较。这意味着他们需要找出收入减少的人，然后计算应该发送多少给这些朋友，同时他们还决定保留多少资金。正如我们所描述的那样，每个Pregel迭代都包含三个连续的任务，这就是为什么将其称为超步的原因，因此他们首先需要一个mergeMsg函数来合并可能从富裕的朋友那里收到的入站汇款：
 
-scala\> def mergeMsg(fromA: Double, fromB: Double): Double = fromA +
+```scala
+scala> def mergeMsg(fromA: Double, fromB: Double): Double = fromA +
 fromB
-
 mergeMsg: (fromA: Double, fromB: Double)Double
+```
 
 代码 4‑95
 
 其次，他们还将需要一个称为顶点程序的函数，以计算在上一个超集中收到钱后所拥有的钱：
 
-scala\> def vprog(id: VertexId, balance: Double, credit: Double) =
+```scala
+scala> def vprog(id: VertexId, balance: Double, credit: Double) =
 balance + credit
-
 vprog: (id: org.apache.spark.graphx.VertexId, balance: Double, credit:
 Double)Double
+```
 
 代码 4‑96
 
 最后，还需要一个名为sendMsg的函数来在朋友之间进行汇款：
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-def sendMsg(t: EdgeTriplet\[Double, Int\]) =
-
-if (t.srcAttr \<= t.dstAttr) Iterator.empty
-
-else Iterator((t.dstId, t.srcAttr \* 0.05), (t.srcId, -t.srcAttr \*
+def sendMsg(t: EdgeTriplet[Double, Int]) =
+if (t.srcAttr <= t.dstAttr) Iterator.empty
+else Iterator((t.dstId, t.srcAttr * 0.05), (t.srcId, -t.srcAttr *
 0.05))
-
 // Exiting paste mode, now interpreting.
-
 sendMsg: (t:
-org.apache.spark.graphx.EdgeTriplet\[Double,Int\])Iterator\[(org.apache.spark.graphx.VertexId,
-Double)\]
+org.apache.spark.graphx.EdgeTriplet[Double,Int])Iterator[(org.apache.spark.graphx.VertexId,
+Double)]
+```
 
 代码 4‑97
 
 从上一个函数签名可以看出，sendMsg将边缘三元组作为输入而不是顶点，因此我们可以访问源节点和目标节点。
 我们将在下一节中找到sendMsg的正确实现。让我们通过考虑三个朋友之间的三角网络来进一步简化我们的示例：
 
-scala\> val nodes: RDD\[(Long,Double)\] =
+```scala
+scala> val nodes: RDD[(Long,Double)] =
 sc.parallelize(List((1,10.0),(2,3.0),(3,5.0)))
-
-nodes: org.apache.spark.rdd.RDD\[(Long, Double)\] =
-ParallelCollectionRDD\[403\] at parallelize at \<console\>:33
-
-scala\> val edges =
+nodes: org.apache.spark.rdd.RDD[(Long, Double)] =
+ParallelCollectionRDD[403] at parallelize at <console>:33
+scala> val edges =
 sc.parallelize(List(Edge(1,2,1),Edge(2,1,1),Edge(1,3,1),Edge(3,1,1),Edge(2,3,1),Edge(3,2,1)))
-
-edges: org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Int\]\] =
-ParallelCollectionRDD\[404\] at parallelize at \<console\>:33
-
-scala\> val graph = Graph(nodes, edges)
-
-graph: org.apache.spark.graphx.Graph\[Double,Int\] =
+edges: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
+ParallelCollectionRDD[404] at parallelize at <console>:33
+scala> val graph = Graph(nodes, edges)
+graph: org.apache.spark.graphx.Graph[Double,Int] =
 org.apache.spark.graphx.impl.GraphImpl@5a94bd21
-
-scala\> graph.vertices.foreach(println)
-
+scala> graph.vertices.foreach(println)
 (2,3.0)
-
 (3,5.0)
-
 (1,10.0)
+```
 
 代码 4‑98
 
 让我们看一下输出：
 
-scala\> val afterOneIter = graph.pregel(0.0, 1)(vprog, sendMsg,
+```scala
+scala> val afterOneIter = graph.pregel(0.0, 1)(vprog, sendMsg,
 mergeMsg)
-
-afterOneIter: org.apache.spark.graphx.Graph\[Double,Int\] =
+afterOneIter: org.apache.spark.graphx.Graph[Double,Int] =
 org.apache.spark.graphx.impl.GraphImpl@2616f1aa
-
-scala\> afterOneIter.vertices.foreach(println)
-
+scala> afterOneIter.vertices.foreach(println)
 (3,5.25)
-
 (1,9.0)
-
 (2,3.75)
+```
 
 代码 4‑99
 
 我们可以验证现在一切正常，如果我们增加最大迭代次数呢？让我们看看会发生什么：
 
-scala\> val afterTenIter = graph.pregel(0.0, 10)(vprog, sendMsg,
+```scala
+scala> val afterTenIter = graph.pregel(0.0, 10)(vprog, sendMsg,
 mergeMsg)
-
-afterTenIter: org.apache.spark.graphx.Graph\[Double,Int\] =
+afterTenIter: org.apache.spark.graphx.Graph[Double,Int] =
 org.apache.spark.graphx.impl.GraphImpl@dbebab8
-
-scala\> afterTenIter.vertices.foreach(println)
-
+scala> afterTenIter.vertices.foreach(println)
 (1,5.999611965064453)
-
 (2,6.37018749852539)
-
 (3,5.630200536410156)
-
-scala\> val afterHundredIters = graph.pregel(0.0, 100)(vprog, sendMsg,
+scala> val afterHundredIters = graph.pregel(0.0, 100)(vprog, sendMsg,
 mergeMsg)
-
-afterHundredIters: org.apache.spark.graphx.Graph\[Double,Int\] =
+afterHundredIters: org.apache.spark.graphx.Graph[Double,Int] =
 org.apache.spark.graphx.impl.GraphImpl@7cc6b019
-
-scala\> afterHundredIters.vertices.foreach(println)
-
+scala> afterHundredIters.vertices.foreach(println)
 (1,6.206716647163644)
-
 (3,5.586245079113054)
-
 (2,6.207038273723298)
+```
 
 代码 4‑100
 
@@ -2495,74 +2164,61 @@ PageRank即网页排名，又称网页级别，是Google创始人拉里·佩奇�
 
 GraphX还包括一个社交网络数据集可以运行PageRank，用户为data/graphx/users.txt，用户之间的关系为data/graphx/followers.txt，计算每个用户的排名级别，如下所示：
 
-scala\> import org.apache.spark.graphx.GraphLoader
-
+```scala
+scala> import org.apache.spark.graphx.GraphLoader
 import org.apache.spark.graphx.GraphLoader
+```
 
 //加载边为Graph
 
-scala\> val graph = GraphLoader.edgeListFile(sc,
+```scala
+scala> val graph = GraphLoader.edgeListFile(sc,
 "/spark/data/graphx/followers.txt")
-
-graph: org.apache.spark.graphx.Graph\[Int,Int\] =
+graph: org.apache.spark.graphx.Graph[Int,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@153f8c6a>
+```
 
 //运行PageRank
 
-scala\> val ranks = graph.pageRank(0.0001).vertices
-
-ranks: org.apache.spark.graphx.VertexRDD\[Double\] =
-VertexRDDImpl\[3479\] at RDD at VertexRDD.scala:57
+```scala
+scala> val ranks = graph.pageRank(0.0001).vertices
+ranks: org.apache.spark.graphx.VertexRDD[Double] =
+VertexRDDImpl[3479] at RDD at VertexRDD.scala:57
+```
 
 //用户名连接排名联结
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-val users = sc.textFile("/spark/data/graphx/users.txt").map { line =\>
-
+val users = sc.textFile("/spark/data/graphx/users.txt").map { line =>
 val fields = line.split(",")
-
 (fields(0).toLong, fields(1))
-
 }
-
 // Exiting paste mode, now interpreting.
-
-users: org.apache.spark.rdd.RDD\[(Long, String)\] =
-MapPartitionsRDD\[3488\] at map at \<pastie\>:34
-
-scala\> :paste
-
+users: org.apache.spark.rdd.RDD[(Long, String)] =
+MapPartitionsRDD[3488] at map at <pastie>:34
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val ranksByUsername = users.join(ranks).map {
-
-case (id, (username, rank)) =\> (username, rank)
-
+case (id, (username, rank)) => (username, rank)
 }
-
 // Exiting paste mode, now interpreting.
-
-ranksByUsername: org.apache.spark.rdd.RDD\[(String, Double)\] =
-MapPartitionsRDD\[3492\] at map at \<pastie\>:37
+ranksByUsername: org.apache.spark.rdd.RDD[(String, Double)] =
+MapPartitionsRDD[3492] at map at <pastie>:37
+```
 
 //打印出结果
 
-scala\> println(ranksByUsername.collect().mkString("\\n"))
-
+```scala
+scala> println(ranksByUsername.collect().mkString("\n"))
 (justinbieber,0.15007622780470478)
-
-(matei\_zaharia,0.7017164142469724)
-
+(matei_zaharia,0.7017164142469724)
 (ladygaga,1.3907556008752426)
-
 (BarackObama,1.4596227918476916)
-
 (jeresig,0.9998520559494657)
-
 (odersky,1.2979769092759237)
+```
 
 代码 4‑107
 
@@ -2668,90 +2324,72 @@ attr.\_1)
 
 首先，我们将导入GraphX包。
 
-scala\> import org.apache.spark.graphx.{Edge, Graph, VertexId}
-
+```scala
+scala> import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
-
-scala\> import scala.util.Try
-
+scala> import scala.util.Try
 import scala.util.Try
+```
 
 代码 4‑113
 
 下面我们使用Scala案例类来定义与CSV数据文件相对应的数据结构Flight。
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 case class Flight(dofM: String, dofW: String, carrier: String, tailnum:
 String,
-
-flnum: Int, org\_id: Long, origin: String, dest\_id: Long, dest: String,
-
+flnum: Int, org_id: Long, origin: String, dest_id: Long, dest: String,
 crsdeptime: Double, deptime: Double, depdelaymins: Double, crsarrtime:
 Double,
-
 arrtime: Double, arrdelay: Double, crselapsedtime: Double, dist: Int)
-
 // Exiting paste mode, now interpreting.
-
 defined class Flight
+```
 
 代码 4‑114
 
 下面的函数将数据文件中的一行解析为Flight类。
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 def parseFlight(str: String): Flight = {
-
 val line = str.split(',')
-
 Flight(line(0), line(1), line(2),
-
 line(3), line(4).toInt, line(5).toLong,
-
 line(6), line(7).toLong, line(8),
-
 line(9).toDouble, line(10).toDouble,
-
 line(11).toDouble, line(12).toDouble,
-
 Try(line(13).toDouble).getOrElse(0.0),
-
 Try(line(14).toDouble).getOrElse(0.0),
-
 line(15).toDouble, line(16).toInt)
-
 }
-
 // Exiting paste mode, now interpreting.
-
 parseFlight: (str: String)Flight
+```
 
 代码 4‑115
 
 下面，我们将CSV文件中的数据加载到RDD中，使用first()动作返回RDD中的第一个元素。
 
-scala\> val textRDD = sc.textFile("/data/rita2014jan.csv")
-
-textRDD: org.apache.spark.rdd.RDD\[String\] = /data/rita2014jan.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:26
+```scala
+scala> val textRDD = sc.textFile("/data/rita2014jan.csv")
+textRDD: org.apache.spark.rdd.RDD[String] = /data/rita2014jan.csv
+MapPartitionsRDD[1] at textFile at <console>:26
+```
 
 //用方法parseFlight解析每行RDD
 
-scala\> val flightsRDD = textRDD.map(parseFlight).cache()
-
-flightsRDD: org.apache.spark.rdd.RDD\[Flight\] = MapPartitionsRDD\[2\]
-at map at \<console\>:29
-
-scala\> flightsRDD.first
-
+```scala
+scala> val flightsRDD = textRDD.map(parseFlight).cache()
+flightsRDD: org.apache.spark.rdd.RDD[Flight] = MapPartitionsRDD[2]
+at map at <console>:29
+scala> flightsRDD.first
 res9: Flight =
 Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,385.0,2475)
+```
 
 代码 4‑116
 
@@ -2759,30 +2397,31 @@ Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,3
 
 // 创建机场RDD
 
-scala\> val airports = flightsRDD.map(flight =\> (flight.org\_id,
+```scala
+scala> val airports = flightsRDD.map(flight => (flight.org_id,
 flight.origin)).distinct
-
-airports: org.apache.spark.rdd.RDD\[(Long, String)\] =
-MapPartitionsRDD\[6\] at distinct at \<console\>:27
-
-scala\> airports.take(1)
-
-res0: Array\[(Long, String)\] = Array((14057,PDX))
+airports: org.apache.spark.rdd.RDD[(Long, String)] =
+MapPartitionsRDD[6] at distinct at <console>:27
+scala> airports.take(1)
+res0: Array[(Long, String)] = Array((14057,PDX))
+```
 
 // 定义缺省点nowhere
 
-scala\> val nowhere = "nowhere"
-
+```scala
+scala> val nowhere = "nowhere"
 nowhere: String = nowhere
+```
 
 // 打印出机场信息
 
-scala\> val airportMap = airports.map { case ((org\_id), name) =\>
-(org\_id -\> name) }.collect.toList.toMap
-
-airportMap: scala.collection.immutable.Map\[Long,String\] = Map(13024
--\> LMT, 10785 -\> BTV, 14574 -\> ROA, 14057 -\> PDX, 13933 -\> ORH,
+```scala
+scala> val airportMap = airports.map { case ((org_id), name) =>
+(org_id -> name) }.collect.toList.toMap
+airportMap: scala.collection.immutable.Map[Long,String] = Map(13024
+-> LMT, 10785 -> BTV, 14574 -> ROA, 14057 -> PDX, 13933 -> ORH,
 10918 -...
+```
 
 代码 4‑117
 
@@ -2793,29 +2432,27 @@ dest\_id, dist）。
 
 // 创建路径RDD(srcid, destid, distance)
 
-scala\> val routes = flightsRDD.map(flight =\> ((flight.org\_id,
-flight.dest\_id), flight.dist)).distinct
-
-routes: org.apache.spark.rdd.RDD\[((Long, Long), Int)\] =
-MapPartitionsRDD\[10\] at distinct at \<console\>:27
-
-scala\> routes.take(2)
-
-res16: Array\[((Long, Long), Int)\] = Array(((14869,14683),1087),
+```scala
+scala> val routes = flightsRDD.map(flight => ((flight.org_id,
+flight.dest_id), flight.dist)).distinct
+routes: org.apache.spark.rdd.RDD[((Long, Long), Int)] =
+MapPartitionsRDD[10] at distinct at <console>:27
+scala> routes.take(2)
+res16: Array[((Long, Long), Int)] = Array(((14869,14683),1087),
 ((14683,14771),1482))
+```
 
 // 创建边RDD(srcid, destid, distance)
 
-scala\> val edges = routes.map { case ((org\_id, dest\_id), distance)
-=\> Edge(org\_id.toLong, dest\_id.toLong, distance) }
-
-edges: org.apache.spark.rdd.RDD\[org.apache.spark.graphx.Edge\[Int\]\] =
-MapPartitionsRDD\[11\] at map at \<console\>:27
-
-scala\> edges.take(1)
-
-res17: Array\[org.apache.spark.graphx.Edge\[Int\]\] =
+```scala
+scala> val edges = routes.map { case ((org_id, dest_id), distance)
+=> Edge(org_id.toLong, dest_id.toLong, distance) }
+edges: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
+MapPartitionsRDD[11] at map at <console>:27
+scala> edges.take(1)
+res17: Array[org.apache.spark.graphx.Edge[Int]] =
 Array(Edge(14869,14683,1087))
+```
 
 代码 4‑118
 
@@ -2825,94 +2462,81 @@ Array(Edge(14869,14683,1087))
 
 // 定义图
 
-scala\> val graph = Graph(airports, edges, nowhere)
-
-graph: org.apache.spark.graphx.Graph\[String,Int\] =
+```scala
+scala> val graph = Graph(airports, edges, nowhere)
+graph: org.apache.spark.graphx.Graph[String,Int] =
 org.apache.spark.graphx.impl.GraphImpl@422179c7
-
-scala\> graph.vertices.take(2)
-
-res3: Array\[(org.apache.spark.graphx.VertexId, String)\] =
+scala> graph.vertices.take(2)
+res3: Array[(org.apache.spark.graphx.VertexId, String)] =
 Array((10208,AGS), (10268,ALO))
-
-scala\> graph.edges.take(2)
-
-res4: Array\[org.apache.spark.graphx.Edge\[Int\]\] =
+scala> graph.edges.take(2)
+res4: Array[org.apache.spark.graphx.Edge[Int]] =
 Array(Edge(10135,10397,692), Edge(10135,13930,654))
+```
 
 代码 4‑119
 
   - 有几个机场？
 
-scala\> val numairports = graph.numVertices
-
+```scala
+scala> val numairports = graph.numVertices
 numairports: Long = 301
+```
 
 代码 4‑120
 
   - 有几条路线？
 
-scala\> val numroutes = graph.numEdges
-
+```scala
+scala> val numroutes = graph.numEdges
 numroutes: Long = 4090
+```
 
 代码 4‑121
 
   - 哪些路线的距离大于1000？
 
-scala\> graph.edges.filter { case (Edge(org\_id, dest\_id, distance))
-=\> distance \> 1000 }.take(3)
-
-res15: Array\[org.apache.spark.graphx.Edge\[Int\]\] =
+```scala
+scala> graph.edges.filter { case (Edge(org_id, dest_id, distance))
+=> distance > 1000 }.take(3)
+res15: Array[org.apache.spark.graphx.Edge[Int]] =
 Array(Edge(10140,10397,1269), Edge(10140,10821,1670),
 Edge(10140,12264,1628))
+```
 
 代码 4‑122
 
   - EdgeTriplet类扩展Edge类，添加了srcAttr和dstAttr成员，打印输出看一看结果。
 
-scala\> graph.triplets.take(3).foreach(println)
-
+```scala
+scala> graph.triplets.take(3).foreach(println)
 ((10135,ABE),(10397,ATL),692)
-
 ((10135,ABE),(13930,ORD),654)
-
 ((10140,ABQ),(10397,ATL),1269)
+```
 
 代码 4‑123
 
   - 排序并打印出前10个最长的路线
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
-graph.triplets.sortBy(\_.attr, ascending=false).map(triplet =\>
-
+graph.triplets.sortBy(_.attr, ascending=false).map(triplet =>
 "Distance " + triplet.attr.toString + " from " + triplet.srcAttr + " to
 " + triplet.dstAttr + ".").take(10).foreach(println)
-
 // Exiting paste mode, now interpreting.
-
 Distance 4983 from JFK to HNL.
-
 Distance 4983 from HNL to JFK.
-
 Distance 4963 from EWR to HNL.
-
 Distance 4963 from HNL to EWR.
-
 Distance 4817 from HNL to IAD.
-
 Distance 4817 from IAD to HNL.
-
 Distance 4502 from ATL to HNL.
-
 Distance 4502 from HNL to ATL.
-
 Distance 4243 from HNL to ORD.
-
 Distance 4243 from ORD to HNL.
+```
 
 代码 4‑124
 
@@ -2920,59 +2544,52 @@ Distance 4243 from ORD to HNL.
 
 // 定义一个聚合函数计算点的出入度最大值
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 def max(a: (VertexId, Int), b: (VertexId, Int)): (VertexId, Int) = {
-
-if (a.\_2 \> b.\_2) a else b
-
+if (a._2 > b._2) a else b
 }
-
 // Exiting paste mode, now interpreting.
-
 max: (a: (org.apache.spark.graphx.VertexId, Int), b:
 (org.apache.spark.graphx.VertexId,
 Int))(org.apache.spark.graphx.VertexId, Int)
-
-scala\> val maxInDegree: (VertexId, Int) = graph.inDegrees.reduce(max)
-
+scala> val maxInDegree: (VertexId, Int) = graph.inDegrees.reduce(max)
 maxInDegree: (org.apache.spark.graphx.VertexId, Int) = (10397,152)
-
-scala\> val maxOutDegree: (VertexId, Int) = graph.outDegrees.reduce(max)
-
+scala> val maxOutDegree: (VertexId, Int) = graph.outDegrees.reduce(max)
 maxOutDegree: (org.apache.spark.graphx.VertexId, Int) = (10397,153)
-
-scala\> val maxDegrees: (VertexId, Int) = graph.degrees.reduce(max)
-
+scala> val maxDegrees: (VertexId, Int) = graph.degrees.reduce(max)
 maxDegrees: (org.apache.spark.graphx.VertexId, Int) = (10397,305)
+```
 
 //得到10397的机场名称
 
-scala\> airportMap(10397)
-
+```scala
+scala> airportMap(10397)
 res0: String = ATL
+```
 
 代码 4‑125
 
   - 前3个进港航班最多的机场？
 
-scala\> val maxIncoming = graph.inDegrees.collect.sortWith(\_.\_2 \>
-\_.\_2).map(x =\> (airportMap(x.\_1), x.\_2)).take(3)
-
-maxIncoming: Array\[(String, Int)\] = Array((ATL,152), (ORD,145),
+```scala
+scala> val maxIncoming = graph.inDegrees.collect.sortWith(_._2 >
+_._2).map(x => (airportMap(x._1), x._2)).take(3)
+maxIncoming: Array[(String, Int)] = Array((ATL,152), (ORD,145),
 (DFW,143))
+```
 
 代码 4‑126
 
   - 前3个出港航班最多的机场？
 
-scala\> val maxout= graph.outDegrees.join(airports).sortBy(\_.\_2.\_1,
+```scala
+scala> val maxout= graph.outDegrees.join(airports).sortBy(_._2._1,
 ascending=false).take(3)
-
-maxout: Array\[(org.apache.spark.graphx.VertexId, (Int, String))\] =
+maxout: Array[(org.apache.spark.graphx.VertexId, (Int, String))] =
 Array((10397,(153,ATL)), (13930,(146,ORD)), (11298,(143,DFW)))
+```
 
 代码 4‑127
 
@@ -2982,46 +2599,44 @@ Array((10397,(153,ATL)), (13930,(146,ORD)), (11298,(143,DFW)))
 
   - 根据PageRank，最重要的机场是哪些？
 
-scala\> val ranks = graph.pageRank(0.1).vertices
-
-ranks: org.apache.spark.graphx.VertexRDD\[Double\] =
-VertexRDDImpl\[164\] at RDD at VertexRDD.scala:57
+```scala
+scala> val ranks = graph.pageRank(0.1).vertices
+ranks: org.apache.spark.graphx.VertexRDD[Double] =
+VertexRDDImpl[164] at RDD at VertexRDD.scala:57
+```
 
 // 联结机场RDD
 
-scala\> val temp= ranks.join(airports)
-
-temp: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-(Double, String))\] = MapPartitionsRDD\[173\] at join at \<console\>:29
-
-scala\> temp.take(1)
-
-res1: Array\[(org.apache.spark.graphx.VertexId, (Double, String))\] =
+```scala
+scala> val temp= ranks.join(airports)
+temp: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+(Double, String))] = MapPartitionsRDD[173] at join at <console>:29
+scala> temp.take(1)
+res1: Array[(org.apache.spark.graphx.VertexId, (Double, String))] =
 Array((15370,(1.0946033493995184,TUL)))
+```
 
 // 进行排序
 
-scala\> val temp2 = temp.sortBy(\_.\_2.\_1, false)
-
-temp2: org.apache.spark.rdd.RDD\[(org.apache.spark.graphx.VertexId,
-(Double, String))\] = MapPartitionsRDD\[178\] at sortBy at
-\<console\>:27
-
-scala\> temp2.take(2)
-
-res2: Array\[(org.apache.spark.graphx.VertexId, (Double, String))\] =
+```scala
+scala> val temp2 = temp.sortBy(_._2._1, false)
+temp2: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
+(Double, String))] = MapPartitionsRDD[178] at sortBy at
+<console>:27
+scala> temp2.take(2)
+res2: Array[(org.apache.spark.graphx.VertexId, (Double, String))] =
 Array((10397,(11.080729516515449,ATL)), (13930,(11.04763496562952,ORD)))
-
-scala\> val impAirports =temp2.map(\_.\_2.\_2)
-
-impAirports: org.apache.spark.rdd.RDD\[String\] =
-MapPartitionsRDD\[179\] at map at \<console\>:27
+scala> val impAirports =temp2.map(_._2._2)
+impAirports: org.apache.spark.rdd.RDD[String] =
+MapPartitionsRDD[179] at map at <console>:27
+```
 
 //获得前4个重要的机场
 
-scala\> impAirports.take(4)
-
-res3: Array\[String\] = Array(ATL, ORD, DFW, DEN)
+```scala
+scala> impAirports.take(4)
+res3: Array[String] = Array(ATL, ORD, DFW, DEN)
+```
 
 代码 4‑128
 
@@ -3037,105 +2652,74 @@ res3: Array\[String\] = Array(ATL, ORD, DFW, DEN)
 
 // 起始点
 
-scala\> val sourceId: VertexId = 13024
-
+```scala
+scala> val sourceId: VertexId = 13024
 sourceId: org.apache.spark.graphx.VertexId = 13024
+```
 
 // 定义一个图，其中的边包含机票计算公式
 
-scala\> val gg = graph.mapEdges(e =\> 50.toDouble + e.attr.toDouble/20 )
-
-gg: org.apache.spark.graphx.Graph\[String,Double\] =
+```scala
+scala> val gg = graph.mapEdges(e => 50.toDouble + e.attr.toDouble/20 )
+gg: org.apache.spark.graphx.Graph[String,Double] =
 org.apache.spark.graphx.impl.GraphImpl@eba03c9
+```
 
 // 初始化图，除了起始点，所以点都是距离无穷大
 
-scala\> val initialGraph = gg.mapVertices((id, \_) =\> if (id ==
+```scala
+scala> val initialGraph = gg.mapVertices((id, _) => if (id ==
 sourceId) 0.0 else Double.PositiveInfinity)
-
-initialGraph: org.apache.spark.graphx.Graph\[Double,Double\] =
+initialGraph: org.apache.spark.graphx.Graph[Double,Double] =
 <org.apache.spark.graphx.impl.GraphImpl@2ab0ee54>
+```
 
 // 在图上调用pregel
 
-scala\> :paste
-
+```scala
+scala> :paste
 // Entering paste mode (ctrl-D to finish)
-
 val sssp = initialGraph.pregel(Double.PositiveInfinity)(
-
 // Vertex Program
-
-(id, dist, newDist) =\> math.min(dist, newDist),
-
-triplet =\> {
-
+(id, dist, newDist) => math.min(dist, newDist),
+triplet => {
 // Send Message
-
-if (triplet.srcAttr + triplet.attr \< triplet.dstAttr) {
-
+if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
 Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
-
 } else {
-
 Iterator.empty
-
 }
-
 },
-
 // Merge Message
-
-(a,b) =\> math.min(a,b)
-
+(a,b) => math.min(a,b)
 )
-
 // Exiting paste mode, now interpreting.
-
-sssp: org.apache.spark.graphx.Graph\[Double,Double\] =
+sssp: org.apache.spark.graphx.Graph[Double,Double] =
 org.apache.spark.graphx.impl.GraphImpl@1d7f6ec1
-
 // routes , lowest flight cost
-
-scala\> println(sssp.edges.take(4).mkString("\\n"))
-
+scala> println(sssp.edges.take(4).mkString("\n"))
 Edge(10135,10397,84.6)
-
 Edge(10135,13930,82.7)
-
 Edge(10140,10397,113.45)
-
 Edge(10140,10821,133.5)
-
 // routes with airport codes , lowest flight cost
-
-scala\> sssp.edges.map{ case ( Edge(org\_id, dest\_id,price))=\> (
-(airportMap(org\_id), airportMap(dest\_id), price))
-}.takeOrdered(10)(Ordering.by(\_.\_3))
-
-res6: Array\[(String, String, Double)\] = Array((WRG,PSG,51.55),
+scala> sssp.edges.map{ case ( Edge(org_id, dest_id,price))=> (
+(airportMap(org_id), airportMap(dest_id), price))
+}.takeOrdered(10)(Ordering.by(_._3))
+res6: Array[(String, String, Double)] = Array((WRG,PSG,51.55),
 (PSG,WRG,51.55), (CEC,ACV,52.8), (ACV,CEC,52.8), (ORD,MKE,53.35),
 (IMT,RHI,53.35), (MKE,ORD,53.35), (RHI,IMT,53.35), (STT,SJU,53.4),
 (SJU,STT,53.4))
-
 // airports , lowest flight cost
-
-scala\> println(sssp.vertices.take(4).mkString("\\n"))
-
+scala> println(sssp.vertices.take(4).mkString("\n"))
 (10208,277.79999999999995)
-
 (10268,260.7)
-
 (14828,261.65)
-
 (14698,125.25)
-
 // airport codes , sorted lowest flight cost
-
-scala\> sssp.vertices.collect.map(x =\> (airportMap(x.\_1),
-x.\_2)).sortWith(\_.\_2 \< \_.\_2)
-
-res8: Array\[(String, Double)\] = Array((LMT,0.0), (PDX,62.05),
+scala> sssp.vertices.collect.map(x => (airportMap(x._1),
+x._2)).sortWith(_._2 < _._2)
+res8: Array[(String, Double)] = Array((LMT,0.0), (PDX,62.05),
 (SFO,65.75), (EUG,117.35), (RDM,117.85), (SEA,118.5), (MRY,119.6),
 (MOD,119.65), (SMF,120.05), (CIC,123.4), (FAT,123.65), (SBP,125.25),
 (RNO,125.35), (MMH,125.4), (RDD,125.7), (BFL,127.65), (ACV,128.25),
@@ -3148,6 +2732,7 @@ res8: Array\[(String, Double)\] = Array((LMT,0.0), (PDX,62.05),
 (MCI,186.14999999999998), (CLD,186.89999999999998), (DFW,188.95),
 (ANC,189.14999999999998), (SMX,189.3), (SAT,189.85), (AUS,190.95),
 (YUM,1...
+```
 
 代码 4‑129
 
@@ -3156,6 +2741,3 @@ res8: Array\[(String, Double)\] = Array((LMT,0.0), (PDX,62.05),
 对于图形和图形并行计算，Apache Spark提供了GraphX API。 在本章中，学习了Spark中GraphX
 API以及属性图的概念；介绍图形运算符和Pregel
 API。另外，还学习了GraphX的方法和GraphX API的用例。
-
-
-

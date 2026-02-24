@@ -57,70 +57,44 @@ Graph）。从一个例子开始，使用Cartesian或zip来理解RDD谱系图，
 
 上图描绘了一个RDD图，是以下一系列转换的结果：
 
-scala\> val r00 = sc.parallelize(0 to 9)
-
-r00: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[0\] at
-parallelize at \<console\>:24
-
-scala\> val r01 = sc.parallelize(0 to 90 by 10)
-
-r01: org.apache.spark.rdd.RDD\[Int\] = ParallelCollectionRDD\[1\] at
-parallelize at \<console\>:24
-
-scala\> val r10 = r00 cartesian r01
-
-r10: org.apache.spark.rdd.RDD\[(Int, Int)\] = CartesianRDD\[2\] at
-cartesian at \<console\>:28
-
-scala\> val r11 = r00.map(n =\> (n, n))
-
-r11: org.apache.spark.rdd.RDD\[(Int, Int)\] = MapPartitionsRDD\[3\] at
-map at \<console\>:26
-
-scala\> val r12 = r00 zip r01
-
-r12: org.apache.spark.rdd.RDD\[(Int, Int)\] = ZippedPartitionsRDD2\[4\]
-at zip at \<console\>:28
-
-scala\> val r13 = r01.keyBy(\_ / 20)
-
-r13: org.apache.spark.rdd.RDD\[(Int, Int)\] = MapPartitionsRDD\[5\] at
-keyBy at \<console\>:26
-
-scala\> val r20 = Seq(r11, r12, r13).foldLeft(r10)(\_ union \_)
-
-r20: org.apache.spark.rdd.RDD\[(Int, Int)\] = UnionRDD\[8\] at union at
-\<console\>:36
-
-scala\> r20.toDebugString
-
+```scala
+scala> val r00 = sc.parallelize(0 to 9)
+r00: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[0] at
+parallelize at <console>:24
+scala> val r01 = sc.parallelize(0 to 90 by 10)
+r01: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[1] at
+parallelize at <console>:24
+scala> val r10 = r00 cartesian r01
+r10: org.apache.spark.rdd.RDD[(Int, Int)] = CartesianRDD[2] at
+cartesian at <console>:28
+scala> val r11 = r00.map(n => (n, n))
+r11: org.apache.spark.rdd.RDD[(Int, Int)] = MapPartitionsRDD[3] at
+map at <console>:26
+scala> val r12 = r00 zip r01
+r12: org.apache.spark.rdd.RDD[(Int, Int)] = ZippedPartitionsRDD2[4]
+at zip at <console>:28
+scala> val r13 = r01.keyBy(_ / 20)
+r13: org.apache.spark.rdd.RDD[(Int, Int)] = MapPartitionsRDD[5] at
+keyBy at <console>:26
+scala> val r20 = Seq(r11, r12, r13).foldLeft(r10)(_ union _)
+r20: org.apache.spark.rdd.RDD[(Int, Int)] = UnionRDD[8] at union at
+<console>:36
+scala> r20.toDebugString
 res1: String =
-
-(10) UnionRDD\[8\] at union at \<console\>:36 \[\]
-
-| UnionRDD\[7\] at union at \<console\>:36 \[\]
-
-| UnionRDD\[6\] at union at \<console\>:36 \[\]
-
-| CartesianRDD\[2\] at cartesian at \<console\>:28 \[\]
-
-| ParallelCollectionRDD\[0\] at parallelize at \<console\>:24 \[\]
-
-| ParallelCollectionRDD\[1\] at parallelize at \<console\>:24 \[\]
-
-| MapPartitionsRDD\[3\] at map at \<console\>:26 \[\]
-
-| ParallelCollectionRDD\[0\] at parallelize at \<console\>:24 \[\]
-
-| ZippedPartitionsRDD2\[4\] at zip at \<console\>:28 \[\]
-
-| ParallelCollectionRDD\[0\] at parallelize at \<console\>:24 \[\]
-
-| ParallelCollectionRDD\[1\] at parallelize at \<console\>:24 \[\]
-
-| MapPartitionsRDD\[5\] at keyBy at \<console\>:26 \[\]
-
-| ParallelCollectionRDD\[1\] at parallelize at \<console\>:24 \[\]
+(10) UnionRDD[8] at union at <console>:36 []
+| UnionRDD[7] at union at <console>:36 []
+| UnionRDD[6] at union at <console>:36 []
+| CartesianRDD[2] at cartesian at <console>:28 []
+| ParallelCollectionRDD[0] at parallelize at <console>:24 []
+| ParallelCollectionRDD[1] at parallelize at <console>:24 []
+| MapPartitionsRDD[3] at map at <console>:26 []
+| ParallelCollectionRDD[0] at parallelize at <console>:24 []
+| ZippedPartitionsRDD2[4] at zip at <console>:28 []
+| ParallelCollectionRDD[0] at parallelize at <console>:24 []
+| ParallelCollectionRDD[1] at parallelize at <console>:24 []
+| MapPartitionsRDD[5] at keyBy at <console>:26 []
+| ParallelCollectionRDD[1] at parallelize at <console>:24 []
+```
 
 代码 4.1
 
@@ -247,51 +221,40 @@ dag](media/11_monitoring_and_optimization/media/image4.jpeg)
 
 下面通过字数计数示例了解Spark应用程序的工作原理，可以在Spark交互界面中输入下面所示的代码。示例代码产生了wordcount，其定义了当调用动作时将使用的RDD有向无环图。在RDD上的操作创建新的RDD，它返回到其父母从而创建一个有向无环图，可以使用toDebugString打印出这个RDD谱系，如下所示。
 
-scala\> val file= sc.textFile("/usr/local/spark/README.md").cache()
-
-file: org.apache.spark.rdd.RDD\[String\] = /root/data/11-0.txt
-MapPartitionsRDD\[1\] at textFile at \<console\>:24
-
-scala\> val wordcount = file.flatMap(line =\> line.split(" ")).map(word
-=\> (word, 1)).reduceByKey(\_ + \_)
-
-wordcount: org.apache.spark.rdd.RDD\[(String, Int)\] = ShuffledRDD\[4\]
-at reduceByKey at \<console\>:26
-
-scala\> wordcount.toDebugString
-
+```scala
+scala> val file= sc.textFile("/usr/local/spark/README.md").cache()
+file: org.apache.spark.rdd.RDD[String] = /root/data/11-0.txt
+MapPartitionsRDD[1] at textFile at <console>:24
+scala> val wordcount = file.flatMap(line => line.split(" ")).map(word
+=> (word, 1)).reduceByKey(_ + _)
+wordcount: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[4]
+at reduceByKey at <console>:26
+scala> wordcount.toDebugString
 res3: String =
-
-(2) ShuffledRDD\[4\] at reduceByKey at \<console\>:26 \[\]
-
-\+-(2) MapPartitionsRDD\[3\] at map at \<console\>:26 \[\]
-
-| MapPartitionsRDD\[2\] at flatMap at \<console\>:26 \[\]
-
-| /usr/local/spark/README.md MapPartitionsRDD\[1\] at textFile at
-\<console\>:24 \[\]
-
+(2) ShuffledRDD[4] at reduceByKey at <console>:26 []
++-(2) MapPartitionsRDD[3] at map at <console>:26 []
+| MapPartitionsRDD[2] at flatMap at <console>:26 []
+| /usr/local/spark/README.md MapPartitionsRDD[1] at textFile at
+<console>:24 []
 | CachedPartitions: 2; MemorySize: 11.3 KB; ExternalBlockStoreSize: 0.0
 B; DiskSize: 0.0 B
-
-| /usr/local/spark/README.md HadoopRDD\[0\] at textFile at
-\<console\>:24 \[\]
-
-scala\> wordcount.collect()
-
-res1: Array\[(String, Int)\] = Array((package,1), (this,1),
-(Version"\](http://spark.apache.org/docs/latest/building-spark.html\#specifying-the-hadoop-version),1),
+| /usr/local/spark/README.md HadoopRDD[0] at textFile at
+<console>:24 []
+scala> wordcount.collect()
+res1: Array[(String, Int)] = Array((package,1), (this,1),
+(Version"](http://spark.apache.org/docs/latest/building-spark.html#specifying-the-hadoop-version),1),
 (Because,1), (Python,2),
-(page\](http://spark.apache.org/documentation.html).,1), (cluster.,1),
-(its,1), (\[run,1), (general,3), (have,1), (pre-built,1), (YARN,,1),
+(page](http://spark.apache.org/documentation.html).,1), (cluster.,1),
+(its,1), ([run,1), (general,3), (have,1), (pre-built,1), (YARN,,1),
 (locally,2), (changed,1), (locally.,1), (sc.parallelize(1,1), (only,1),
 (several,1), (This,2), (basic,1), (Configuration,1), (learning,,1),
 (documentation,3), (first,1), (graph,1), (Hive,2), (info,1),
-(\["Specifying,1), ("yarn",1), (\[params\]\`.,1), (\[project,1),
-(prefer,1), (SparkPi,2), (\<http://spark.apache.org/\>,1), (engine,1),
+(["Specifying,1), ("yarn",1), ([params]`.,1), ([project,1),
+(prefer,1), (SparkPi,2), (<http://spark.apache.org/>,1), (engine,1),
 (version,1), (file,1), (documentation,,1), (MASTER,1), (example,3),
-(\["Parallel,1), (are,1), (params,1), (scala\>,1), (DataFrames,,1),
+(["Parallel,1), (are,1), (params,1), (scala>,1), (DataFrames,,1),
 (provides,...
+```
 
 代码 4.4
 
@@ -555,8 +518,10 @@ GB，请设置JAVA虚拟机标志-XX:+UseCompressedOops，使指针为四个字�
 ./bin/spark-submit --name "My app" --master local\[4\] --conf
 spark.eventLog.enabled=false
 
-\--conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails
+```text
+--conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails
 -XX:+PrintGCTimeStamps" myApp.jar
+```
 
 代码 4.6
 
@@ -666,8 +631,10 @@ val sc = new SparkContext(new SparkConf())
 ./bin/spark-submit --name "My app" --master local\[4\] --conf
 spark.eventLog.enabled=false
 
-\--conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails
+```text
+--conf "spark.executor.extraJavaOptions=-XX:+PrintGCDetails
 -XX:+PrintGCTimeStamps" myApp.jar
+```
 
 代码 4.11
 
@@ -716,50 +683,33 @@ Application Master进程中。
 
 Spark使用log4j进行日志记录，可以通过在conf目录中添加log4j.properties文件来配置它，可以复制位于conf目录中log4j.properties.template文件产生，原来文件的内容显示如下：
 
-\# Set everything to be logged to the console
-
+```bash
+# Set everything to be logged to the console
 log4j.rootCategory=ERROR, console
-
 log4j.appender.console=org.apache.log4j.ConsoleAppender
-
 log4j.appender.console.target=System.err
-
 log4j.appender.console.layout=org.apache.log4j.PatternLayout
-
 log4j.appender.console.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} %p
 %c{1}: %m%n
-
-\# Set the default spark-shell log level to ERROR. When running the
+# Set the default spark-shell log level to ERROR. When running the
 spark-shell, the
-
-\# log level for this class is used to overwrite the root logger's log
+# log level for this class is used to overwrite the root logger's log
 level, so that
-
-\# the user can have different defaults for the shell and regular Spark
+# the user can have different defaults for the shell and regular Spark
 apps.
-
 log4j.logger.org.apache.spark.repl.Main=ERROR
-
-\# Settings to quiet third party logs that are too verbose
-
-log4j.logger.org.spark\_project.jetty=ERROR
-
-log4j.logger.org.spark\_project.jetty.util.component.AbstractLifeCycle=ERROR
-
+# Settings to quiet third party logs that are too verbose
+log4j.logger.org.spark_project.jetty=ERROR
+log4j.logger.org.spark_project.jetty.util.component.AbstractLifeCycle=ERROR
 log4j.logger.org.apache.spark.repl.SparkIMain$exprTyper=ERROR
-
 log4j.logger.org.apache.spark.repl.SparkILoop$SparkILoopInterpreter=ERROR
-
 log4j.logger.org.apache.parquet=ERROR
-
 log4j.logger.parquet=ERROR
-
-\# SPARK-9183: Settings to avoid annoying messages when looking up
+# SPARK-9183: Settings to avoid annoying messages when looking up
 nonexistent UDFs in SparkSQL with Hive support
-
 log4j.logger.org.apache.hadoop.hive.metastore.RetryingHMSHandler=FATAL
-
 log4j.logger.org.apache.hadoop.hive.ql.exec.FunctionRegistry=ERROR
+```
 
 代码 4.13
 
@@ -982,24 +932,19 @@ newRDD = textRDD.map(line =\> line.split(","))
 
 但是这里的问题是返回的RDD将是迭代器组成的，想要的是调用split函数后获得的各个值，换句话说需要一个Array\[String\]不是Array\[Array\[String\]\]，为此将使flatMap方法：
 
-scala\> val mappedResults = mapped.collect ()
-
-mappedResults: Array\[Array\[String\]\] = Array(Array(foo, bar, baz),
+```scala
+scala> val mappedResults = mapped.collect ()
+mappedResults: Array[Array[String]] = Array(Array(foo, bar, baz),
 Array(larry, moe, curly), Array(one, two, three))
-
-scala\> val flatMappedResults = flatMapped.collect ();
-
-flatMappedResults: Array\[String\] = Array(foo, bar, baz, larry, moe,
+scala> val flatMappedResults = flatMapped.collect ();
+flatMappedResults: Array[String] = Array(foo, bar, baz, larry, moe,
 curly, one, two, three)
-
-scala\> println (mappedResults.mkString (" : ") )
-
-\[Ljava.lang.String;@2a70c8d5 : \[Ljava.lang.String;@6d0ef6dc :
-\[Ljava.lang.String;@2936f48a
-
-scala\> println (flatMappedResults.mkString (" : ") )
-
+scala> println (mappedResults.mkString (" : ") )
+[Ljava.lang.String;@2a70c8d5 : [Ljava.lang.String;@6d0ef6dc :
+[Ljava.lang.String;@2936f48a
+scala> println (flatMappedResults.mkString (" : ") )
 foo : bar : baz : larry : moe : curly : one : two : three
+```
 
 代码 4.23
 
@@ -1105,13 +1050,12 @@ scala.collection.mutable.HashSet\[(Int, Int)\])\]
 
 能够将值打印为：
 
-scala\> uniqueByKey.foreach(println)
-
+```scala
+scala> uniqueByKey.foreach(println)
 (1779744180,Set((15,1), (16,3)))
-
 (1779744180,Set((14,1), (11,1), (10,1), (17,1)))
-
 (3922774869,Set((12,3), (11,1), (10,1), (14,5), (16,4), (15,3), (13,3)))
+```
 
 代码 4.30
 
@@ -1243,39 +1187,32 @@ Shell可以看到缓存数据集的大小。通过默认，Spark将使用MEMORY\
 
 先来看看逻辑计划，考虑从csv文件加载SFPD数据的早期课程的示例。将以此作为一个例子，通过看一看Spark执行模型的组件怎样运行的。
 
-scala\> val inputRDD = sc.textFile("/root/data/sfpd.csv")
-
-inputRDD: org.apache.spark.rdd.RDD\[String\] = /root/data/sfpd.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:24
-
-scala\> val sftpdRDD = inputRDD.map(x=\>x.split(","))
-
-sftpdRDD: org.apache.spark.rdd.RDD\[Array\[String\]\] =
-MapPartitionsRDD\[4\] at map at \<console\>:26
-
-scala\> val catRDD = sftpdRDD.map(x=\>(x(1),1)).reduceByKey((a,b)=\>a+b)
-
-catRDD: org.apache.spark.rdd.RDD\[(String, Int)\] = ShuffledRDD\[7\] at
-reduceByKey at \<console\>:28
+```scala
+scala> val inputRDD = sc.textFile("/root/data/sfpd.csv")
+inputRDD: org.apache.spark.rdd.RDD[String] = /root/data/sfpd.csv
+MapPartitionsRDD[1] at textFile at <console>:24
+scala> val sftpdRDD = inputRDD.map(x=>x.split(","))
+sftpdRDD: org.apache.spark.rdd.RDD[Array[String]] =
+MapPartitionsRDD[4] at map at <console>:26
+scala> val catRDD = sftpdRDD.map(x=>(x(1),1)).reduceByKey((a,b)=>a+b)
+catRDD: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[7] at
+reduceByKey at <console>:28
+```
 
 代码 4.61
 
 第一行语句从sfpd.csv文件创建名为inputRDD的RDD；第二行创建的RDD为sfpdRDD，其将基于所述逗号分隔符输入RDD的数据；第三条语句通过map和reduceByKey转换创建catRDD。上面的代码还没有执行任何动作，只是定义了这些RDD对象的DAG。每个RDD维护指向其所依赖RDD的指针，以及这个依赖关系的元数据。RDD使用这些关系数据来跟踪其关联的RDD，要显示的RDD谱系，使用toDebugString方法：
 
-scala\> catRDD.toDebugString
-
+```scala
+scala> catRDD.toDebugString
 res0: String =
-
-(2) ShuffledRDD\[7\] at reduceByKey at \<console\>:28 \[\]
-
-\+-(2) MapPartitionsRDD\[6\] at map at \<console\>:28 \[\]
-
-| MapPartitionsRDD\[4\] at map at \<console\>:26 \[\]
-
-| /root/data/sfpd.csv MapPartitionsRDD\[3\] at textFile at
-\<console\>:24 \[\]
-
-| /root/data/sfpd.csv HadoopRDD\[2\] at textFile at \<console\>:24 \[\]
+(2) ShuffledRDD[7] at reduceByKey at <console>:28 []
++-(2) MapPartitionsRDD[6] at map at <console>:28 []
+| MapPartitionsRDD[4] at map at <console>:26 []
+| /root/data/sfpd.csv MapPartitionsRDD[3] at textFile at
+<console>:24 []
+| /root/data/sfpd.csv HadoopRDD[2] at textFile at <console>:24 []
+```
 
 代码 4.62
 
@@ -1356,60 +1293,49 @@ Shell启动期间可用。每个SparkContext都会启动一个Web UI，默认情
 只需在Web浏览器中打开地址http://\<driver-node\>:4040，即可访问此界面。如果多个SparkContext在同一主机上运行，它们将绑定到以4040（4041、4042等）开头的连续端口上。请注意，此信息仅在应用程序默认配置情况下可用。要想在应用程序运行之后查看Web
 UI，需要在启动应用程序之前将spark.eventLog.enabled设置为true，具体操作方法可以参考官方手册。在本例中，可以根据下面代码示例来看一看作业和阶段等关键信息：
 
-scala\> val inputRDD = sc.textFile("/root/data/sfpd.csv")
-
-inputRDD: org.apache.spark.rdd.RDD\[String\] = /root/data/sfpd.csv
-MapPartitionsRDD\[1\] at textFile at \<console\>:24
-
-scala\> val sftpdRDD = inputRDD.map(x=\>x.split(","))
-
-sftpdRDD: org.apache.spark.rdd.RDD\[Array\[String\]\] =
-MapPartitionsRDD\[2\] at map at \<console\>:26
-
-scala\> val catRDD = sftpdRDD.map(x=\>(x(1),1)).reduceByKey((a,b)=\>a+b)
-
-catRDD: org.apache.spark.rdd.RDD\[(String, Int)\] = ShuffledRDD\[4\] at
-reduceByKey at \<console\>:28
-
-scala\> catRDD.cache()
-
-res0: catRDD.type = ShuffledRDD\[4\] at reduceByKey at \<console\>:28
-
-scala\> catRDD.collect()
-
-res1: Array\[(String, Int)\] = Array((PROSTITUTION,1316),
+```scala
+scala> val inputRDD = sc.textFile("/root/data/sfpd.csv")
+inputRDD: org.apache.spark.rdd.RDD[String] = /root/data/sfpd.csv
+MapPartitionsRDD[1] at textFile at <console>:24
+scala> val sftpdRDD = inputRDD.map(x=>x.split(","))
+sftpdRDD: org.apache.spark.rdd.RDD[Array[String]] =
+MapPartitionsRDD[2] at map at <console>:26
+scala> val catRDD = sftpdRDD.map(x=>(x(1),1)).reduceByKey((a,b)=>a+b)
+catRDD: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[4] at
+reduceByKey at <console>:28
+scala> catRDD.cache()
+res0: catRDD.type = ShuffledRDD[4] at reduceByKey at <console>:28
+scala> catRDD.collect()
+res1: Array[(String, Int)] = Array((PROSTITUTION,1316),
 (DRUG/NARCOTIC,14300), (EMBEZZLEMENT,392), (FRAUD,7416),
-(WEAPON\_LAWS,3975), (BURGLARY,15374), (EXTORTION,75), (WARRANTS,17508),
-(DRIVING\_UNDER\_THE\_INFLUENCE,1038), (TREA,6), (LARCENY/THEFT,96955),
-(BAD CHECKS,69), (RECOVERED\_VEHICLE,760), (LIQUOR\_LAWS,494),
-(SUICIDE,182), (OTHER\_OFFENSES,50611), (VEHICLE\_THEFT,17581),
-(DRUNKENNESS,1870), (MISSING\_PERSON,11560), (DISORDERLY\_CONDUCT,1052),
-(FAMILY\_OFFENSES,201), (ARSON,690), (ROBBERY,9658),
-(SUSPICIOUS\_OCC,13659), (GAMBLING,46), (KIDNAPPING,1268),
+(WEAPON_LAWS,3975), (BURGLARY,15374), (EXTORTION,75), (WARRANTS,17508),
+(DRIVING_UNDER_THE_INFLUENCE,1038), (TREA,6), (LARCENY/THEFT,96955),
+(BAD CHECKS,69), (RECOVERED_VEHICLE,760), (LIQUOR_LAWS,494),
+(SUICIDE,182), (OTHER_OFFENSES,50611), (VEHICLE_THEFT,17581),
+(DRUNKENNESS,1870), (MISSING_PERSON,11560), (DISORDERLY_CONDUCT,1052),
+(FAMILY_OFFENSES,201), (ARSON,690), (ROBBERY,9658),
+(SUSPICIOUS_OCC,13659), (GAMBLING,46), (KIDNAPPING,1268),
 (RUNAWAY,521), (VANDALISM,17987), (BRIBERY,159), (NON-CRIMINAL,50269),
-(SECONDARY\_CODES,4972), (SEX\_OFFENSES/NON\_FORCIBLE,49),
-(PORNOGRAPHY/OBSCENE MAT,10), (SEX\_OFFENSES/FORCIBLE,2043),
+(SECONDARY_CODES,4972), (SEX_OFFENSES/NON_FORCIBLE,49),
+(PORNOGRAPHY/OBSCENE MAT,10), (SEX_OFFENSES/FORCIBLE,2043),
 (FORGERY/COUNTERFEITING,2025), (TRESPASS,2930), (ASS...
-
-scala\> catRDD.collect()
-
-res2: Array\[(String, Int)\] = Array((PROSTITUTION,1316),
+scala> catRDD.collect()
+res2: Array[(String, Int)] = Array((PROSTITUTION,1316),
 (DRUG/NARCOTIC,14300), (EMBEZZLEMENT,392), (FRAUD,7416),
-(WEAPON\_LAWS,3975), (BURGLARY,15374), (EXTORTION,75), (WARRANTS,17508),
-(DRIVING\_UNDER\_THE\_INFLUENCE,1038), (TREA,6), (LARCENY/THEFT,96955),
-(BAD CHECKS,69), (RECOVERED\_VEHICLE,760), (LIQUOR\_LAWS,494),
-(SUICIDE,182), (OTHER\_OFFENSES,50611), (VEHICLE\_THEFT,17581),
-(DRUNKENNESS,1870), (MISSING\_PERSON,11560), (DISORDERLY\_CONDUCT,1052),
-(FAMILY\_OFFENSES,201), (ARSON,690), (ROBBERY,9658),
-(SUSPICIOUS\_OCC,13659), (GAMBLING,46), (KIDNAPPING,1268),
+(WEAPON_LAWS,3975), (BURGLARY,15374), (EXTORTION,75), (WARRANTS,17508),
+(DRIVING_UNDER_THE_INFLUENCE,1038), (TREA,6), (LARCENY/THEFT,96955),
+(BAD CHECKS,69), (RECOVERED_VEHICLE,760), (LIQUOR_LAWS,494),
+(SUICIDE,182), (OTHER_OFFENSES,50611), (VEHICLE_THEFT,17581),
+(DRUNKENNESS,1870), (MISSING_PERSON,11560), (DISORDERLY_CONDUCT,1052),
+(FAMILY_OFFENSES,201), (ARSON,690), (ROBBERY,9658),
+(SUSPICIOUS_OCC,13659), (GAMBLING,46), (KIDNAPPING,1268),
 (RUNAWAY,521), (VANDALISM,17987), (BRIBERY,159), (NON-CRIMINAL,50269),
-(SECONDARY\_CODES,4972), (SEX\_OFFENSES/NON\_FORCIBLE,49),
-(PORNOGRAPHY/OBSCENE MAT,10), (SEX\_OFFENSES/FORCIBLE,2043),
+(SECONDARY_CODES,4972), (SEX_OFFENSES/NON_FORCIBLE,49),
+(PORNOGRAPHY/OBSCENE MAT,10), (SEX_OFFENSES/FORCIBLE,2043),
 (FORGERY/COUNTERFEITING,2025), (TRESPASS,2930), (ASS...
-
-scala\> catRDD.count()
-
+scala> catRDD.count()
 res3: Long = 39
+```
 
 代码 4.63
 
@@ -1527,6 +1453,3 @@ foldByKey。collect动作试图将在RDD中每一个元素传送到驱动程序�
 
 Spark性能调整是调整设置以记录系统使用内存、内核和实例的过程。这个过程保证Spark具有最佳性能并防止Spark中的资源瓶颈。在本章中，提供有关如何调整Apache
 Spark作业的相关信息，性能调优介绍、Spark序列化库（如Java序列化和Kryo序列化）、Spark内存调优，还学习了Spark数据结构调优，Spark数据区域性和垃圾收集调优。
-
-
-
