@@ -861,7 +861,7 @@ scala> df.filter($"col2"===$"col3"-1).show
 
 代码 4‑23
 
-其中，“===”是在Column类中定义的函数，可以判断两个列中每行对应的值是否相等，不等于是=\!=。$”col2”这个是语法糖，返回Column对象。下面看一看where函数：
+其中，`===` 是 Column 类中定义的函数，可以判断两列中每行对应的值是否相等；不等于用 `=!=`。`$"col2"` 是语法糖，返回 Column 对象。下面看一看 where 函数：
 
   - def where(conditionExpr: String): Dataset\[T\]
 
