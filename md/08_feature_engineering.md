@@ -1,12 +1,12 @@
 # 特征工程
 
 
-## 本章先看懂什么
+## 8.1 本章先看懂什么
 - 特征工程的三步：清洗、变换、选择。
 - 文本、类别、数值特征分别怎么处理。
 - 特征质量为什么常常比模型复杂度更重要。
 
-## 一个最小例子
+## 8.2 一个最小例子
 需求：做商品评论情感分类。
 1. 分词并生成 TF-IDF。
 2. 类别字段做 One-Hot 编码。
@@ -28,11 +28,11 @@
 
   - 局部敏感散列：解决高维空间中近似或精确的近邻搜索
 
-## 特征提取
+## 8.3 特征提取
 
 在机器学习、模式识别和图像处理中，特征提取是从一组初始的测量数据开始，构建旨在提供有价值的和非冗余的派生值或特征，以利于后续机器学习和泛化过程，并在某些情况下更好地被人类解释。在图形处理中，特征提取一般也与降维有关。
 
-### TF-IDF
+### 8.3.1 TF-IDF
 
 TF-IDF（Term Frequency-Inverse Document
 Fsrequency，TF表示词频，IDF表示是逆向文件频率）是一种自然语言学习的统计方法，用以评估字词在一个文件集或一个语料库中的重要程度。字词的重要性随着其在文件中出现的次数成正比而增加，但同时会随着其在语料库中出现的频率成反比而下降。基于TF-IDF加权的各种形式常被搜索引擎应用，作为返回信息与用户查询之间相关程度的度量或评级。
@@ -138,7 +138,7 @@ spark),(20,\[0,5,9,17\],\[1.0,1.0,1.0,2.0\]),(20,\[0,5,9,17\],\[0.69314718055994
 MurmurHash是一个非加密哈希函数，适用于一般的基于哈希的查找，是由Austin
 Appleby在2008年创建的，目前在Github上与其测试套件SMHasher一起托管，其也存在一些变种，所有这些都已经被公开。其名称来自两个基本操作，乘法（MU）和旋转（R），在其内部循环中使用。与密码散列函数不同，MurmurHash不是专门设计成难以被反向破解的，所以不适用于密码学。目前的版本是MurmurHash3，产生一个32位或128位散列值。使用128位时，x86和x64版本不会生成相同的值，因为算法针对各自的平台进行了优化。
 
-### Word2Vec
+### 8.3.2 Word2Vec
 
 Word2Vec计算词汇的分布式矢量表示，分布式表示的主要优点在于向量空间中相似的词汇之间距离是靠近的，可以通过空间向量计算来分析词汇的语义，这使得对新模式的泛化更容易，模型估计的适应性更强。词汇的分布式向量表示在许多自然语言处理应用中被证明是有用的，例如命名实体识别、消歧、解析、标记和机器翻译。
 
@@ -263,7 +263,7 @@ Word2Vec模型中，主要有Skip-Gram和CBOW两种模型，从直观上理解�
 
 图例 4‑1Skip-Gram和CBOW两种模型
 
-### CountVectorizer
+### 8.3.3 CountVectorizer
 
 CountVectorizer和CountVectorizerModel旨在帮助将文本文档集合转换为词汇计数向量。当预定义字典不可用时，CountVectorizer可用作估算器来提取词汇表，并生成一个CountVectorizerModel，该模型为基于这些词汇的文档生成稀疏矩阵表示，然后将其传递给其他算法。
 
@@ -338,9 +338,9 @@ scala\> cvModel.transform(df).select("features").show()
 
 代码 4‑7
 
-## 特征转换
+## 8.4 特征转换
 
-### Tokenizer
+### 8.4.1 Tokenizer
 
 Tokenizer的处理过程是将文本分解成单个词汇的过程。下面的例子展示了如何将句子拆分成单词序列。RegexTokenizer允许基于正则表达式匹配更高级的处理，默认情况下pattern参数被用作分隔符来分割输入文本（正则表达式默认值为\\\\s
 +），或者用户可以将gaps参数设置为false，指示正则表达式pattern指定了词汇而不是分割间隙，并查找所有匹配结果。
@@ -435,7 +435,7 @@ are, neat\] |5 |
 
 代码 4‑8
 
-### StopWordsRemover
+### 8.4.2 StopWordsRemover
 
 停止词是需要从输入文本中排除的词，通常是因为词经常出现并且不具有具体的含义。StopWordsRemover将一系列字符串作为输入（例如Tokenizer处理后的输出），并从这些输入序列中删除所有停用词。停用词的列表由stopWords参数指定，可以通过调用StopWordsRemover.loadDefaultStopWords（language）来访问某些语言的默认停用词，其中可用的选项是“danish”，“dutch”，“english”，“finnish”，“french”，“german”，“hungarian”，“italian”，“norwegian”，“portuguese”，“russian”，“spanish”，“swedish”和“turkish”。布尔型参数caseSensitive指示匹配是否区分大小写，默认为false。假设有以下DataFrame，包含列id和raw：
 
@@ -502,7 +502,7 @@ scala\> remover.transform(dataSet).show(false)
 
 代码 4‑11
 
-### n-gram
+### 8.4.3 n-gram
 
 \(n\)-gram是\(n\)个连续单词的序列，\(\text{\ n}\)是某个整数。NGram类可以用来将输入特征转换成\(n\)-gram。\(n\)-gram将字符串序列作为输入，参数\(n\)用于确定每个\(n\)-gram中连续单词的数量，输出将由\(n\)-gram序列组成，其中每个\(n\)-gram由一个以空格分隔的\(n\)个连续单词的字符串表示。如果输入序列包含少于\(n\)个字符串，则不会生成输出。
 
@@ -551,7 +551,7 @@ scala\> ngramDataFrame.select("ngrams").show(false)
 
 代码 4‑12
 
-### Binarizer
+### 8.4.4 Binarizer
 
 二值化是将数字特征根据阈值转换成二进制（0/1）特征的过程。Binarizer采用通用参数inputCol和outputCol
 ，以及阈值threshold。大于阈值的特征值被二进制化为1.0；等于或小于阈值的值被二值化为0.0。inputCol支持Vector和Double类型。
@@ -603,7 +603,7 @@ scala\> binarizedDataFrame.show()
 
 代码 4‑13
 
-### PCA（主成分分析）
+### 8.4.5 PCA（主成分分析）
 
 PCA是一个统计的过程，使用正交变换将一组可能的相关变量观测值转换成一组线性不相关的变量值，称为主成分。一个PCA类使用主成分分析的方法训练一个模型来投影向量到低维空间。下面的例子说明了如何将5维的特征向量映射为3维的主成分。
 
@@ -661,7 +661,7 @@ scala\> result.show(false)
 
 代码 4‑14
 
-### PolynomialExpansion
+### 8.4.6 PolynomialExpansion
 
 PolynomialExpansion是一个将特征展开到多元空间的处理过程，运用于特征值进行一些多项式的转化，比如平方啊，三次方，通过设置n-degree参数结合原始的维度来定义，比如设置degree为2就可以将\((x,y)\)转化为\((x,x^{2},y,xy,y^{2})\)，下面的例子展示了如何将特征展开为一个3-degree多项式空间。
 
@@ -720,7 +720,7 @@ scala\> polyDF.show(false)
 
 代码 4‑15
 
-### Discrete Cosine Transform（DCT）
+### 8.4.7 Discrete Cosine Transform（DCT）
 
 离散余弦变换（DCT）将在时域中的长度为\(N\)实数序列转换成另一个在频域中的长度为\(N\)实值序列。DCT类提供此功能，实现DCT-II方法并通过\(\frac{1}{\sqrt{2}}\)比例缩放结果，使得用于变换产生的表示矩阵为单一实体，无偏移被施加到所述变换的序列，例如变换序列的第0个元素是第0个DCT系数，而不是\(\frac{N}{2}\)）。
 
@@ -788,7 +788,7 @@ DCT除了上述介绍的几条特点，即：实数变换、确定的变换矩�
 Transform),它相当于一个长度大概是它两倍的实奇函数的离散傅里叶变换；另一个是改进的离散余弦变换(MDCT
 for Modified Discrete Cosine Transform),它相当于对交叠的数据进行离散余弦变换。
 
-### StringIndexer
+### 8.4.8 StringIndexer
 
 StringIndexer是将标签的字符串列转换成标签索引列，索引的取值范围为\[0,
 numLabels\]，按照标签的出现频率进行排序，并且支持四种排序选项：
@@ -950,7 +950,7 @@ scala\> indexed.show()
 
 代码 4‑22
 
-### IndexToString
+### 8.4.9 IndexToString
 
 与StringIndexer对称，IndexToString将标签索引列映射回包含原始字符串标签列。一个常见的使用情形是用StringIndexer从标签产生索引，使用索引训练模型，然后使用IndexToString从具有预测索引的列中返回原始标签，但是我们可以自由地提供自己的标签。在StringIndexer例子的基础上，假设有一个DataFrame包含id和categoryIndex：
 
@@ -1117,7 +1117,7 @@ scala\> converted.select("id", "categoryIndex",
 
 代码 4‑25
 
-### OneHotEncoder
+### 8.4.10 OneHotEncoder
 
 OneHotEncoder将标签索引列映射到二进制向量列，其中只包含一个有效位，这种编码允许需要连续特征值的算法（如逻辑回归）使用类别特征。
 
@@ -1190,7 +1190,7 @@ scala\> encoded.show()
 
 代码 4‑26
 
-### VectorIndexer
+### 8.4.11 VectorIndexer
 
 VectorIndexer将分类特征索引为向量数据集，既可以自动决定哪些特征是分类的，也可以将原始值转换成分类索引，具体而言执行以下操作：
 
@@ -1337,7 +1337,7 @@ scala\> indexedData.show(false)
 
 代码 4‑31
 
-### Interaction
+### 8.4.12 Interaction
 
 Interaction是一个转换器，用来加载向量或双值列，并生成一个单一向量，其包含从每个输入列中一个值的所有组合的乘积，例如有2个向量类型的列，其每一个具有3个维度的输入列，那么将得到一个9维向量作为输出列，假设有一个DataFrame包含列“id1”，“vec
 1”和“vec 2”：
@@ -1480,7 +1480,7 @@ scala\> interacted.show(truncate = false)
 
 代码 4‑34
 
-### Normalizer
+### 8.4.13 Normalizer
 
 Normalizer是一个转换器，作用范围是每一行，使每一个行向量归一化为一个单位范数。这需要指定参数p，用来指定p-范数用于归一化（默认情况下\(p = 2\)）。这种归一化可以帮助标准化我们的输入数据，并提高学习算法的行为。下面的例子演示了如何加载一个libsvm格式的数据集，然后归一化每个行，使其具有单位\(L^{1}\)范数和单位\(L^{\infty}\)范数。
 
@@ -1625,7 +1625,7 @@ Difference）:
 
 公式 4‑15
 
-### StandardScaler
+### 8.4.14 StandardScaler
 
 对于同一个特征，不同的样本中的取值可能会相差非常大，一些异常小或异常大的数据会误导模型的正确训练；另外，如果数据的分布很分散也会影响训练结果。以上两种方式都体现在方差会非常大。此时，我们可以将特征中的值进行标准差标准化，即转换为均值为0，方差为1的正态分布。如果特征非常稀疏，并且有大量的0（现实应用中很多特征都具有这个特点），Z-score
 标准化的过程几乎就是一个除0的过程，结果不可预料。所以在训练模型之前，一定要对特征的数据分布进行探索，并考虑是否有必要将数据进行标准化。基于特征值的均值（Mean）和标准差（Standard
@@ -1728,7 +1728,7 @@ only showing top 20 rows
 
 代码 4‑36
 
-### MinMaxScaler 
+### 8.4.15 MinMaxScaler 
 
 MinMaxScaler作用范围是每一行，重新缩放每个特征到特定范围内，通常是在\[0，1\]，需要的参数为：
 
@@ -1810,7 +1810,7 @@ scala\> scaledData.select("features", "scaledFeatures").show()
 
 代码 4‑37
 
-### MaxAbsScaler
+### 8.4.16 MaxAbsScaler
 
 MaxAbsScaler转换向量行的数据集，重新缩放每个特征到\[-1,1\]的范围内，通过除以每个特征的最大绝对值，它不移位或居中数据，因此不破坏任何稀疏性。
 
@@ -1875,7 +1875,7 @@ scala\> scaledData.select("features", "scaledFeatures").show()
 
 代码 4‑38
 
-### Bucketizer 
+### 8.4.17 Bucketizer 
 
 Bucketizer将连续的特征列转换成特征桶列，这些桶由用户指定，拥有一个splits参数。
 例如商城的人群，觉得把人分为50以上和50以下太不精准了，应该分为20岁以下，20-30岁，30-40岁，36-50岁，50以上，那么就得用到数值离散化的处理方法了。离散化就是把特征进行适当的离散处理，比如上面所说的年龄是个连续的特征，但是把它分为不同的年龄阶段就是离散化了，这样更利于我们分析用户行为进行精准推荐。Bucketizer能方便的将一堆数据分成不同的区间，它需要一个参数：
@@ -1946,7 +1946,7 @@ scala\> bucketedData.show()
 
 代码 4‑39
 
-### ElementwiseProduct 
+### 8.4.18 ElementwiseProduct 
 
 ElementwiseProduct对每一个输入向量乘以一个给定的权重向量，换句话说就是通过一个乘子对数据集的每一列进行缩放，可以表示为在输入向量\(v\)和转换向量\(w\)之间的Hadamard乘积，以产生结果向量为：
 
@@ -2016,7 +2016,7 @@ scala\> transformer.transform(dataFrame).show()
 在数学中，Hadamard乘积（也称为Schur乘积或entrywise乘积）是一个二元运算，它采用两个相同维数的矩阵并且相乘，并生成另一个矩阵，其中元素i,j是原始的两个矩阵元素i,j乘积。它不应该与更常见的矩阵产品混淆。这是归因于法国数学家雅克·哈达玛（Jacques
 Hadamard）或德国数学家伊萨·舒尔（Issai Schur）的名字。
 
-### SQLTransformer 
+### 8.4.19 SQLTransformer 
 
 SQLTransformer实现由SQL语句定义的转换。目前只支持SQL语法，例如"SELECT ... FROM \_\_THIS\_\_
 ..."，其中"\_\_THIS\_\_"代表输入数据集的基础表。select子句指定字段、常量和表达式的输出进行显示，并且可以是Spark
@@ -2089,7 +2089,7 @@ scala\> sqlTrans.transform(df).show()
 
 代码 4‑43
 
-### VectorAssembler 
+### 8.4.20 VectorAssembler 
 
 VectorAssembler是一个转换器，其结合给定列的列表到单一向量列。其作用是结合原始特性和不同特征转换器产生的特征到一个特征向量，用了训练机器学习模型，如逻辑回归和决策树有用。VectorAssembler接受以下输入列类型：所有数值类型、布尔型和向量类型。在每一行中，输入列的值将被按指定的顺序连接成一个向量。假设有一个DataFrame，包含的列分别为id、hour、mobile、userFeatures和clicked：
 
@@ -2159,7 +2159,7 @@ scala\> output.select("features", "clicked").show(false)
 
 代码 4‑45
 
-### QuantileDiscretizer 
+### 8.4.21 QuantileDiscretizer 
 
 QuantileDiscretizer将连续型特征转换为被分箱的类别特征，分箱的数量由numBuckets参数决定，分箱的范围由渐进算法决定，可能使用的实际分箱会比这个值小，例如不同的输入值个数不足以创造足够的不同分位数。
 
@@ -2266,7 +2266,7 @@ scala\> result.show()
 
 代码 4‑48
 
-### Imputer
+### 8.4.22 Imputer
 
 Imputer转换器添加数据集中的丢失值，或者使用丢失值所在列的平均值或中值。输入列应该是DoubleType或FloatType。目前Imputer不支持类别特征，并可能对包含类别特征的列产生不正确的值。注意所有输入列中的null值被视为丢失，所以也被估算。假设DataFrame包含的列为a和b：
 
@@ -2357,9 +2357,9 @@ scala\> model.transform(df).show()
 
 代码 4‑51
 
-## 特征选择
+## 8.5 特征选择
 
-### VectorSlicer
+### 8.5.1 VectorSlicer
 
 VectorSlicer是转换器，获取一个特征向量，并输出由原来特征向量的子数组构成的特征向量，其是用于从向量列中提取特征。VectorSlicer接受一个指定索引的向量列，然后通过这些索引选择值输出一个新的向量列。有两种类型的索引：
 
@@ -2496,7 +2496,7 @@ scala\> output.show(false)
 
 代码 4‑55
 
-### RFormula 
+### 8.5.2 RFormula 
 
 RFormula选择由R模型公式指定的列。目前，支持R运算符的有限子集，包括‘〜’、‘.’、‘:’、‘+’和‘-’。基本的操作符含义是：
 
@@ -2613,7 +2613,7 @@ scala\> output.select("features", "label").show()
 
 代码 4‑62
 
-### ChiSqSelector 
+### 8.5.3 ChiSqSelector 
 
 ChiSqSelector代表卡方特征选择，使用具有分类特征的标签数据进行操作。ChiSqSelector使用卡方独立测试来决定选择哪些特征。它支持五种选择方法：numTopFeatures、percentile、fpr、fdr、fwe：
 
@@ -2726,7 +2726,7 @@ scala\> result.show()
 
 卡方检验是用途非常广的一种假设检验方法，它在分类资料统计推断中的应用，包括：两个率或两个构成比比较的卡方检验；多个率或多个构成比比较的卡方检验以及分类资料的相关分析等。卡方检验就是统计样本的实际观测值与理论推断值之间的偏离程度，实际观测值与理论推断值之间的偏离程度就决定卡方值的大小，卡方值越大，越不符合；卡方值越小，偏差越小，越趋于符合，若两个值完全相等时，卡方值就为0，表明理论值完全符合。卡方检验就是统计样本的实际观测值与理论推断值之间的偏离程度，实际观测值与理论推断值之间的偏离程度就决定卡方值的大小，卡方值越大，越不符合；卡方值越小，偏差越小，越趋于符合，若两个值完全相等时，卡方值就为0，表明理论值完全符合。
 
-## 局部敏感哈希
+## 8.6 局部敏感哈希
 
 局部敏感哈希（Locality Sensitive
 Hashing，LSH）是一类重要的哈希技术，这是常见用于聚集算法，近似大型数据集的最近邻搜索和异常检测。局部敏感哈希的总体思路是使用一个家族的函数将数据点哈希到桶中，使相互靠近的数据点具有很高概率在相同的桶中，而彼此远离数据点更可能都在不同的桶中。如下的局部敏感哈希系列的正式定义。
@@ -2745,11 +2745,11 @@ Hashing，LSH）是一类重要的哈希技术，这是常见用于聚集算法�
 
 在局部敏感哈希中，定义一个假阳性作为一对远输入特征（与\(d(p,q) \geq r2\)），该散列到相同的桶中，并且定义一个假阴性作为一对近的特征（与\(d(p,q) \leq r1\)），该散列到不同的桶中。
 
-### 局部敏感哈希操作 
+### 8.6.1 局部敏感哈希操作 
 
 描述了局部敏感哈希可用了哪些主要类型的操作，一个被拟合的局部敏感哈希模型对这些操作提供了方法。
 
-#### 特征变换 
+#### 8.6.1.1 特征变换 
 
 特征转型是基本功能添加散列值作为一个新列，这对于降维有用。用户可通过设置指定输入和输出列名inputCol和outputCol。
 
@@ -2757,7 +2757,7 @@ Hashing，LSH）是一类重要的哈希技术，这是常见用于聚集算法�
 
 outputCol类型就是Seq\[Vector\]其中数组的长度等于numHashTables和向量的维度当前设置为1。在未来的版本中，将实现AND-amplification，使用户可以指定这些向量的维度。
 
-#### 近似相似连接 
+#### 8.6.1.2 近似相似连接 
 
 近似相似性连接得到两个数据集，并且近似返回数据集中的行对，其距离小于用户定义的阈值。近似相似连接同时支持连接两个不同的数据集和自连接。自连接会产生一些重复的对。
 
@@ -2765,7 +2765,7 @@ outputCol类型就是Seq\[Vector\]其中数组的长度等于numHashTables和向
 
 在被连接的数据集中，原始数据集可以使用datasetA和datasetB被查询。距离列将被添加到输出数据集来显示每对返回行之间的真实距离。
 
-#### 近似最近邻搜索 
+#### 8.6.1.3 近似最近邻搜索 
 
 近似最近邻搜索获得数据集（特征向量）和一个键（单个特征向量），并且近似返回在数据集中的指定行数，最接近向量。
 
@@ -2775,9 +2775,9 @@ outputCol类型就是Seq\[Vector\]其中数组的长度等于numHashTables和向
 
 注：近似最近邻搜索将返回比k少，当没有足够的候选项在哈希桶中。
 
-### 局部敏感哈希算法 
+### 8.6.2 局部敏感哈希算法 
 
-#### 分时段随机投影的欧氏距离 
+#### 8.6.2.1 分时段随机投影的欧氏距离 
 
 分时段随机投影是局部敏感哈希家族的欧氏距离。欧几里德距离被定义为如下：
 
@@ -2930,7 +2930,7 @@ scala\> model.approxNearestNeighbors(dfA, key, 2).show(false)
 
 代码 4‑66
 
-#### MinHash的Jaccard距离
+#### 8.6.2.2 MinHash的Jaccard距离
 
 MinHash是局部敏感哈希家族Jaccard距离，这里输入的特征是自然数集。两组集合的Jaccard距离由它的交叉和联合的基数定义：
 
@@ -3081,7 +3081,7 @@ scala\> model.approxNearestNeighbors(dfA, key, 2).show(false)
 
 代码 4‑68
 
-## 小结
+## 8.7 小结
 
 在本章中，学习到了Apache Spark
 MLlib中用于完成特征工程的工具集。根据具体问题，执行特征选择有很多不同的选项。如TF-IDF，Word

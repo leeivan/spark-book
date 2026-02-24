@@ -1,12 +1,12 @@
 # Spark应用程序
 
 
-## 本章先看懂什么
+## 10.1 本章先看懂什么
 - 一个 Spark 应用从开发到上线的完整链路。
 - 打包、提交、依赖管理和配置的关键点。
 - 本地模式与集群模式的差异。
 
-## 一个最小例子
+## 10.2 一个最小例子
 需求：每天凌晨跑一次离线任务。
 1. 用 `sbt/maven` 打包 fat jar。
 2. 用 `spark-submit` 指定主类与参数。
@@ -23,7 +23,7 @@ Hadoop集群上进行通用数据处理的后继者。与MapReduce应用程序�
 
 在MapReduce中，最高级别的计算单位是Job，用来加载数据、应用Map函数、Shuffle、应用Reduce函数，并将数据写回持久存储。在Spark中，最高级别的计算单位是应用程序。Spark应用程序有多种方式，其中包括可用于单个批处理作业，具有多个作业的交互式会话或持续满足请求的长期服务。Spark作业可以包含多个Map和Reduce。本章将学习怎样构建和部署单个批处理作业的独立应用程序。
 
-## SparkContext与SparkSession
+## 10.3 SparkContext与SparkSession
 
 在Spark 4.x中，应用程序应优先以SparkSession作为统一入口。SparkSession封装了创建与访问SQL、DataFrame/Dataset、Structured Streaming所需的核心上下文，能够显著简化工程代码结构。
 
@@ -339,7 +339,7 @@ val dfReader: DataFrameReader = spark.read
 
 停止SparkSession 。
 
-## 构建应用
+## 10.4 构建应用
 
 假设希望使用Spark API编写一个独立的应用程序，将在Scala中运行一个简单的应用程序，代码如下：
 
@@ -413,9 +413,9 @@ SBT的发展可以分为两个阶段，即SBT\_0.7.x时代以及SBT\_0.10.x以�
 Ivy内部管理库依赖性，如果正在编写一个纯Scala
 Spark应用程序，或者具有Java和Scala代码的混合代码库，则最有可能从采用SBT中获益。
 
-### sbt
+### 10.4.1 sbt
 
-#### 项目结构
+#### 10.4.1.1 项目结构
 
 如果使用sbt 0.13.13或更高版本，则可以使用sbt new命令快速设置简单的Hello World构建，键入以下命令到终端。
 
@@ -602,7 +602,7 @@ spark.stop()
 
 代码 4.13 Scala
 
-#### 编译集成
+#### 10.4.1.2 编译集成
 
 对于底层的实现，SBT使用Apache
 Ivy从Maven2存储库下载依赖关系。可以在build.sbt文件中定义的依赖关系，格式为groupID
@@ -693,7 +693,7 @@ target/scala-2.13/buildingsbt\_2.13-1.0.jar
 
 作为最佳做法，应确保依赖库不是同时即在lib目录中保存，也在build.sbt中定义。如果指定受管理的依赖项，并且还在lib目录中有本地副本，则如果依赖库的版本不同步，则可能会浪费时间排除这个小故障。还应该查看Spark自己的集成jar，当运行spark-submit时，它将隐含在类路径中。如果需要的应用依赖库已经是Spark的核心依赖库，在应用jar中包括应用依赖库的副本可能会导致版本冲突。
 
-#### 创建jar
+#### 10.4.1.3 创建jar
 
 随着库依赖性的增加，将所有这些文件发送到Spark集群中的每个节点的网络开销也会增加。官方的Spark文档建议创建一个特殊的jar文件，其中包含应用程序及其所有依赖项，称为装配jar
 （或“uber”jar）以减少网络负载。装配jar包含被组合和扁平化的一组类和资源文件。使用sbt-assembly插件生成装配jar。这个插件已经在的示例项目中，如project/assembly.sbt文件所示：
@@ -800,7 +800,7 @@ target/scala-2.13/BuildingSBT-assembly-1.0.jar
 
 命令 4.11提交scala程序
 
-## 部署应用
+## 10.5 部署应用
 
 Spark程序bin目录中的spark-submit脚本用于在集群上启动应用程序。它可以通过统一的界面，使用所有Spark支持的集群管理器。因此不必为每个应用程序专门配置应用程序。如果开发的代码依赖于其他项目，则需要将它们与应用程序一起打包，才能将代码分发到Spark群集。为此，需要创建一个包含代码及其依赖关系的装配jar或uber-jar。一个uber-jar也是一个jar文件，不仅包含一个Java程序，还嵌入了它的依赖关系。这意味着jar作为软件的一体化分发，不需要任何其他Java代码。优点在于可以分发的uber-jar，并不关心任何依赖关系是否安装在目标位置，因为的uber-jar实际上没有依赖关系。
 
@@ -943,7 +943,7 @@ local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \\
 
 命令 4.19
 
-### Spark 4.1.1 Structured Streaming 提交模板（Kafka + Kubernetes）
+### 10.5.1 Spark 4.1.1 Structured Streaming 提交模板（Kafka + Kubernetes）
 
 下面给出一个可直接改值运行的最小模板，适用于Spark 4.1.1在Kubernetes上的结构化流任务提交：
 
@@ -1018,7 +1018,7 @@ Standalone，可以使用spark.worker.cleanup.appDataTtl属性配置自动清理
 
 用户可能还包括任何其他依赖关系通过使用—packages参数，其中提供逗号分隔的Maven坐标列表。使用此命令时将处理所有传递依赖关系，搜索当地的maven资源库，然后搜索maven中心和由--repositories提供的任何其他远程存储库。坐标的格式应为groupId:artifactId:version。这些参数可以与pyspark、spark-shell和spark-submit一起使用。对于Python，等效的--py-files选项可用于将.egg、.zip和.py库分发到执行器上。
 
-### 集群架构
+### 10.5.2 集群架构
 
 Spark应用程序作为独立的集群进程运行，由称为驱动程序（Driver
 Program）中的SparkContext对象协调。具体来说，要在集群上运行，SparkContext可以连接到几种类型的集群管理器，它们跨应用程序分配资源。一旦连接，Spark将在集群中的节点上获取执行器（Executor），这些进程可以为应用程序运行计算和存储数据。接下来，Spark将由jar或Python文件定义应用程序代码（被传递给SparkContext）发送给执行器。最后，SparkContext将任务发送给执行器运行。
@@ -1042,7 +1042,7 @@ Spark与底层群集管理器无关，只要可以获取执行器进程，并且
 
 因为驱动程序调度集群上的任务，所以它应该靠近工作节点运行，最好在相同的局域网上运行。如果要远程发送求到集群，最好是向驱动程序打开一个RPC，并从附近提交操作，而不是从远离工作节点运行驱动程序。
 
-#### 驱动程序
+#### 10.5.2.1 驱动程序
 
 Spark驱动程序（也称为应用程序的驱动程序进程）是为Spark应用程序承载SparkContext的JVM进程。它是Spark应用程序中的主节点。它是作业和任务执行的驾驶舱（使用DAGScheduler和任务计划程序）。它承载环境的Web
 UI。
@@ -1065,7 +1065,7 @@ UI。
 
 Spark shell是一个Spark应用程序和驱动程序，创建一个可用作为sc的SparkContext。
 
-#### 执行器
+#### 10.5.2.2 执行器
 
 工作节点也称从节点，是正在运行Spark实例，其中执行器（Executor）执行任务。它们是Spark中的计算节点。工作节点接收在线程池中运行的序列化任务，托管一个BlockManager可以向Spark群集中的其他工作节点提供块。工作节点之间使用其块管理器实例进行通信。BlockManager是Spark中数据块（简单的块）的键值存储。BlockManager充当在Spark应用程序中的每个节点上运行的本地缓存，即驱动程序和执行程序（并在创建SparkEnv时创建）
 
@@ -1079,7 +1079,7 @@ Spark shell是一个Spark应用程序和驱动程序，创建一个可用作为s
 
 （4）与存储系统交互。
 
-### 集群管理
+### 10.5.3 集群管理
 
 集群管理器（Cluster
 Manager）是一个外部服务负责获取Spark集群上的资源并将其分配给Spark的作业（Job）。有3种不同类型的集群管理器，Spark应用程序可以利用其进行各种物理资源的分配和释放，例如Spark作业的内存、CPU内存等。Hadoop
@@ -1096,7 +1096,7 @@ YARN、Kubernetes或Standalone集群管理器可以在内部或云端启动一�
 （4）Kubernetes：Spark 4.x 中 Kubernetes 已是主流部署选项之一。Kubernetes 是提供以容器为中心基础设施的开源平台，相关文档可参考官方
 Github组织中积极开发。有关文档，参阅该项目的README。
 
-#### Standalone
+#### 10.5.3.1 Standalone
 
 要安装Spark
 Standalone模式，只需将Spark的编译版本放在群集上的每个节点上即可。可以使用每个版本获取Spark的预构建版本，也可以自行构建。
@@ -1234,7 +1234,7 @@ UI，可以在配置文件或命令行选项中更改端口。此外，每个作
 Namenode的Web
 UI上找到正确的URL，或者可以为Spark设置单独的群集，并且仍然可以通过网络访问HDFS；这将比磁盘本地访问速度慢，但是如果仍然在同一局域网中运行可能不会产生网络通讯的问题，例如将Hadoop上的每个机架上放置一些Spark机器。
 
-#### YARN
+#### 10.5.3.2 YARN
 
 Apache Hadoop YARN是一种新的 Hadoop
 资源管理器，可为上层应用提供统一的资源管理和调度，它的引入为集群在利用率、资源统一管理和数据共享等方面带来了巨大好处。支持在YARN（Hadoop
@@ -1319,7 +1319,7 @@ app\_arg1 app\_arg2
 
 命令 4.28
 
-#### Kubernetes
+#### 10.5.3.3 Kubernetes
 
 在 Spark 4.x 中，生产环境推荐优先使用 Standalone、YARN 或 Kubernetes。Mesos 相关集成在新版本已不再作为主流选项，本节统一使用 Kubernetes 作为容器化部署范式。
 
@@ -1349,7 +1349,7 @@ Kubernetes 模式下，`spark-submit` 通过 `k8s://` 连接 API Server，驱动
 （5）存储与数据访问：对象存储或 HDFS 凭据通过 Secret/ConfigMap 注入，避免明文配置。
 
 当你需要跨环境一致交付（开发、测试、生产）时，Kubernetes 能显著降低运行时差异，通常是 Spark 4.x 的首选部署平台之一。
-## 小结
+## 10.6 小结
 
 本章讲述如何设置一个完整的开发环境来开发和调试Spark应用程序。本章使用Scala作为开发语言，sbt作为构建工具，讲述如何使用管理依赖项、如何打包和部署Spark应用程序。另外还介绍了Spark应用程序的几种部署模式。
 
