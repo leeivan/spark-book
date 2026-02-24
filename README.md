@@ -1,5 +1,9 @@
 # Spark Book 章节导航
 
+<p align="center">
+  <img src="assets/cover.png" alt="Spark 大数据处理与分析" width="420" />
+</p>
+
 - [00 概览](md/00_overview.md)
 - [00 前言](md/00_preface.md)
 - [01 Spark 生态](md/01_spark_ecosystem.md)
