@@ -3,8 +3,8 @@
 
 ## 6.1 本章先看懂什么
 - 图的基本元素：顶点、边、属性。
-- GraphX 的常见操作：子图、聚合、消息传递。
-- 哪些业务适合图计算（关系链路、推荐、风险传播）。
+- Spark 中图计算的适用场景，以及 GraphX 的定位。
+- PageRank、子图、聚合、消息传递等核心思路。
 
 ## 6.2 一个最小例子
 需求：找出社交网络中的高影响力用户。
@@ -17,26 +17,32 @@
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
 > 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
-Spark
-GraphX是一个分布式图处理框架，是基于Spark平台提供对图计算和图挖掘简洁易用的而丰富的接口，极大的方便了对分布式图处理的需求。众所周知，社交网络中人与人之间有很多关系链，例如Twitter、Facebook、微博和微信等，这些都是大数据产生的地方都需要图计算，现在的图处理基本都是分布式的图处理，而并非单机处理。Spark
-GraphX由于底层是基于Spark来处理的，所以自然就是一个分布式的图处理系统。
+
+在 Spark 4.x 中，图计算属于专题能力，而不是大多数项目的默认主线。很多“关系分析”任务先用 DataFrame/SQL、自连接、聚合和窗口函数就能解决；只有在需要 PageRank、Connected Components、标签传播、Pregel 式消息传递等迭代图算法时，才值得引入专门的图计算模型。
+
+Spark 原生提供的图计算能力主要是 GraphX。它仍然有学习和维护价值，尤其适合理解属性图、图并行模型以及 Scala 生态中的原生图算法实现；但在本书中，它的角色更接近“Spark 原生图计算专题”，而不是通用数据处理项目的默认入口。
+
+阅读本章时，可以按下面顺序推进：
+
+1. 先理解图的概念，以及图并行系统为什么会出现。
+2. 再理解 GraphX 的属性图模型、基础运算符和 Pregel 风格消息传递。
+3. 最后结合业务场景判断：什么时候应当使用 GraphX，什么时候只需要 DataFrame/SQL 即可。
 
 ## 6.3 理解图的概念
 
-图论算法在计算机科学中扮演着很重要的角色，它提供了对很多问题都有效的一种简单而系统的建模方式。很多问题都可以转化为图论问题，然后用图论的基本算法加以解决。遗传算法是解优化问题的有效算法，而并行遗传算法是遗传算法研究中的一个重要方向，受到了研究人员的高度重视。图论算法主要研究对象就是图（Graph），是数据结构和算法学中最强大的框架之一，几乎可以用来表现所有类型的结构或系统，从交通网络到通信网络，从下棋游戏到最优流程，从任务分配到人际交互网络，图都有广阔的用武之地。而要进入图论的世界，清晰、准确的基本概念是必须的前提和基础，下面对其最核心和最重要的概念作出说明。
+图是一种非常通用的关系建模方式。只要问题同时包含“对象”和“对象之间的关系”，就可以考虑用图来表达。从交通网络、社交关系、推荐链路到风险传播，很多问题都可以转化为图论问题，再借助相应算法求解。因此，在进入 GraphX 之前，先把图的基本概念讲清楚是必要的。
 
 图并不是指图形图像或地图，而是代表一种复杂的网络数据结构。通常来说，我们会把图视为一种由点（Vertex）组成的抽象网络，网络中的各点可以通过边（Edge）实现彼此的连接，表示两点有关联，注意上面图定义中的两个关键字，由此得到两个最基本的概念，点和边。另外，图也是一种复杂的非线性结构，在图结构中每个元素都可以有零个或多个前驱元素，也可以有零个或多个后继元素，也就是说元素之间的关系是任意的。从数学概念上讲，图是由点的有穷非空集合和点之间边的集合组成，通常表示为\(G(V,E)\)，其中\(G\)表示一个图，\(V\)是图\(G\)中点的集合，\(E\)是图\(G\)中边的集合。
 
 ![](media/06_graph_processing/media/image1.jpeg)
 
-图例 4‑1图的基本组成
+图例 6‑1图的基本组成
 
-一个图\(G\)由两类元素构成，分别称为点（或节点、结点）和边，每条边有两个点作为其端点，我们称这条边连接了它的两个端点，因此边可定义为由两个点构成的集合，在有向图中为有序对，边是有方向的。一个点一般表示为一个点或小圆圈。一个图\(G\)的点集合一般记作\(V(G)\)，当不发生混淆时可简记为\(V\)。图\(G\)的阶为其点数目，亦即|\(V(G)\)|。一条边一般表示为连接其两个端点的曲线。以两个点\(u\)、\(v\)为端点的边一般记作\((u,v)\)、\(\{ u,v\}\)或\(\text{uv}\)，一条边连接两个点\(u\)和\(v\)时，则称\(u\)与\(v\)相邻。图\(G\)的边集一般记作\(E(G)\)，当不发生混淆时可简记为\(E\)，如图例
-4‑2所示，点集\(V = \left\{ 1,\ 2,\ 3,\ 4,\ 5,\ 6 \right\}\)，边集\(E = \ \{\{ 1,2\},\ \{ 1,5\},\ \{ 2,3\},\ \{ 2,5\},\ \{ 3,4\},\ \{ 4,5\},\ \{ 4,6\}\}\)。
+一个图\(G\)由两类元素构成，分别称为点（或节点、结点）和边，每条边有两个点作为其端点，我们称这条边连接了它的两个端点，因此边可定义为由两个点构成的集合，在有向图中为有序对，边是有方向的。一个点一般表示为一个点或小圆圈。一个图\(G\)的点集合一般记作\(V(G)\)，当不发生混淆时可简记为\(V\)。图\(G\)的阶为其点数目，亦即|\(V(G)\)|。一条边一般表示为连接其两个端点的曲线。以两个点\(u\)、\(v\)为端点的边一般记作\((u,v)\)、\(\{ u,v\}\)或\(\text{uv}\)，一条边连接两个点\(u\)和\(v\)时，则称\(u\)与\(v\)相邻。图\(G\)的边集一般记作\(E(G)\)，当不发生混淆时可简记为\(E\)，如图例 6‑2所示，点集\(V = \left\{ 1,\ 2,\ 3,\ 4,\ 5,\ 6 \right\}\)，边集\(E = \ \{\{ 1,2\},\ \{ 1,5\},\ \{ 2,3\},\ \{ 2,5\},\ \{ 3,4\},\ \{ 4,5\},\ \{ 4,6\}\}\)。
 
 ![https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/6n-graf.svg/333px-6n-graf.svg.png](media/06_graph_processing/media/image2.png)
 
-图例 4‑2点集和边集
+图例 6‑2点集和边集
 
 若两个点之间有一条边，则这两个点相邻。关联一个点\(v\)边的条数称为是\(点v\)的度数或价。距离是两个点之间经过最短路径的边的数目，通常用\(d_{G}(u,v)\)表示。点\(v\)的偏心率用来表示连接图\(G\)中的点
 \(v\)到图\(G\)中其它点之间的最大距离，用符号\(\epsilon_{G}(v)\)表示。图的直径，表示取遍图的所有点，得到的偏心率的最大值，记作
@@ -45,8 +51,7 @@ GraphX由于底层是基于Spark来处理的，所以自然就是一个分布式
 正则图是指各点的度均相同的无向简单图。在图论中，正则图中每个点具有相同数量的邻点；
 即每个点具有相同的度或价态。正则的有向图也必须满足更多的条件，即每个点的内外自由度都要彼此相等。具有\(k\)个自由度的点的正则图被称为\(k\)度的\(k\)-正则图。此外，奇数程度的正则图形将包含偶数个点。最多2个等级的正则图很容易分类：0-正则图由断开的点组成，1-正则图由断开的边缘组成，2-正则图由断开的循环和无限链组成，3-正则图被称为立方图。强规则图也是常规图，其中每个相邻的点对具有相同数量的相邻的相邻数目，并且每个不相邻的点对具有相同数量的n个相邻的相邻公共点。常规但不太规则的最小图是循环图和6个点的循环图。
 
-为了更好地理解图的概念，让我们看一下通常使用社交软件的方式，每天都可以使用智能手机在朋友圈中张贴消息或更新状态，我们的朋友也可以发布了自己的消息，照片和视频。我们有朋友，朋友还会有朋友等等，社交软件的设置可让我们结交新朋友或从朋友列表中删除朋友。社交软件还具有权限设置的功能，可以对谁看到什么以及可以与谁进行通信进行精细控制。当考虑社交软件平台具有有十亿个用户时，管理所有用户以及用户之间的关系和权限变得非常庞大和复杂。我们需要建立有关用户和关系数据的存储和检索，以便允许回答这样的问题，例如：X是Y的朋友吗？X和Y是直接关联还是在两个步之内的间接关联？X有多少个朋友？我们可以从尝试从一个简单的数据结构开始，使每个人都有一个朋友数组，因此可以很容易就用数组的长度来回答第三个问题，也可以只扫描数组并快速回答第一个问题，而第二个问题将需要做更多的工作。如下面的示例所示，我们通过使用专门的数据结构来解决该问题，在代码
-4‑1中我们创建了一个案例类Person，然后添加朋友来建立John、Ken、Mary、Dan用户之间的关系：
+为了更好地理解图的概念，让我们看一下通常使用社交软件的方式，每天都可以使用智能手机在朋友圈中张贴消息或更新状态，我们的朋友也可以发布了自己的消息，照片和视频。我们有朋友，朋友还会有朋友等等，社交软件的设置可让我们结交新朋友或从朋友列表中删除朋友。社交软件还具有权限设置的功能，可以对谁看到什么以及可以与谁进行通信进行精细控制。当考虑社交软件平台具有有十亿个用户时，管理所有用户以及用户之间的关系和权限变得非常庞大和复杂。我们需要建立有关用户和关系数据的存储和检索，以便允许回答这样的问题，例如：X是Y的朋友吗？X和Y是直接关联还是在两个步之内的间接关联？X有多少个朋友？我们可以从尝试从一个简单的数据结构开始，使每个人都有一个朋友数组，因此可以很容易就用数组的长度来回答第三个问题，也可以只扫描数组并快速回答第一个问题，而第二个问题将需要做更多的工作。如下面的示例所示，我们通过使用专门的数据结构来解决该问题，在代码 6‑1中我们创建了一个案例类Person，然后添加朋友来建立John、Ken、Mary、Dan用户之间的关系：
 
 ```scala
 scala> :paste
@@ -100,14 +105,13 @@ scala> john.isConnectedWithin2Steps(dan)
 res12: Boolean = false
 ```
 
-代码 4‑1
+代码 6‑1
 
-如果我们为所有用户构建Person()实例并将朋友添加到数组中，如前面的代码所示，我们将能够对谁是朋友以及两者之间的关系进行很多查询。图例
-4‑3显示了Person()实例的数据结构以及它们在逻辑上的相互关系：
+如果我们为所有用户构建Person()实例并将朋友添加到数组中，如前面的代码所示，我们将能够对谁是朋友以及两者之间的关系进行很多查询。图例 6‑3显示了Person()实例的数据结构以及它们在逻辑上的相互关系：
 
 ![](media/06_graph_processing/media/image3.png)
 
-图例 4‑3 用户关系图
+图例 6‑3 用户关系图
 
 如果我们可以使用这个图查找John的朋友，可以快速找出直接朋友（边为1），间接朋友（边为2）和朋友朋友的朋友（边为3）。我们可以轻松扩展Person()类并提供越来越多的功能来回答不同的问题。我们通过该图显示了人和人之间的朋友关系，以及如何在人与人之间的关系网格中吸引每个人的所有朋友。
 
@@ -118,6 +122,8 @@ Squares，ALS），最大切割-最小流量算法（Max-Cut
 Min-Flow）等，适用于广泛的用例，例如社交媒体软件的用户关系、网路搜索引擎的页面排名、航班时刻表、GPS导航等，其中我们可以清楚地看到基于点和边的数据结构，可以使用各种图算法进行分析，以产生不同的业务用例。
 
 ## 6.4 图并行系统
+
+并不是所有带有关系的数据都必须进入图计算框架。如果任务只是一次性关联查询、统计分析或报表生成，DataFrame/SQL 往往更直接；图并行系统真正擅长的是大规模、迭代式图算法，例如 PageRank、社区发现、标签传播、最短路径等。本节的目标，就是说明这类系统为什么会出现，以及 GraphX 在其中扮演什么角色。
 
 传统的数据分析方法侧重于事物本身，即实体，例如银行交易、资产注册等等。而图数据不仅关注事物，还关注事物之间的联系。例如，如果在通话记录中发现张三曾打电话给李四，就可以将张三和李四关联起来，这种关联关系提供了与两者相关的有价值的信息，这样的信息是不可能仅从两者单纯的个体数据中获取的。从社交网络到语言建模，以图为结构的数据规模和重要性日益增长，推动了许多新的图并行系统的发展。在社交网络及商品推荐场景中，对象和数据往往以图的形式展现出来，图计算系统在机器学习和数据挖掘中的重要性越来越凸显出来。随着计算规模和应用场景的增加，大量的图计算框架不断出现，例如Google
 Pregel、Spark GraphX和GraphLab等图并行系统。
@@ -133,27 +139,24 @@ Scatter）模型就被提出来解决这个难题。GAS模型主要分为3个阶
 Pregel框架由谷歌提出，用于解决机器学习的数据同步和算法迭代，是基于BSP（Bulk Synchronous message
 Passing）思想的图并行计算框架，它以点为中心，不断在点上进行算法迭代和数据同步。在Pregel计算模型中，输入数据是一个有向图，该有向图的每一个点包含点ID和属性值，这些属性可以被修改，其初始值由用户定义。有向边记录了源点和目的点的ID，并且也拥有用户定义的属性值。Pregel以点为中心，对边进行切割，将图数据分成若干个分区。每一个分区包含一组点以及由这组点为源点构成的边。
 
-GraphLab由CMU的Select实验室提出，它是一个异步分布式共享存储模型。在GraphLab模型中，运行在点上的用户自定义程序可以对图中的点和边数据进行共享访问。程序可以访问当前作用的点、点相连接的边（包括入边和出边），以及相邻的点。GraphLab在进行图运算时，点是其最小的并行粒度和通信粒度，某个点可能被部署到多台机器上，其中一台机器上的为主点，其余机器上的为镜像点，与主点的数据保持同步。对边而言，GraphLab将其部署在某一台机器上，当图比较密，即边的数目较大时，可以减少边数据的存储量。GraphLab（图例
-4‑4）通过限制可表达的计算类型和引入新技术来划分图进行并行分布，可以比一般的数据并行系统更高效地执行复杂的图算法。
+GraphLab由CMU的Select实验室提出，它是一个异步分布式共享存储模型。在GraphLab模型中，运行在点上的用户自定义程序可以对图中的点和边数据进行共享访问。程序可以访问当前作用的点、点相连接的边（包括入边和出边），以及相邻的点。GraphLab在进行图运算时，点是其最小的并行粒度和通信粒度，某个点可能被部署到多台机器上，其中一台机器上的为主点，其余机器上的为镜像点，与主点的数据保持同步。对边而言，GraphLab将其部署在某一台机器上，当图比较密，即边的数目较大时，可以减少边数据的存储量。GraphLab（图例 6‑4）通过限制可表达的计算类型和引入新技术来划分图进行并行分布，可以比一般的数据并行系统更高效地执行复杂的图算法。
 
 ![Data-Parallel vs.
 Graph-Parallel](media/06_graph_processing/media/image4.jpeg)
 
-图例 4‑4 图并行系统
+图例 6‑4 图并行系统
 
-为了使图并行系统实现显着性能提高，需要对其表达能力产生了限制，但是限制了它们在典型的图数据分析管道中表达许多重要阶段的能力。此外，虽然图并行系统针对像页面排名这样的迭代扩散算法进行了优化，但它们并不适用于构建图数据结构，这种结构需要随时大规模的更新或者跨越多个图进行计算等更基本的操作。而且，Hadoop的任务通常需要数据在图结构系统之外的移动，并且通常更自然地表达为在传统的数据并行系统中的表操作，例如MapReduce的并行数据处理。此外，我们如何看待数据取决于要实现的目标，并且在整个分析过程中相同的原始数据可能需要许多不同的表格和图表视图（图例
-4‑5）：
+为了使图并行系统实现显着性能提高，需要对其表达能力产生了限制，但是限制了它们在典型的图数据分析管道中表达许多重要阶段的能力。此外，虽然图并行系统针对像页面排名这样的迭代扩散算法进行了优化，但它们并不适用于构建图数据结构，这种结构需要随时大规模的更新或者跨越多个图进行计算等更基本的操作。而且，Hadoop的任务通常需要数据在图结构系统之外的移动，并且通常更自然地表达为在传统的数据并行系统中的表操作，例如MapReduce的并行数据处理。此外，我们如何看待数据取决于要实现的目标，并且在整个分析过程中相同的原始数据可能需要许多不同的表格和图表视图（图例 6‑5）：
 
 ![Tables and Graphs](media/06_graph_processing/media/image5.jpeg)
 
-图例 4‑5 图的分析过程
+图例 6‑5 图的分析过程
 
-GraphLab通常需要能够在相同物理数据的表格和图表视图之间移动，并利用每个视图的属性来轻松高效地表达计算。但是，现有GraphLab图形分析管道组成图并行处理和数据并行系统，导致大量的数据移动和重复，导致了复杂的编程模型（图例
-4‑6）。
+GraphLab通常需要能够在相同物理数据的表格和图表视图之间移动，并利用每个视图的属性来轻松高效地表达计算。但是，现有GraphLab图形分析管道组成图并行处理和数据并行系统，导致大量的数据移动和重复，导致了复杂的编程模型（图例 6‑6）。
 
 ![Graph Analytics Pipeline](media/06_graph_processing/media/image6.jpeg)
 
-图例 4‑6 图的分析管道
+图例 6‑6 图的分析管道
 
 GraphX是构建于Spark上的图计算模型，GraphX利用Spark框架提供的内存缓存RDD、DAG和基于数据依赖的容错等特性，实现高效健壮的图计算框架。GraphX同样基于GAS模型，该模型将点分配给集群中各个节点进行存储，增大并行度，并解决真实情况下常会遇到的高出度点的情况，GraphX模型也是以边为中心，对点进行切割的。
 
@@ -168,7 +171,7 @@ scala> import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD
 ```
 
-代码 4‑2
+代码 6‑2
 
 SparkContext可以作为Spark程序的主要入口点，是在Spark
 交互界面中自动创建的，还提供了有用的方法来通过集合创建RDD，或将本地或Hadoop文件系统中的数据加载到RDD中并将输出数据保存在磁盘上。在此示例中，我们将使用两个CSV文件people.csv和links.csv，包含在目录/data中，键入以下命令以将这些文件加载到Spark中：
@@ -182,7 +185,7 @@ links: org.apache.spark.rdd.RDD[String] = /data/links.csv
 MapPartitionsRDD[3] at textFile at <console>:28
 ```
 
-代码 4‑3
+代码 6‑3
 
 加载CSV文件得到两个字符串的RDD，要创建图还需要将这些字符串解析为点和边的集合。在继续之前，让我们介绍一些关键的定义和图的抽象概念。在Spark中，图的抽象概念是由属性图表示的，属性图是在每个点和边上附加有用户定义对象，这些对象的类描述了图的属性，属性图通过Graph类定义为：
 
@@ -194,7 +197,7 @@ val edges: EdgeRDD\[ED,VD\]
 
 }
 
-代码 4‑4
+代码 6‑4
 
 实际上，这是通过对Graph、VertexRDD和EdgeRDD类进行参数化来定义属性图，其中的VD和ED表示点或边的属性。此外，图的每个边定义为单向关系，但是任意一对点之间可以存在多个边。Graph类提供了获取方法来访问其点和边，它们被抽象为RDD的子类VertexRDD
 \[VD\]和EdgeRDD
@@ -209,7 +212,7 @@ scala> case class Person(name: String, age: Int)
 defined class Person
 ```
 
-代码 4‑5
+代码 6‑5
 
 （2）将两个CSV文件中的每一行，分别解析为Person和Edge类型的新对象，并结果集合定义为RDD \[(VertexId,
 Person)\]和RDD \[Edge \[String\]\]：
@@ -230,7 +233,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Connection]] =
 MapPartitionsRDD[7] at map at <console>:31
 ```
 
-代码 4‑6
+代码 6‑6
 
 在GraphX中，VertexId定义为Long类型。Edge中定义为：
 
@@ -247,7 +250,7 @@ tinySocial: org.apache.spark.graphx.Graph[Person,Connection] =
 <org.apache.spark.graphx.impl.GraphImpl@2dfc833b>
 ```
 
-代码 4‑7
+代码 6‑7
 
 关于此构造函数，有两点需要注意。前面我们说过图的成员点和边是VertexRDD
 \[VD\]和EdgeRDD\[ED，VD\]的实例，但是将RDD\[(VertexId,
@@ -271,7 +274,7 @@ Edge(3,2,boss), Edge(4,5,client), Edge(1,9,friend), Edge(6,7,cousin),
 Edge(7,9,coworker), Edge(8,9,father))
 ```
 
-代码 4‑8
+代码 6‑8
 
 现在，我们只想打印出tinySocial中特定的用户关系，需要定义一个关系列表profLinks：
 
@@ -282,7 +285,7 @@ profLinks: List[Connection] = List(coworker, boss, employee, client,
 supplier)
 ```
 
-代码 4‑9
+代码 6‑9
 
 我们可以通过filter()方法过滤出特定关系的边，然后遍历过滤后的边，提取相应点的名称，并打印起始点和目标点之间的连接，以下代码中实现了这种方法：
 
@@ -309,10 +312,9 @@ org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Connection]] =
 MapPartitionsRDD[38] at filter at <pastie>:35
 ```
 
-代码 4‑10
+代码 6‑10
 
-代码
-4‑10有两个问题。首先不是很简洁和富有表现力，其次for循环中的过滤操作效率不高，需要读取两遍图中数据。GraphX库提供了两种查看数据的方式：以图的方式或以表的方式，表中可以分别为边、点或三元组。对于每种方式，GraphX库都提供了一系列丰富的操作，并进行了优化。我们通常可以轻松地使用预定义的图操作或算法来处理图形，例如可以简化前面的代码并使之更高效，如下所示：
+代码 6‑10有两个问题。首先不是很简洁和富有表现力，其次for循环中的过滤操作效率不高，需要读取两遍图中数据。GraphX库提供了两种查看数据的方式：以图的方式或以表的方式，表中可以分别为边、点或三元组。对于每种方式，GraphX库都提供了一系列丰富的操作，并进行了优化。我们通常可以轻松地使用预定义的图操作或算法来处理图形，例如可以简化前面的代码并使之更高效，如下所示：
 
 ```scala
 scala> :paste
@@ -327,7 +329,7 @@ George is a coworker of Ivy
 Dave is a client of Eve
 ```
 
-代码 4‑11
+代码 6‑11
 
 我们仅使用subgraph()操作来过滤边，然后使用三元组视图同时访问边和点的属性，三元组运算符返回RDD为EdgeTriplet
 \[Person, Connection\]。请注意，EdgeTriplet只是一个别名，代表三元组((VertexId, Person),
@@ -350,7 +352,7 @@ import org.apache.spark.graphx.\_
 
 import org.apache.spark.rdd.RDD
 
-代码 4‑12
+代码 6‑12
 
 如果不使用Spark交互界面，还需要一个SparkContext。
 
@@ -372,7 +374,7 @@ VertexProperty
 
 var graph: Graph\[VertexProperty, String\] = null
 
-代码 4‑13
+代码 6‑13
 
 像RDD一样，属性图是不可变的、分布式的和容错的，通过生成新图来完成对图的值或结构的更改。请注意，原始图的重要部分（即未受影响的结构、属性和索引）在新图中重复使用，可降低此内在函数的数据结构成本。使用一系列点分割启发式方法，在执行器之间划分图结构，图的每个分区都可以在发生故障的情况下在不同的计算机上重新创建。逻辑上，属性图对应于一对带有类型的集合（vertices和edges），其中为每个点和边定义了属性，因此Graph类包含了访问点和边的成员：
 
@@ -384,7 +386,7 @@ val edges: EdgeRDD\[ED\]
 
 }
 
-代码 4‑14
+代码 6‑14
 
 类VertexRDD\[VD\]和EdgeRDD\[ED\]扩展和优化了RDD\[(VertexId,
 VD)\]和RDD\[Edge\[ED\]\]
@@ -392,15 +394,15 @@ VD)\]和RDD\[Edge\[ED\]\]
 
 ![性图](media/06_graph_processing/media/image7.jpeg)
 
-图例 4‑7 属性图的定义
+图例 6‑7 属性图的定义
 
 结果图将具有类型签名为：
 
 val userGraph: Graph\[(String, String), String\]
 
-代码 4‑15
+代码 6‑15
 
-有许多方法构建属性图，包括从原始文件、RDD、甚至合成生成器，最通用的方法是使用[Graph对象](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/api/scala/index.html&usg=ALkJrhidcKbBeXAVZTbwdX7KfoWhzqj2VQ#org.apache.spark.graphx.Graph$)，例如以下代码从RDD集合中构建一个图：
+有许多方法构建属性图，包括从原始文件、RDD、甚至合成生成器，最通用的方法是使用[Graph对象](https://spark.apache.org/docs/latest/api/scala/org/apache/spark/graphx/Graph$.html)，例如以下代码从RDD集合中构建一个图：
 
 val sc: SparkContext
 
@@ -429,7 +431,7 @@ val defaultUser = ("John Doe", "Missing")
 
 val graph = Graph(users, relationships, defaultUser)
 
-代码 4‑16
+代码 6‑16
 
 在上面的例子中使用了Edge案例类，具有srcId和dstId属性，分别对应与起始点和目标点的标识符，此外Edge案例类具有attr成员，存储边属性。可以分别使用graph.vertices和graph.edges成员将图解构为相应的点和边视图。
 
@@ -444,7 +446,7 @@ graph.vertices.filter { case (id, (name, pos)) =\> pos == "postdoc"
 
 graph.edges.filter(e =\> e.srcId \> e.dstId).count
 
-代码 4‑17
+代码 6‑17
 
 graph.vertices返回一个继承RDD\[(VertexId, (String,
 String))\]类的VertexRDD\[(String,
@@ -452,9 +454,9 @@ String)\]类，因此使用case表达式来解构元组，另一方面graph.edge
 
 graph.edges.filter { case Edge(src, dst, prop) =\> src \> dst }.count
 
-代码 4‑18
+代码 6‑18
 
-除了属性图的点和边视图之外，GraphX还公开了一个三元组视图。三元组视图逻辑上连接点和边属性，产生包含[EdgeTriplet](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/api/scala/index.html&usg=ALkJrhidcKbBeXAVZTbwdX7KfoWhzqj2VQ#org.apache.spark.graphx.EdgeTriplet)类实例的RDD\[EdgeTriplet\[VD,
+除了属性图的点和边视图之外，GraphX还公开了一个三元组视图。三元组视图逻辑上连接点和边属性，产生包含[EdgeTriplet](https://spark.apache.org/docs/latest/api/scala/org/apache/spark/graphx/EdgeTriplet.html)类实例的RDD\[EdgeTriplet\[VD,
 ED\]\]，此连接可以用以下SQL表达式表示：
 
 SELECT src.id, dst.id, src.attr, e.attr, dst.attr
@@ -463,15 +465,15 @@ FROM edges AS e LEFT JOIN vertices AS src, vertices AS dst
 
 ON e.srcId = src.Id AND e.dstId = dst.Id
 
-代码 4‑19
+代码 6‑19
 
 或图形为：
 
 ![缘三联](media/06_graph_processing/media/image8.jpeg)
 
-图例 ‑8 GraphX的三元组视图
+图例 6‑8 GraphX的三元组视图
 
-[EdgeTriplet](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/api/scala/index.html&usg=ALkJrhidcKbBeXAVZTbwdX7KfoWhzqj2VQ#org.apache.spark.graphx.EdgeTriplet)类通过分别添加包含起始和目标属性的srcAttr和dstAttr成员来扩展[Edge](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/api/scala/index.html&usg=ALkJrhidcKbBeXAVZTbwdX7KfoWhzqj2VQ#org.apache.spark.graphx.Edge)类。可以使用图的三元组视图来呈现描述用户之间关系的字符串集合。
+[EdgeTriplet](https://spark.apache.org/docs/latest/api/scala/org/apache/spark/graphx/EdgeTriplet.html)类通过分别添加包含起始和目标属性的srcAttr和dstAttr成员来扩展[Edge](https://spark.apache.org/docs/latest/api/scala/org/apache/spark/graphx/Edge.html)类。可以使用图的三元组视图来呈现描述用户之间关系的字符串集合。
 
 val graph: Graph\[(String, String), String\] // Constructed from above
 
@@ -486,12 +488,11 @@ triplet.dstAttr.\_1)
 
 facts.collect.foreach(println(\_))
 
-代码 4‑20
+代码 6‑20
 
 ### 6.6.2 构建器
 
-在GraphX中，有四个用于构建属性图的函数，每一个都要求应该以指定的方式构造数据。第一个是代码
-4‑7中已经看到的Graph工厂方法，在名为Graph的伴随对象的apply()方法中定义，如下所示：
+在GraphX中，有四个用于构建属性图的函数，每一个都要求应该以指定的方式构造数据。第一个是代码 6‑7中已经看到的Graph工厂方法，在名为Graph的伴随对象的apply()方法中定义，如下所示：
 
 def apply\[VD, ED\](
 
@@ -503,7 +504,7 @@ defaultVertexAttr: VD = null)
 
 : Graph\[VD, ED\]
 
-代码 4‑21
+代码 6‑21
 
 如我们之前所见，此函数采用两个RDD集合：RDD \[(VertexId, VD)\]和RDD \[Edge
 \[ED\]\]作为点和边的参数，并且构造了Graph
@@ -521,7 +522,7 @@ minEdgePartitions: Int = 1)
 
 : Graph\[Int, Int\]
 
-代码 4‑22
+代码 6‑22
 
 该函数以包含边列表的文件路径作为参数，其中每一行代表图的边，由两个整数的表示为：sourceID和destinationID。在阅读文件列表时，该函数将忽略以“＃”开头的任何注释行，然后根据指定的边以及相应的点构造一个图。minEdgePartitions参数指定要生成的最小边分区数，如果HDFS文件具有更多块则边分区可能比指定的更多。
 
@@ -536,7 +537,7 @@ defaultValue: VD)
 
 : Graph\[VD, ED\]
 
-代码 4‑23
+代码 6‑23
 
 最后一个图构建器函数是Graph.fromEdgeTuples，它仅从边元组的RDD创建图，形式为RDD \[(VertexId,
 VertexId)\]类型的集合。默认情况下，为边缘分配属性值1：
@@ -551,7 +552,7 @@ uniqueEdges: Option\[PartitionStrategy\] = None)
 
 : Graph\[VD, Int\]
 
-代码 4‑24
+代码 6‑24
 
 ### 6.6.3 创建图
 
@@ -569,7 +570,7 @@ emailGraph: org.apache.spark.graphx.Graph[Int,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@7d6c383d>
 ```
 
-代码 4‑25
+代码 6‑25
 
 请注意，GraphLoader.edgeListFile方法始终返回图对象，其点和边属性的类型为Int，的默认值为1，可以通过查看图表中的前五个点和边来进行检查：
 
@@ -582,7 +583,7 @@ res16: Array[org.apache.spark.graphx.Edge[Int]] = Array(Edge(0,1,1),
 Edge(1,0,1), Edge(1,2,1), Edge(1,3,1), Edge(1,4,1))
 ```
 
-代码 4‑26
+代码 6‑26
 
 第一个节点(19021,1)的点ID为19021，并且其属性确实设置为1，类似地第一个边Edge
 (0,1,1)表示起始点为0和目标点为1之间的通信，边具有方向。
@@ -595,7 +596,7 @@ res17: Array[org.apache.spark.graphx.VertexId] = Array(696, 4232,
 6811, 8315, 26007)
 ```
 
-代码 4‑27
+代码 6‑27
 
 事实证明，这些相同的节点也是19021的传入边的起始节点：
 
@@ -606,7 +607,7 @@ res18: Array[org.apache.spark.graphx.VertexId] = Array(696, 4232,
 6811, 8315, 26007)
 ```
 
-代码 4‑28
+代码 6‑28
 
 在某些应用程序中，将系统视图表示为二分图很有用，二分图由两组节点组成，同一组中的节点不能连接，只能连接属于不同组的节点。这种图的一个示例是食品成分与化合物网络。在这里我们将处理文件ingr\_info.tsv、comp\_info.tsv和ingr\_comp.tsv，这些文件位于/data文件夹中，前两个文件分别包含有关食品成分和化合物的信息。让我们使用scala.io.Source的Source.fromFile()方法快速查看这两个文件的第一行，对该方法的唯一要求是简单地检查文本文件的开头：
 
@@ -642,7 +643,7 @@ Source.fromFile("/data/ingr_comp.tsv").getLines().take(7).foreach(println)
 1005 906
 ```
 
-代码 4‑29
+代码 6‑29
 
 实际上，当前数据集没有以图构建器期望的形式出现。数据集有两个问题，首先不能简单地从邻接列表中创建图，因为成分和化合物的索引都从零开始并且彼此重叠，如果两个节点碰巧具有相同的点ID，则无法区分两个节点，其次有两种节点：成分和化合物。为了创建二分图，我们首先需要创建名为Ingredient和Compound的案例类，并使用Scala的继承，以便这两个类成为FNNode类的子级。
 
@@ -657,7 +658,7 @@ extends FNNode(name)
 defined class Compound
 ```
 
-代码 4‑30
+代码 6‑30
 
 之后，我们需要将所有Compound和Ingredients对象加载到RDD \[FNNode\]集合中，这部分需要一些数据处理：
 
@@ -678,10 +679,9 @@ org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId, FNNode)] =
 MapPartitionsRDD[3] at map at <pastie>:35
 ```
 
-代码 4‑31
+代码 6‑31
 
-在代码
-4‑31中，我们首先将comp\_info.tsv中的文本加载到RDD\[String\]中，并过滤掉以“＃”开头的注释行，然后我们将制表符分隔的行解析为RDD\[(VertexId,
+在代码 6‑31中，我们首先将comp\_info.tsv中的文本加载到RDD\[String\]中，并过滤掉以“＃”开头的注释行，然后我们将制表符分隔的行解析为RDD\[(VertexId,
 FNNode)\]类型的ingredients，然后对comp\_info.tsv实现相似的操作，并创建一个RDD\[(VertexId,
 FNNode)\]类型的compounds：
 
@@ -701,7 +701,7 @@ compounds: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
 FNNode)] = MapPartitionsRDD[7] at map at <pastie>:35
 ```
 
-代码 4‑32
+代码 6‑32
 
 由于每个节点的索引应该唯一，因此必须将compounds索引的范围移动10000L，以使没有索引同时指向一种成分和一种化合物。接下来，我们创建一个RDD
 \[Edge \[Int\]\] 集合，自名为ingr\_comp.tsv的数据集：
@@ -721,7 +721,7 @@ links: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
 MapPartitionsRDD[11] at map at <pastie>:32
 ```
 
-代码 4‑33
+代码 6‑33
 
 解析数据集中邻接列表的行时，要将化合物的索引移动10000L，因为我们事先从数据集描述中知道了数据集中有多少种成分和化合物。接下来，由于成分和化合物之间的链接不包含任何权重或有意义的属性，因此我们仅将Edge类的参数设置为Int类型，并将每个链接属性的默认值设置为1，最后将两组节点集合ingredients和compounds连接起来形成一个RDD，并将其与links一起传递给Graph()工厂方法：
 
@@ -734,7 +734,7 @@ foodNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@1435103b>
 ```
 
-代码 4‑34
+代码 6‑34
 
 让我们看一下成分与化合物图foodNetwork的内部数据：
 
@@ -753,10 +753,9 @@ The ingredient hyssop contains
 The ingredient buchu contains menthol
 ```
 
-代码 4‑35
+代码 6‑35
 
-首先，我们定义了一个名为showTriplet()的辅助函数，该函数返回成分与化合物三元组描述，然后我们取前五个三元组并将它们打印在控制台上。在代码
-4‑35中，我们使用了Scala的函数组合(showTriplet \_ andThen println
+首先，我们定义了一个名为showTriplet()的辅助函数，该函数返回成分与化合物三元组描述，然后我们取前五个三元组并将它们打印在控制台上。在代码 6‑35中，我们使用了Scala的函数组合(showTriplet \_ andThen println
 \_)，并将其传递给foreach()方法。
 
 作为最后一个例子，根据前面介绍的社交媒体数据集构建一个自我中心网络，这是个人联系的图表示。准确地说，自我中心网络集中于单个节点，仅表示该节点与其邻居之间的链接。我们仅以建立一个人的自我中心网络为例，使用的数据集文件放在/data中，它们的描述如下：
@@ -776,7 +775,7 @@ scala> import breeze.linalg.SparseVector
 import breeze.linalg.SparseVector
 ```
 
-代码 4‑36
+代码 6‑36
 
 然后，我们还为SparseVector \[Int\]定义一个名为Feature的类型同义词：
 
@@ -785,7 +784,7 @@ scala> type Feature = breeze.linalg.SparseVector[Int]
 defined type alias Feature
 ```
 
-代码 4‑37
+代码 6‑37
 
 使用以下代码，我们可以读取ego.feat文件中的特征并将其放入到键值对集合中，键和值分别为Long和Feature类型：
 
@@ -818,19 +817,19 @@ SparseVector(1319)((0,0), (1,1), (2,0), (3,0), (4,0), (5,0), (6,0),
 (88,0), (89,0), (90,0), (91,0), (92...
 ```
 
-代码 4‑38
+代码 6‑38
 
 让我们快速浏览ego.feat文件，以了解前面的RDD转换正在做什么以及为什么需要它。ego.feat中的每一行都具有以下形式：
 
 ![](media/06_graph_processing/media/image9.png)
 
-图例 4‑9
+图例 6‑9
 
 每行中的第一个数字对应于自我中心网络中的节点ID，其余的0和1数字表示此特定节点具有的特征，例如节点ID之后的第一个为性别特征，如果为1代表该节点具有此特征，如果为0则反之。实际上，每个特征都是由(description:value)形式设计的。我们需要进行一些数据整理，自我网络中的每个顶点都应具有Long类型的顶点ID，但是数据集中的节点ID超出了Long的允许范围，例如114985346359714431656，因此我们必须为节点创建新索引。其次，我们需要解析数据中的0和1字符串以创建具有更方便形式的特征向量。我们需要将节点ID相对应的字符串进行哈希处理，如下所示：
 
 val key = abs(row.head.hashCode.toLong)
 
-代码 4‑39
+代码 6‑39
 
 然后，我们利用Breeze库中的SparseVector来有效地存储特征索引。接下来，我们可以读取ego.edges文件，在自我中心网络中创建链接的集合RDD
 \[Edge
@@ -855,7 +854,7 @@ edges: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
 MapPartitionsRDD[32] at map at <pastie>:36
 ```
 
-代码 4‑40
+代码 6‑40
 
 最后，我们现在可以使用Graph.fromEdges()函数创建一个自我中心网络，此函数将RDD \[Edge
 \[Int\]\]集合和点的默认值作为参数：
@@ -866,7 +865,7 @@ egoNetwork: org.apache.spark.graphx.Graph[Int,Int] =
 org.apache.spark.graphx.impl.GraphImpl@659d6f74
 ```
 
-代码 4‑41
+代码 6‑41
 
 然后，我们可以检查自我中心网络中具有共同特征的链接数量：
 
@@ -879,7 +878,7 @@ scala> egoNetwork.edges.filter(_.attr == 1).count()
 res4: Long = 107934
 ```
 
-代码 4‑42
+代码 6‑42
 
 ### 6.6.4 探索图
 
@@ -892,7 +891,7 @@ scala> emailGraph.numVertices
 res16: Long = 36692
 ```
 
-代码 4‑43
+代码 6‑43
 
 实际上，在此示例中员工的入度和出度完全相同，因为电子邮件网络图是双向的，可以通过查看平均度来确认：
 
@@ -903,7 +902,7 @@ scala> emailGraph.outDegrees.map(_._2).sum / emailGraph.numVertices
 res18: Double = 10.020222391802028
 ```
 
-代码 4‑44
+代码 6‑44
 
 如果我们想找到发送电子邮件给最多人的人，则可以定义并使用以下max函数：
 
@@ -919,7 +918,7 @@ max: (a: (org.apache.spark.graphx.VertexId, Int), b:
 Int))(org.apache.spark.graphx.VertexId, Int)
 ```
 
-代码 4‑45
+代码 6‑45
 
 让我们看一下输出：
 
@@ -928,7 +927,7 @@ scala> emailGraph.outDegrees.reduce(max)
 res19: (org.apache.spark.graphx.VertexId, Int) = (5038,1383)
 ```
 
-代码 4‑46
+代码 6‑46
 
 此人可以是管理员工或普通员工，其已经充当了组织的枢纽。同样，我们可以定义一个min函数来查找人。现在，让我们使用以下代码检查电邮通讯网络中是否有一些孤立的员工组：
 
@@ -937,7 +936,7 @@ scala> emailGraph.outDegrees.filter(_._2 <= 1).count
 res20: Long = 11211
 ```
 
-代码 4‑47
+代码 6‑47
 
 似乎有很多员工仅从一位员工（也许是老板或人力资源部门）接收电子邮件。对于二分图成分与化合物，我们还可以研究哪种食物中化合物的数量最多，或者哪种化合物在我们的成分列表中最普遍：
 
@@ -954,7 +953,7 @@ res24: Array[(org.apache.spark.graphx.VertexId, FNNode)] =
 Array((10292,Compound(1-octanol,111-87-5)))
 ```
 
-代码 4‑48
+代码 6‑48
 
 前面两个问题的答案就是红茶（black\_tea）和化合物1-辛醇（1-octanol）。同样，我们可以计算自我网络中的连接度，让我们看一下网络中的最大和最小度：
 
@@ -974,7 +973,7 @@ scala> egoNetwork.degrees.reduce(min)
 res26: (org.apache.spark.graphx.VertexId, Int) = (687907923,1)
 ```
 
-代码 4‑49
+代码 6‑49
 
 假设我们现在要获得度的直方图数据，然后我们可以编写以下代码来做到这一点：
 
@@ -995,11 +994,11 @@ res27: Array[(Int, Int)] = Array((1,15), (2,19), (3,12), (4,17),
 (93,7), (94,4), (95,6)...
 ```
 
-代码 4‑50
+代码 6‑50
 
 ## 6.7 图运算符
 
-GraphX将图计算和数据计算集成到一个系统中，数据不仅可以被当作图来进行操作，同样也可以被当作表进行操作。它支持大量图计算的基本操作，如subgraph()、mapReduceTriplets()等操作，也支持数据并行计算的基本操作，如map()、reduce()、filter()、join()等。通过对上述这些操作的组合，GraphX可以实现一些通用图计算的数据模型，如Pregel等。经过优化，GraphX在保持数据操作灵活性的同时，可以达到或接近专用图处理框架的性能。GraphX项目的目标是通过一个可组合的API在一个系统中进行统一图并行和数据并行计算。GraphX
+如果已经决定使用 GraphX，真正有价值的就是这一组属性图运算符。GraphX将图计算和数据计算集成到一个系统中，数据不仅可以被当作图来进行操作，同样也可以被当作表进行操作。它支持大量图计算的基本操作，如subgraph()、mapReduceTriplets()等操作，也支持数据并行计算的基本操作，如map()、reduce()、filter()、join()等。通过对上述这些操作的组合，GraphX可以实现一些通用图计算的数据模型，如Pregel等。经过优化，GraphX在保持数据操作灵活性的同时，可以达到或接近专用图处理框架的性能。GraphX项目的目标是通过一个可组合的API在一个系统中进行统一图并行和数据并行计算。GraphX
 使用户能够以图与集合的形式查看数据，而无需移动或重复数据。通过结合图并行系统的最新计算，GraphX能够优化图操作的执行。
 
 正如RDD具有基本操作map()、filter()和reduceByKey()，属性图也具有基本操作集合，可以使用用户定义函数，并生成具有转换的属性和结构的新图。在Graph中定义了具有优化实现的核心运算符，并且在GraphOps类中定义了表示为核心运算符组合的便利运算符，所以图的常用算法是集中抽象到GraphOps这个类中，在Graph里作了隐式转换，将Graph转换为GraphOps：
@@ -1008,7 +1007,7 @@ implicit def graphToGraphOps\[VD: ClassTag, ED: ClassTag\]
 
 (g: Graph\[VD, ED\]): GraphOps\[VD, ED\] = g.ops
 
-代码 4‑51
+代码 6‑51
 
 然后就可以通过Graph对象调用GraphOps类中的方法，例如可以通过以下方法计算每个点的度数，inDegrees()是在GraphOps类中定义。
 
@@ -1018,7 +1017,7 @@ val graph: Graph\[(String, String), String\]
 
 val inDegrees: VertexRDD\[Int\] = graph.inDegrees
 
-代码 4‑52
+代码 6‑52
 
 区分核心图操作和GraphOps类的原因是能够在将来支持不同的图表示，每个图表示必须提供核心操作的实现，并且重用GraphOps类中定义的许多有用操作。以下是在Graph和GraphOps中定义函数的快速汇总，但为简单起见统一作为Graph的成员呈现。请注意，已经简化了一些功能签名，例如删除了默认参数和类型约束，并且已经删除了一些更高级的函数，因此请参阅API文档以获取正式的操作列表。
 
@@ -1133,21 +1132,20 @@ val inDegrees: VertexRDD\[Int\] = graph.inDegrees
   - def mapTriplets\[ED2\](map: (PartitionID, Iterator\[EdgeTriplet\[VD,
     ED\]\]) =\> Iterator\[ED2\]): Graph\[VD, ED2\]
 
-与RDD的map()运算符一样，属性图包含mapVertices()、mapEdges()和mapTriplets()等方法，这些运算符中的每一个产生一个新的图，其点或边属性被用户定义的map()函数修改。注意，在每种情况下图结构都不受影响，这是这些运算符的一个关键特征，它允许生成的图重用原始图形的结构索引，以下代码片段（代码
-4‑53和代码 4‑54）在逻辑上是等效的，但是第一个片段不保留结构索引，并且不会从GraphX系统优化中受益：
+与RDD的map()运算符一样，属性图包含mapVertices()、mapEdges()和mapTriplets()等方法，这些运算符中的每一个产生一个新的图，其点或边属性被用户定义的map()函数修改。注意，在每种情况下图结构都不受影响，这是这些运算符的一个关键特征，它允许生成的图重用原始图形的结构索引，以下代码片段（代码 6‑53和代码 6‑54）在逻辑上是等效的，但是第一个片段不保留结构索引，并且不会从GraphX系统优化中受益：
 
 val newVertices = graph.vertices.map { case (id, attr) =\> (id,
 mapUdf(id, attr)) }
 
 val newGraph = Graph(newVertices, graph.edges)
 
-代码 4‑53
+代码 6‑53
 
 而是使用mapVertices()来保存索引：
 
 val newGraph = graph.mapVertices((id, attr) =\> mapUdf(id, attr))
 
-代码 4‑54
+代码 6‑54
 
 这些运算符通常用于初始化特定计算或项目的图以避免不必要的属性，例如给出一个以度为点属性的图，为页面排序进行初始化：
 
@@ -1165,7 +1163,7 @@ val outputGraph: Graph\[Double, Double\] =
 inputGraph.mapTriplets(triplet =\> 1.0 /
 triplet.srcAttr).mapVertices((id, \_) =\> 1.0)
 
-代码 4‑55
+代码 6‑55
 
 ### 6.7.2 结构运算符
 
@@ -1206,7 +1204,7 @@ users: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
 <pastie>:34
 ```
 
-代码 4‑56
+代码 6‑56
 
 （2）为边创建RDD
 
@@ -1223,7 +1221,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[String]] =
 ParallelCollectionRDD[101] at parallelize at <pastie>:34
 ```
 
-代码 4‑57
+代码 6‑57
 
 （3）定义缺省的用户
 
@@ -1232,7 +1230,7 @@ scala> val defaultUser = ("John Doe", "Missing")
 defaultUser: (String, String) = (John Doe,Missing)
 ```
 
-代码 4‑58
+代码 6‑58
 
 （4）构建初始Graph
 
@@ -1255,7 +1253,7 @@ peter is the student of John Doe
 franklin is the colleague of John Doe
 ```
 
-代码 4‑59
+代码 6‑59
 
 注意到用户0L没有相应的信息，但是连接到用户4L（peter）和5L（franklin）。
 
@@ -1285,7 +1283,7 @@ istoica is the colleague of franklin
 franklin is the pi of jgonzal
 ```
 
-代码 4‑60
+代码 6‑60
 
 mask()运算符通过图进行过滤，由图中的点和边构建子图，例如表达式graph.mask(anotherGraph)返回一个graph的子图，该图包含在anotherGraph中找到的点和边。mask()可以与subgraph()运算符一起使用，以基于另一个相关图的属性来过滤图。考虑以下情况，我们想找到图的连接部分，但是要在结果图中删除缺少属性信息的点。我们可以通过connectedComponent()找到连接的部分，并将mask()和subgraph()一起使用以获得所需的结果，如下代码所示：
 
@@ -1305,7 +1303,7 @@ Edge(4,0,student)
 Edge(5,0,colleague)
 ```
 
-代码 4‑61
+代码 6‑61
 
 （2）移除缺失属性信息的点点以及连接到它们的边
 
@@ -1321,7 +1319,7 @@ Edge(2,5,colleague)
 Edge(5,7,pi)
 ```
 
-代码 4‑62
+代码 6‑62
 
 （3）使用子图过滤
 
@@ -1337,7 +1335,7 @@ Edge(2,5,colleague)
 Edge(5,7,pi)
 ```
 
-代码 4‑63
+代码 6‑63
 
 允许Spark的属性图允许将任何连接的节点配对，所以可以构造多边图。groupEdges()运算符是另一种结构运算符，将每对节点之间的重复边合并为一个边。为此，groupEdges()需要一个名为merge()的函数作为参数，该参数接受一对边属性，类型为ED类型，并将它们组合为相同类型的单个属性值，groupEdges()返回的图与原始图具有相同的类型。
 
@@ -1368,19 +1366,19 @@ U)\]类型的输入点table联接。其次，还将用户定义的mapFunc()函�
 
 def strcat(s1: String)(s2: String) = s1 + s2
 
-代码 4‑64
+代码 6‑64
 
 或者，还可以使用以下语法定义柯里化(Currying)函数：
 
 def strcat(s1: String) = (s2: String) =\> s1 + s2
 
-代码 4‑65
+代码 6‑65
 
 以下是调用柯里化(Currying)函数的语法：
 
 strcat("foo")("bar")
 
-代码 4‑66
+代码 6‑66
 
 可以根据需要在柯里化(Currying)函数上定义两个以上的参数。尝试下面一个简单的示例程序用来了解如何使用柯里化(Currying)函数：
 
@@ -1404,13 +1402,13 @@ s1 + s2
 
 }
 
-代码 4‑67
+代码 6‑67
 
 上面代码的运行结果为：
 
 str1 + str2 = Hello, Scala\!
 
-代码 4‑68
+代码 6‑68
 
 我们现在用一个例子来说明这两个联结运算符的差异，让我们制作一个电影演员的信息图：
 
@@ -1426,7 +1424,7 @@ actors: org.apache.spark.rdd.RDD[(org.apache.spark.graphx.VertexId,
 String)] = ParallelCollectionRDD[277] at parallelize at <pastie>:33
 ```
 
-代码 4‑69
+代码 6‑69
 
 如果两个人一起出现在电影中出现，则图中的两个人将建立联系，每个边的属性将包含电影标题，让我们将该信息加载到称为movies的边RDD中：
 
@@ -1443,7 +1441,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[String]] =
 ParallelCollectionRDD[278] at parallelize at <pastie>:33
 ```
 
-代码 4‑70
+代码 6‑70
 
 现在，我们可以构建图并查看其中的内容：
 
@@ -1460,7 +1458,7 @@ George Clooney & Matt Damon appeared in Ocean's Eleven
 Will Smith & Matt Damon appeared in The Legend of Bagger Vance
 ```
 
-代码 4‑71
+代码 6‑71
 
 现在，图中的点仅包含每个演员的名称：
 
@@ -1473,7 +1471,7 @@ scala> movieGraph.vertices.foreach(println)
 (1,George Clooney)
 ```
 
-代码 4‑72
+代码 6‑72
 
 假设我们可以访问演员简介的数据集，将这样的数据集加载到顶点RDD中：
 
@@ -1498,7 +1496,7 @@ Biography)] = ParallelCollectionRDD[296] at parallelize at
 <pastie>:35
 ```
 
-代码 4‑73
+代码 6‑73
 
 我们将使用joinVertices()将此信息加入到movieGraph中，为此让我们创建一个用户定义的函数，该函数将演员的家乡附加到他们的名字之后：
 
@@ -1509,7 +1507,7 @@ appendHometown: (id: org.apache.spark.graphx.VertexId, name: String,
 bio: Biography)String
 ```
 
-代码 4‑74
+代码 6‑74
 
 请记住，对于joinVertices()映射函数应返回一个字符串，因为这是原始图的点属性类型为字符串。现在，我们可以将演员介绍加入movieGraph的点属性中：
 
@@ -1526,7 +1524,7 @@ scala> movieJoinedGraph.vertices.foreach(println)
 (2,Julia Stiles:NY City, NY, USA)
 ```
 
-代码 4‑75
+代码 6‑75
 
 接下来，让我们使用outerJoinVertices()远算符，然后查看两者之间的差异。这次，我们将直接传递匿名映射函数联结演员名字和介绍，并返回一个包含这两个值的二元组：
 
@@ -1538,7 +1536,7 @@ Option[Biography]),String] =
 <org.apache.spark.graphx.impl.GraphImpl@5abf71b5>
 ```
 
-代码 4‑76
+代码 6‑76
 
 请注意，outerJoinVertices()如何将点的属性类型从字符串更改为元组(String, Option
 \[Biography\])，现在打印出点：
@@ -1554,7 +1552,7 @@ Hayek-Jimenez,Coatzacoalcos, Veracruz, Mexico))))
 (2,(Julia Stiles,Some(Biography(Julia O'Hara Stiles,NY City, NY, USA))))
 ```
 
-代码 4‑77
+代码 6‑77
 
 如前所述，即使在传递给outerJoinVertices()的简介数据集中没有“George
 Clooney”，其新属性也已更改为None，这是可选类型Option\[Biography\]的有效实例，有时可以在Option\[T\]上定义getOrElse方法从可选值之中提取信息，为不存在的点提供默认的新属性值：
@@ -1575,7 +1573,7 @@ USA)))
 (4,(Matt Damon,Biography(Matthew Paige Damon,Boston, MA, USA)))
 ```
 
-代码 4‑78
+代码 6‑78
 
 或者，可以为联结的点创建新的返回类型，例如我们可以创建一个Actor类型，然后生成一个新图，类型为Graph\[Actor,
 String\]，如下所示：
@@ -1596,7 +1594,7 @@ movieOuterJoinedGraph: org.apache.spark.graphx.Graph[Actor,String] =
 <org.apache.spark.graphx.impl.GraphImpl@3f13c612>
 ```
 
-代码 4‑79
+代码 6‑79
 
 列出新图中的点，看一看是不是得到预期的结果：
 
@@ -1611,7 +1609,7 @@ USA))
 (2,Actor(Julia Stiles,Julia O'Hara Stiles,NY City, NY, USA))
 ```
 
-代码 4‑80
+代码 6‑80
 
 请注意，尽管“Antonio Banderas”和“Paul Walker”存在于bio中，但它们不属于原始图中的节点，所以不会创建新顶点。
 
@@ -1642,7 +1640,7 @@ scala> actorsBio.foreach(println)
 (4,Matt Damon:Boston, MA, USA)
 ```
 
-代码 4‑81
+代码 6‑81
 
 现在，我们可以使用mapValues()将其名称提取到新的VertexRDD集合中：
 
@@ -1667,7 +1665,7 @@ s.split(':')(0)).foreach(println)
 (2,Julia Stiles)
 ```
 
-代码 4‑82
+代码 6‑82
 
 还有一种mapValues()方法可用于转换EdgeRDD：
 
@@ -1709,7 +1707,7 @@ b.hometown).foreach(println)
 (3,Will Smith is from Philadelphia, PA, USA)
 ```
 
-代码 4‑83
+代码 6‑83
 
 第二个运算符leftJoin()类似于在Graph
 \[VD，ED\]中定义的运算符outerJoinVertices()，除了输入VertexRDD集合外，还接受类型为(VertexId,
@@ -1732,7 +1730,7 @@ case None => name + "\'s hometown is unknown"
 (1,George Clooney's hometown is unknown)
 ```
 
-代码 4‑84
+代码 6‑84
 
 在GraphX中，存在用于联接两个EdgeRDD的运算符innerJoin：
 
@@ -1760,7 +1758,7 @@ Edge(3,4,The Legend of Bagger Vance)
 Edge(1,5,From Dusk Till Dawn)
 ```
 
-代码 4‑85
+代码 6‑85
 
 然后，我们创建一个反向链接的新EdgeRDD集合，然后使用这两个EdgeRDD集合的并集获得双向图：
 
@@ -1786,7 +1784,7 @@ Edge(3,4,The Legend of Bagger Vance)
 Edge(4,3,The Legend of Bagger Vance)
 ```
 
-代码 4‑86
+代码 6‑86
 
 ### 6.7.5 收集相邻信息
 
@@ -1817,7 +1815,7 @@ foodNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@176ec7ba>
 ```
 
-代码 4‑87
+代码 6‑87
 
 要创建新的调料网络，我们需要知道哪些成分共享某些合成物。这可以通过首先收集foodNetwork图中每个合成物节点的成分ID来完成，就是将具有相同合成物的成分ID收集并分组到元组的RDD集合中(compound
 id, Array\[ingredient id\])，如下所示：
@@ -1831,7 +1829,7 @@ Array[org.apache.spark.graphx.VertexId])] = VertexRDDImpl[363] at
 RDD at VertexRDD.scala:57
 ```
 
-代码 4‑88
+代码 6‑88
 
 接下来，我们创建一个函数pairIngredients()，参数的类型为(compound id, Array\[ingredient
 id\])，并在数组中的每对成分之间创建一条边：
@@ -1851,7 +1849,7 @@ pairIngredients: (ingPerComp: (org.apache.spark.graphx.VertexId,
 Array[org.apache.spark.graphx.VertexId]))Seq[org.apache.spark.graphx.Edge[Int]]
 ```
 
-代码 4‑89
+代码 6‑89
 
 一旦有了这些信息，我们就可以为每对共享网络中相同合成物的成分创建EdgeRDD集合，如下所示：
 
@@ -1863,7 +1861,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Int]] =
 MapPartitionsRDD[364] at flatMap at <console>:36
 ```
 
-代码 4‑90
+代码 6‑90
 
 最后，我们可以创建新的调料网络：
 
@@ -1873,7 +1871,7 @@ flavorNetwork: org.apache.spark.graphx.Graph[FNNode,Int] =
 <org.apache.spark.graphx.impl.GraphImpl@38ffea9f>
 ```
 
-代码 4‑91
+代码 6‑91
 
 让我们在flavorNetwork中打印前5个三元组：
 
@@ -1891,7 +1889,7 @@ derivative)),1)
 derivative)),1)
 ```
 
-代码 4‑92
+代码 6‑92
 
 我们会发现很多成分之间共享相同的合成物，当一对成分共享一个以上的化合物时，可能会出现重复的边。假设我们要将每对成分之间的平行边分组为一个边，该边包含两种成分之间共享的化合物的数量。
 我们可以使用groupEdges方法做到这一点：
@@ -1906,7 +1904,7 @@ scala> :paste
 // Entering paste mode (ctrl-D to finish)
 ```
 
-代码 4‑93
+代码 6‑93
 
 现在，让我们打印共享最多化合物的5对成分：
 
@@ -1929,7 +1927,7 @@ grilled\_beef and roasted\_beef share 207 compounds.
 
 grilled\_beef and fried\_beef share 200 compounds.
 
-代码 4‑94
+代码 6‑94
 
 ## 6.8 Pregel
 
@@ -1959,7 +1957,7 @@ fromB
 mergeMsg: (fromA: Double, fromB: Double)Double
 ```
 
-代码 4‑95
+代码 6‑95
 
 其次，他们还将需要一个称为顶点程序的函数，以计算在上一个超集中收到钱后所拥有的钱：
 
@@ -1970,7 +1968,7 @@ vprog: (id: org.apache.spark.graphx.VertexId, balance: Double, credit:
 Double)Double
 ```
 
-代码 4‑96
+代码 6‑96
 
 最后，还需要一个名为sendMsg的函数来在朋友之间进行汇款：
 
@@ -1987,7 +1985,7 @@ org.apache.spark.graphx.EdgeTriplet[Double,Int])Iterator[(org.apache.spark.graph
 Double)]
 ```
 
-代码 4‑97
+代码 6‑97
 
 从上一个函数签名可以看出，sendMsg将边缘三元组作为输入而不是顶点，因此我们可以访问源节点和目标节点。
 我们将在下一节中找到sendMsg的正确实现。让我们通过考虑三个朋友之间的三角网络来进一步简化我们的示例：
@@ -2010,7 +2008,7 @@ scala> graph.vertices.foreach(println)
 (1,10.0)
 ```
 
-代码 4‑98
+代码 6‑98
 
 让我们看一下输出：
 
@@ -2025,7 +2023,7 @@ scala> afterOneIter.vertices.foreach(println)
 (2,3.75)
 ```
 
-代码 4‑99
+代码 6‑99
 
 我们可以验证现在一切正常，如果我们增加最大迭代次数呢？让我们看看会发生什么：
 
@@ -2048,7 +2046,7 @@ scala> afterHundredIters.vertices.foreach(println)
 (2,6.207038273723298)
 ```
 
-代码 4‑100
+代码 6‑100
 
 即使进行了100次迭代，我们也可以看到帐户余额并没有收敛到理想值6美元，而是在其附近波动。 在我们的简单示例中，这是可以预期的。
 
@@ -2076,7 +2074,7 @@ mergeMsg: (A, A) =\> A)
 
 }
 
-代码 4‑101
+代码 6‑101
 
 Pregel方法在属性图上调用，并返回具有相同类型和结构的新图。 当边保持完整时，顶点的属性可能从一个超集更改为下一个超集。
 Pregel接受以下两个参数列表。
@@ -2109,7 +2107,7 @@ Pregel接受以下两个参数列表。
 
 val lpaGraph = graph.mapVertices { case (vid, \_) =\> vid }
 
-代码 4‑102
+代码 6‑102
 
 接下来，我们将定义发送给Map \[Label，Long\]的消息的类型，该消息将社区标签与具有该标签的邻居数量相关联。
 将发送到每个节点的初始消息只是一个空映射：
@@ -2118,7 +2116,7 @@ type Label = VertexId
 
 val initialMessage = Map\[Label, Long\]()
 
-代码 4‑103
+代码 6‑103
 
 遵循Pregel编程模型，我们定义了sendMsg函数，每个节点使用该函数将其当前标签通知其邻居。
 对于每个三元组，源节点将收到目标节点的标签，反之亦然：
@@ -2129,7 +2127,7 @@ Map\[Label, Long\])\] =
 Iterator((e.srcId, Map(e.dstAttr -\> 1L)), (e.dstId, Map(e.srcAttr -\>
 1L)))
 
-代码 4‑104
+代码 6‑104
 
 上一个函数在每次迭代中都会返回其大多数邻居当前所属的社区的标签（即VertexId属性）。我们还需要一个mergeMsg函数来合并节点收到的所有消息。
 它的邻居变成一张地图。 如果两个消息都包含相同的标签，我们只需简单地为该标签求和相应的邻居数：
@@ -2146,13 +2144,13 @@ val count2Val = count2.getOrElse(i, 0L) i -\>(count1Val + count2Val)
 
 }
 
-代码 4‑105
+代码 6‑105
 
 最后，我们可以通过调用图中的pregel方法来运行LPA算法，以实现社会财富均等化：
 
 lpaGraph.pregel(initialMessage, 50)(vprog, sendMsg, mergeMsg)
 
-代码 4‑106
+代码 6‑106
 
 LPA的主要优点是它的简单性和时间效率。 实际上，已经观察到收敛的迭代次数与图的大小无关，而每次迭代都具有线性时间复杂度。
 尽管标签传播算法有其优点，但不一定会收敛，并且还可能导致不感兴趣的解决方案，例如将每个节点标识为单个社区。
@@ -2220,7 +2218,7 @@ scala> println(ranksByUsername.collect().mkString("\n"))
 (odersky,1.2979769092759237)
 ```
 
-代码 4‑107
+代码 6‑107
 
 我们已经看到GraphX中页面排名算法的使用方法，在下面让我们看看如何使用Pregel轻松实现这种著名的网页搜索算法，现在将简单地解释Pregel的实现方式：
 
@@ -2238,7 +2236,7 @@ graph.outerJoinVertices(graph.outDegrees) {
 
 .mapVertices((id, attr) =\> (0.0, 0.0))
 
-代码 4‑108
+代码 6‑108
 
 （2）按照Pregel的抽象定义，实现PageRank所需的三个函数。首先我们定义点程序如下：
 
@@ -2255,7 +2253,7 @@ val newPR = oldPR + (1.0 - resetProb) \* msgSum(newPR, newPR - oldPR)
 
 }
 
-代码 4‑109
+代码 6‑109
 
 接下来是创建消息函数：
 
@@ -2275,13 +2273,13 @@ Iterator.empty
 
 }
 
-代码 4‑110
+代码 6‑110
 
 第三个函数为mergeMsg，只是简单地增加等级：
 
 def mergeMsg(a: Double, b: Double): Double = a + b
 
-代码 4‑111
+代码 6‑111
 
 然后我们将获得点排名，如下所示：
 
@@ -2290,7 +2288,7 @@ rankGraph.pregel(initialMessage, activeDirection =
 EdgeDirection.Out)(vProg, sendMsg, mergeMsg).mapVertices((vid, attr) =\>
 attr.\_1)
 
-代码 4‑112
+代码 6‑112
 
 ## 6.9 案例分析
 
@@ -2316,7 +2314,7 @@ attr.\_1)
 | crselapsedtime (Double) | 经过时间        | 390    |
 | dist (Int)              | 距离          | 2475   |
 
-表格 4‑1 航班数据
+表格 6‑1 航班数据
 
 在这种情况下，我们将机场表示为顶点，将路线表示为边。我们希望了解有出发或到达的机场的数量。
 
@@ -2331,7 +2329,7 @@ scala> import scala.util.Try
 import scala.util.Try
 ```
 
-代码 4‑113
+代码 6‑113
 
 下面我们使用Scala案例类来定义与CSV数据文件相对应的数据结构Flight。
 
@@ -2348,7 +2346,7 @@ arrtime: Double, arrdelay: Double, crselapsedtime: Double, dist: Int)
 defined class Flight
 ```
 
-代码 4‑114
+代码 6‑114
 
 下面的函数将数据文件中的一行解析为Flight类。
 
@@ -2370,7 +2368,7 @@ line(15).toDouble, line(16).toInt)
 parseFlight: (str: String)Flight
 ```
 
-代码 4‑115
+代码 6‑115
 
 下面，我们将CSV文件中的数据加载到RDD中，使用first()动作返回RDD中的第一个元素。
 
@@ -2391,7 +2389,7 @@ res9: Flight =
 Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,385.0,2475)
 ```
 
-代码 4‑116
+代码 6‑116
 
 我们将机场定义为点，可以具有与之关联的属性，点具有的属性为机场名称(name:String)。
 
@@ -2423,7 +2421,7 @@ airportMap: scala.collection.immutable.Map[Long,String] = Map(13024
 10918 -...
 ```
 
-代码 4‑117
+代码 6‑117
 
 ### 6.9.2 定义边
 
@@ -2454,7 +2452,7 @@ res17: Array[org.apache.spark.graphx.Edge[Int]] =
 Array(Edge(14869,14683,1087))
 ```
 
-代码 4‑118
+代码 6‑118
 
 ### 6.9.3 创建图
 
@@ -2474,7 +2472,7 @@ res4: Array[org.apache.spark.graphx.Edge[Int]] =
 Array(Edge(10135,10397,692), Edge(10135,13930,654))
 ```
 
-代码 4‑119
+代码 6‑119
 
   - 有几个机场？
 
@@ -2483,7 +2481,7 @@ scala> val numairports = graph.numVertices
 numairports: Long = 301
 ```
 
-代码 4‑120
+代码 6‑120
 
   - 有几条路线？
 
@@ -2492,7 +2490,7 @@ scala> val numroutes = graph.numEdges
 numroutes: Long = 4090
 ```
 
-代码 4‑121
+代码 6‑121
 
   - 哪些路线的距离大于1000？
 
@@ -2504,7 +2502,7 @@ Array(Edge(10140,10397,1269), Edge(10140,10821,1670),
 Edge(10140,12264,1628))
 ```
 
-代码 4‑122
+代码 6‑122
 
   - EdgeTriplet类扩展Edge类，添加了srcAttr和dstAttr成员，打印输出看一看结果。
 
@@ -2515,7 +2513,7 @@ scala> graph.triplets.take(3).foreach(println)
 ((10140,ABQ),(10397,ATL),1269)
 ```
 
-代码 4‑123
+代码 6‑123
 
   - 排序并打印出前10个最长的路线
 
@@ -2538,7 +2536,7 @@ Distance 4243 from HNL to ORD.
 Distance 4243 from ORD to HNL.
 ```
 
-代码 4‑124
+代码 6‑124
 
   - 计算点的出入度最大值
 
@@ -2569,7 +2567,7 @@ scala> airportMap(10397)
 res0: String = ATL
 ```
 
-代码 4‑125
+代码 6‑125
 
   - 前3个进港航班最多的机场？
 
@@ -2580,7 +2578,7 @@ maxIncoming: Array[(String, Int)] = Array((ATL,152), (ORD,145),
 (DFW,143))
 ```
 
-代码 4‑126
+代码 6‑126
 
   - 前3个出港航班最多的机场？
 
@@ -2591,7 +2589,7 @@ maxout: Array[(org.apache.spark.graphx.VertexId, (Int, String))] =
 Array((10397,(153,ATL)), (13930,(146,ORD)), (11298,(143,DFW)))
 ```
 
-代码 4‑127
+代码 6‑127
 
 ### 6.9.4 PageRank
 
@@ -2638,7 +2636,7 @@ scala> impAirports.take(4)
 res3: Array[String] = Array(ATL, ORD, DFW, DEN)
 ```
 
-代码 4‑128
+代码 6‑128
 
 ### 6.9.5 Pregel
 
@@ -2646,7 +2644,7 @@ res3: Array[String] = Array(ATL, ORD, DFW, DEN)
 
 ![](media/06_graph_processing/media/image10.png)
 
-图例 4‑10 Pregel计算过程
+图例 6‑10 Pregel计算过程
 
 下面的代码使用Pregel计算最便宜的机票，其中使用的公式为：50 +距离/ 20
 
@@ -2734,10 +2732,9 @@ res8: Array[(String, Double)] = Array((LMT,0.0), (PDX,62.05),
 (YUM,1...
 ```
 
-代码 4‑129
+代码 6‑129
 
 ## 6.10 小结
 
-对于图形和图形并行计算，Apache Spark提供了GraphX API。 在本章中，学习了Spark中GraphX
-API以及属性图的概念；介绍图形运算符和Pregel
-API。另外，还学习了GraphX的方法和GraphX API的用例。
+对于 Spark 4.x 读者而言，GraphX 应理解为 Spark 原生图计算专题能力，而不是通用数据分析项目的默认入口。本章先介绍了图和图并行系统的基本概念，再说明了 GraphX 的属性图模型、核心运算符以及 Pregel 风格消息传递。读完本章后，读者应能判断哪些问题适合用 GraphX 表达，并能读懂和维护常见的 GraphX 代码与案例。
+

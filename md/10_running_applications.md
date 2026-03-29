@@ -18,10 +18,9 @@
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
 > 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
-Apache Spark被广泛认为是MapReduce在Apache
-Hadoop集群上进行通用数据处理的后继者。与MapReduce应用程序一样，每个Spark应用程序都是一个自包含的计算，它运行用户提供的代码来计算结果。与MapReduce作业一样，Spark应用程序可以使用多个主机的资源。但是，Spark比MapReduce有很多优点。
+Spark 应用的核心，不是“跑一次作业”，而是把业务逻辑、依赖、配置与运行环境组织成可重复交付的工程单元。它既可以是一次性离线批处理，也可以是交互式会话，或者长期运行的 Structured Streaming 服务。
 
-在MapReduce中，最高级别的计算单位是Job，用来加载数据、应用Map函数、Shuffle、应用Reduce函数，并将数据写回持久存储。在Spark中，最高级别的计算单位是应用程序。Spark应用程序有多种方式，其中包括可用于单个批处理作业，具有多个作业的交互式会话或持续满足请求的长期服务。Spark作业可以包含多个Map和Reduce。本章将学习怎样构建和部署单个批处理作业的独立应用程序。
+在 Spark 4.x 中，新项目通常以 SparkSession 为统一入口，通过 `spark-submit` 提交到 Standalone、YARN 或 Kubernetes，并围绕依赖管理、参数配置、日志和回滚策略建立工程规范。本章重点放在“如何把示例代码整理成可上线、可维护的 Spark 应用”。
 
 ## 10.3 SparkContext与SparkSession
 
@@ -47,14 +46,12 @@ val spark = SparkSession
 
 .getOrCreate()
 
-代码 4.2
-
-并使用stop方法停止当前的SparkSession 。
+代码 10.1
+完成后可以调用 `stop()` 方法关闭当前的 SparkSession。
 
 spark.stop
 
-代码 4.3
-
+代码 10.2
 正如在以前的Spark版本，spark-shell创建了一个SparkContext，变量名为sc。在Spark
 2.0之后，spark-shell会创建一个SparkSession，变量名为spark。在这个spark-shell中，可以看到spark已经存在，并且可以查看它的所有属性。
 
@@ -94,32 +91,28 @@ res2: org.apache.spark.SparkContext =
 <org.apache.spark.SparkContext@5e9af5d4>
 ```
 
-代码 4.4
-
+代码 10.3
 SparkSession封装了SparkContext。首先简单理解一下SparkContext的功能。
 
 ![Fig 7. SparkContext as it relates to Driver and Cluster
 Manager](media/10_running_applications/media/image1.png)
 
-图例 4‑1SparkContext 与Driver和Cluster Manager的关系
+图例 10‑1SparkContext 与Driver和Cluster Manager的关系
 
-如图所示（图例
-4‑1），SparkContext是底层执行上下文；每个JVM通常只有一个SparkContext。Spark驱动程序（Driver
+如图所示（图例 10‑1），SparkContext是底层执行上下文；每个JVM通常只有一个SparkContext。Spark驱动程序（Driver
 Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并提交作业。业务层代码建议通过SparkSession访问能力，在需要底层控制时再使用`spark.sparkContext`。
 
 在Spark 4.x中，SparkSession已经是统一入口点：既可处理DataFrame/Dataset与SQL，也可衔接流处理与底层执行上下文。这样可以减少上下文对象切换带来的复杂度，降低出错概率。下面继续介绍SparkSession的类和实例方法。
 
   - builder(): Builder
 
-> 创建一个Builder来获取或创建一个SparkSession实例，builder()创建一个新的Builder，可以使用SparkSession
-> API构建完整配置的SparkSession。下面代码是在Scala应用程序中的方法，在Scala交互界面不需要创建SparkSession。
+> `builder()` 用来创建一个 Builder，再通过它获取或创建 SparkSession 实例。下面的示例适用于 Scala 应用程序；在 `spark-shell` 中，SparkSession 通常已经由系统自动创建。
 
 import org.apache.spark.sql.SparkSession
 
 val builder = SparkSession.builder
 
-代码 4.5
-
+代码 10.4
   - version: String
 
 > 返回当前Spark的版本。在内部，version使用spark.SPARK\_VERSION值，即CLASSPATH中spark-version-info.properties属性文件中的version属性。
@@ -129,8 +122,7 @@ scala> spark.version
 res4: String = 4.1.1
 ```
 
-代码 4.6
-
+代码 10.5
   - implicits
 
 implicits对象是一个具有Scala隐式方法的帮助类，用于将Scala对象转换为Dataset、DataFrame和Column。它还定义了Scala原始类型的Encoder，例如Int、Double、String及其Product和Collection。
@@ -139,8 +131,7 @@ val spark = SparkSession.builder.getOrCreate()
 
 import spark.implicits.\_
 
-代码 4.7
-
+代码 10.6
 implicits对象提供对从任何类型的RDD（Encoder所包括的）、case类或元组以及Seq创建Dataset，还提供从Scala的Symbol或$到Column的转换，还提供从Product类型（例如案例类或元组）的RDD或Seq到DataFrame的转换，具有从Int、Long和String的RDD到具有单个列名“\_1”的DataFrame直接转换。
 
   - 注意
@@ -149,7 +140,7 @@ implicits对象提供对从任何类型的RDD（Encoder所包括的）、case类
 
   - def emptyDataset\[T\](implicit arg0: Encoder\[T\]): Dataset\[T\]
 
-> 创建一个空Dataset\[T\]。emptyDataset创建一个空数据集，假设将来的记录是类型T。
+> 创建一个空的 Dataset\[T\]。当你已经确定记录类型，但暂时还没有任何数据时，这个方法很方便。
 
 ```scala
 scala> val strings = spark.emptyDataset[String]
@@ -159,8 +150,7 @@ root
 |-- value: string (nullable = true)
 ```
 
-代码 4.8
-
+代码 10.7
   - def range(end: Long): Dataset\[java.lang.Long\]
 
   - def range(start: Long, end: Long): Dataset\[java.lang.Long\]
@@ -184,8 +174,7 @@ scala> spark.range(start = 0, end = 4, step = 2, numPartitions =
 +---+
 ```
 
-代码 4.9
-
+代码 10.8
   - 注意
 
 第一个变体（不明确指定numPartitions）使用SparkContext.defaultParallelism来分配numPartitions。
@@ -211,8 +200,7 @@ scala> sql("SHOW TABLES").show
 +---------+-----------+
 ```
 
-代码 4.10
-
+代码 10.9
   - def udf: UDFRegistration
 
 访问用户定义的函数（UDF）。udf属性允许访问UDFRegistration，允许注册基于SQL查询的用户定义函数。
@@ -234,8 +222,7 @@ scala> sql("SELECT *, myUpper(value) UPPER FROM strs").show
 +-----+-----+
 ```
 
-代码 4.11
-
+代码 10.10
   - def table(tableName: String): DataFrame
 
 从表创建DataFrame。将表加载为DataFrame，如果存在。
@@ -255,8 +242,7 @@ scala> t1.show
 +-----+
 ```
 
-代码 4.12
-
+代码 10.11
   - lazy val catalog: Catalog
 
 访问结构化查询实体的元数据目录，catalog属性是当前元数据目录的查询接口，元数据目录包括关系实体，如数据库、表、函数、表列和临时视图。
@@ -271,16 +257,14 @@ scala> spark.catalog.listTables.show
 +------------------+--------+-----------+---------+-----------+
 ```
 
-代码 4.13
-
+代码 10.12
   - def read: DataFrameReader
 
 read方法返回一个DataFrameReader，用于从外部存储系统读取数据并将其加载到DataFrame。
 
 val dfReader: DataFrameReader = spark.read
 
-代码 4.14
-
+代码 10.13
   - lazy val conf: RuntimeConfig
 
 访问当前的运行时配置。
@@ -333,8 +317,7 @@ spark.stop()
 
 }
 
-代码 4.1
-
+代码 10.14
   - 注意
 
 Scala应用程序应该定义一个main()方法，而不是扩展scala.App，scala.App子类可能无法正常工作。
@@ -352,12 +335,10 @@ scalaVersion := "2.13.16"
 
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
-代码 4.2
-
+代码 10.15
 要使sbt正常工作，需要根据典型的目录结构布局build.sbt和SimpleApp.scala。一旦构建完成，就可以创建一个包含应用程序代码的jar包，然后使用spark-submit脚本运行Spark程序。
 
-SBT是Simple Build
-Tool的简称，如果读者使用过Maven，那么可以简单将SBT看做是Scala世界的Maven，虽然二者各有优劣，但完成的工作基本是类似的。虽然Maven同样可以管理Scala项目的依赖并进行构建，但SBT具有某些特性，比如：
+SBT 是 Simple Build Tool 的缩写。如果你熟悉 Maven，可以先把它理解为“Scala 生态里最常见的构建工具之一”：两者都负责依赖管理、编译、测试和打包，只是 SBT 更贴近 Scala 项目的工作方式。相较于直接使用 Maven，SBT 在 Spark/Scala 项目里常见的优势包括：
 
 （1）使用Scala作为DSL来定义build文件
 
@@ -371,9 +352,7 @@ Tool的简称，如果读者使用过Maven，那么可以简单将SBT看做是Sc
 
 （6）可以重用Maven或者ivy的repository进行依赖管理
 
-SBT的发展可以分为两个阶段，即SBT\_0.7.x时代以及SBT\_0.10.x以后的时代。目前来讲，SBT\_0.7.x已经很少使用，大部分公司和项目都已经迁移到0.10.x以后的版本上来，最新的是1.1.4版本，0.10.x之后的版本build定义采用了新的设置系统。SBT已成为事实上的构建Scala应用程序的默认工具，SBT使用Apache
-Ivy内部管理库依赖性，如果正在编写一个纯Scala
-Spark应用程序，或者具有Java和Scala代码的混合代码库，则最有可能从采用SBT中获益。
+从今天的实践来看，新项目通常直接使用 SBT 1.x 系列，早期 0.7/0.10 时代更多属于历史背景。SBT 已经成为 Scala 项目最常见的构建工具之一，内部通过 Ivy/Coursier 这一类机制解析和管理依赖。如果你编写的是纯 Scala 的 Spark 应用，或者仓库里同时包含 Java 与 Scala 代码，那么 SBT 往往是最顺手的选择。
 
 ### 10.4.1 sbt
 
@@ -389,8 +368,7 @@ name [My Something Project]: hello
 Template applied in ./hello
 ```
 
-代码 4.3
-
+代码 10.16
 当提示输入项目名称时，输入hello。这将在名为hello目录下创建一个新项目。现在从hello目录中，启动sbt并在sbt
 shell中输入run。在Linux或OS X上，这些命令可能如下所示：
 
@@ -406,13 +384,13 @@ $ sbt
 Hello
 ```
 
-命令 4.1
+命令 10.1
 
 要离开sbt shell，请键入exit或使用Ctrl + D（Unix）或Ctrl + Z（Windows）。
 
 \> exit
 
-命令 4.2
+命令 10.2
 
 在sbt的术语中，基础目录是包含项目的目录，因此如果创建了一个包含hello/build.sbt的项目hello，如上面示例中所示，hello就是基本目录。像Maven一样，SBT使用标准的项目目录结构。首先要构建一下相对简单的项目，SBT期望一个看起来像这样的结构：
 
@@ -470,8 +448,7 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
-代码 4.7
-
+代码 10.17
   - lib/
 
 此目录包含在本地下载的任何非托管库依赖项。
@@ -486,26 +463,22 @@ libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 sbt.version=0.13.15
 ```
 
-代码 4.8
-
+代码 10.18
 什么是插件？插件继承了构建定义，大多数通常是添加设置，新的设置可以是新的任务。例如，一个插件可以添加一个codeCoverage任务来生成一个测试覆盖率报告。如果在hello目录下，而且正在往构建定义中添加一个sbt-site插件，创建hello/project/site.sbt并且通过传递插件的Ivy模块ID声明插件依赖给addSbtPlugin：
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "0.7.0")
 
-代码 4.9
-
+代码 10.19
 如果添加sbt-assembly，像下面这样创建 hello/project/assembly.sbt：
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
-代码 4.10
-
+代码 10.20
 不是所有的插件都在同一个默认的仓库中，而且一个插件的文档会指导添加能够找到它的仓库：
 
 resolvers += Resolver.sonatypeRepo("public")
 
-代码 4.11
-
+代码 10.21
 插件通常提供设置将它添加到项目并且开启插件功能。
 
   - src
@@ -556,8 +529,7 @@ spark.stop()
 
 }
 
-代码 4.13 Scala
-
+代码 10.22
 #### 10.4.1.2 编译集成
 
 对于底层的实现，SBT使用Apache
@@ -571,8 +543,7 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
-代码 4.14
-
+代码 10.23
 如果使用groupID %% artifactID % revision，而不是groupID % artifactID %
 revision（区别是groupID后的双百分号），SBT将项目的Scala版本添加到artifactID，即spark-core\_2.13，这只是一种明确Scala版本的捷径方式。只能在Java中使用的依赖库应始终用单个百分比操作符（%）编写。如果不知道依赖库的groupID或artifactID，则可能会在该依赖项的网站或Maven
 Central Repository中找到它们，用SBT构建的示例源代码。
@@ -587,7 +558,7 @@ sbt package
 # (This command may take a long time on its first run)
 ```
 
-命令 4.3 SBT构建命令
+命令 10.3 SBT构建命令
 
 package命令用于编译/src/main/中的源代码，并且创建一个没有任何依赖关系的项目代码的jar文件。在例子中的目录有Java和Scala应用程序，所以最终得到一个包含这两个应用程序的jar文件。SBT中还有更多的配置选项可能需要了解，例如可以使用dependencyClasspath分隔编译、测试和运行时依赖关系，或添加resolvers来标识用于下载依赖关系的备用存储库。有关详细信息，参阅SBT参考手册。
 
@@ -604,7 +575,7 @@ $SPARK_HOME/bin/spark-submit \
 target/scala-2.13/buildingsbt_2.13-1.0.jar
 ```
 
-命令 4.5
+命令 10.5
 
 让SBT处理的依赖项的另一种方法是自行下载它们。以下是如何更改的示例项目来使用此方法：
 
@@ -616,8 +587,7 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % "4.1.1"
 
 //libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
-代码 4.18
-
+代码 10.24
 （2）将Commons CSV下载到本地的lib /目录。SBT在编译时隐含地使用此目录中的任何东西。
 
 cd /root/spark-app/building-sbt/lib
@@ -625,9 +595,9 @@ cd /root/spark-app/building-sbt/lib
 wget
 <http://central.maven.org/maven2/org/apache/commons/commons-csv/1.2/commons-csv-1.2.jar>
 
-命令 4.6
+命令 10.6
 
-（3）像以前一样构建代码（代码 4.15）。这导致与以前的方法相同的jar文件。
+（3）像前面一样继续执行构建命令，最终会得到与之前方法等价的jar文件。
 
 （4）现在可以使用spark-submit使用--jars参数运行应用程序，以将Commons
 CSV作为运行时依赖关系。可以使用逗号分隔列表添加其他jar。
@@ -641,19 +611,17 @@ $SPARK_HOME/bin/spark-submit \
 target/scala-2.13/buildingsbt_2.13-1.0.jar
 ```
 
-命令 4.8提交scala程序
+命令 10.8提交scala程序
 
 作为最佳做法，应确保依赖库不是同时即在lib目录中保存，也在build.sbt中定义。如果指定受管理的依赖项，并且还在lib目录中有本地副本，则如果依赖库的版本不同步，则可能会浪费时间排除这个小故障。还应该查看Spark自己的集成jar，当运行spark-submit时，它将隐含在类路径中。如果需要的应用依赖库已经是Spark的核心依赖库，在应用jar中包括应用依赖库的副本可能会导致版本冲突。
 
 #### 10.4.1.3 创建jar
 
-随着库依赖性的增加，将所有这些文件发送到Spark集群中的每个节点的网络开销也会增加。官方的Spark文档建议创建一个特殊的jar文件，其中包含应用程序及其所有依赖项，称为装配jar
-（或“uber”jar）以减少网络负载。装配jar包含被组合和扁平化的一组类和资源文件。使用sbt-assembly插件生成装配jar。这个插件已经在的示例项目中，如project/assembly.sbt文件所示：
+当依赖越来越多时，如果仍然把一堆零散 jar 分发到集群上的每个执行器，网络传输和类路径管理都会变得更麻烦。更常见的做法是把应用代码和大部分依赖一起打成一个装配 jar（assembly jar，也常叫 uber jar），这样提交时只需要分发一个主要产物。使用 sbt-assembly 插件可以完成这件事，示例项目里的 `project/assembly.sbt` 就是对应配置：
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.4")
 
-代码 4.41
-
+代码 10.25
 更新build.sbt文件将所提供的Spark依赖关系标记为provided。这防止依赖关系被包含在装配jar中。如果需要，还可以恢复Commons
 CSV依赖关系，尽管lib/目录中的本地副本仍将在编译时自动获取。
 
@@ -665,16 +633,14 @@ provided
 
 libraryDependencies += "org.apache.commons" % "commons-csv" % "1.2"
 
-代码 4.42
-
+代码 10.26
 接下来，运行assembly命令。此命令创建一个包含应用程序和GSON类的装配jar。
 
 cd /root/spark-app/building-sbt
 
 sbt assembly
 
-代码 4.43
-
+代码 10.27
 还有更多配置选项可用，例如使用MergeStrategy来解决潜在的重复和依赖冲突。可以使用less命令确认装配jar的内容：
 
 cd /root/spark-app/building-sbt
@@ -736,7 +702,7 @@ org/apache/commons/csv/Token$Type.class
 \-rw---- 2.0 fat 1036 bl defN 15-Aug-21 17:48
 org/apache/commons/csv/Token.class
 
-命令 4.9使用less命令确认装配jar的内容
+命令 10.9使用less命令确认装配jar的内容
 
 现在可以使用装配jar提交执行应用程序。因为依赖关系是捆绑在一起的，所以不需要使用--jars或—packages：
 
@@ -748,13 +714,13 @@ $SPARK_HOME/bin/spark-submit \
 target/scala-2.13/BuildingSBT-assembly-1.0.jar
 ```
 
-命令 4.11提交scala程序
+命令 10.11提交scala程序
 
 ## 10.5 部署应用
 
-Spark程序bin目录中的spark-submit脚本用于在集群上启动应用程序。它可以通过统一的界面，使用所有Spark支持的集群管理器。因此不必为每个应用程序专门配置应用程序。如果开发的代码依赖于其他项目，则需要将它们与应用程序一起打包，才能将代码分发到Spark群集。为此，需要创建一个包含代码及其依赖关系的装配jar或uber-jar。一个uber-jar也是一个jar文件，不仅包含一个Java程序，还嵌入了它的依赖关系。这意味着jar作为软件的一体化分发，不需要任何其他Java代码。优点在于可以分发的uber-jar，并不关心任何依赖关系是否安装在目标位置，因为的uber-jar实际上没有依赖关系。
+Spark安装目录中的 `spark-submit` 脚本是启动应用程序的标准入口。它提供了统一的提交界面，可以把同一个应用提交到 Spark 支持的不同集群管理器，而不必为每种运行环境分别改写启动方式。如果应用依赖其他库，就需要把这些依赖一并带上，常见做法是生成装配jar（assembly jar）或uber-jar。所谓uber-jar，就是把应用代码和所需依赖一起打包成一个可分发单元，从而降低目标环境缺包或版本不一致带来的运行风险。
 
-sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop作为provided依赖项，指出这些不需要捆绑，因为它们在运行时由集群管理器提供。一旦有一个装配jar，可以调用bin/spark-submit脚本传递jar运行应用程序。用户应用程序打包完成后，可以使用bin/spark-submit脚本启动，此脚本负责使用Spark及其依赖关系设置类路径，并可支持Spark支持的不同群集管理器和部署模式：
+sbt和Maven都提供了装配插件。创建装配jar时，通常会把Spark和Hadoop声明为 `provided` 依赖，因为这些组件一般由运行环境提供，不需要重复打进最终产物。打包完成后，就可以通过 `bin/spark-submit` 传入jar并启动应用。这个脚本会负责设置类路径、传递参数，并支持不同的集群管理器与部署模式：
 
 ./bin/spark-submit \\
 
@@ -768,15 +734,14 @@ sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop�
 [application-arguments]
 ```
 
-代码 4.48
-
+代码 10.28
 一些常用的选项是：
 
 （1）--class：应用程序的入口点（例如org.apache.spark.examples.SparkPi ）
 
-（2）--master：群集的主URL （例如： spark://23.195.26.187:7077 ）
+（2）--master：集群管理器地址（例如 `spark://23.195.26.187:7077`）
 
-（3）--deploy-mode：是否将驱动程序部署在工作节点（cluster）上，或作为外部客户机（client）本地部署，默认值为client。
+（3）--deploy-mode：决定驱动程序运行在提交端（`client`）还是集群侧（`cluster`），默认值为 `client`。
 
 （4）--conf：Key = value格式的任意Spark配置属性。对于包含空格的值，用引号括起“key = value”。
 
@@ -784,9 +749,9 @@ sbt和Maven都提供了装配插件。创建装配jar时，列出Spark和Hadoop�
 
 （6）application-arguments：参数传递给主类的main方法
 
-如果集群中运行驱动程序的主节点和工作节点在同一个物理网络中，常见的部署策略是从主节点上提交应用程序。在此设置中，client模式是适当的。在client模式下，驱动程序直接在spark-submit过程中启动，作为集群的客户端。应用程序的输入和输出连接到控制台。因此，此模式特别适用于涉及REPL的应用程序，例如Spark交互界面。
+如果提交端与集群节点处于同一网络环境，并且希望直接在终端观察日志与输出，`client` 模式通常更合适。在 `client` 模式下，驱动程序直接运行在执行 `spark-submit` 的那台机器上，因此更适合调试、交互式分析和需要立即查看结果的任务。
 
-如果的应用程序从远离工作节点的机器提交，例如本地在笔记本电脑上，通常使用cluster模式来最大限度地减少驱动程序和执行器之间的网络延迟，目前Standalone模式不支持Python应用程序的cluster模式。
+如果应用是从远离工作节点的机器提交，例如开发者本地电脑，通常更适合使用 `cluster` 模式，让驱动程序直接运行在集群内部，以减少驱动与执行器之间的网络延迟。对于长期运行任务、定时任务和生产环境批处理，这通常也是更常见的选择。
 
 有几个可用的选项是特定于正在使用的集群管理器，例如使用具有cluster部署模式的Spark独立集群，还可以指定--supervise，以确保如果出现非零退出代码失败，则自动重新启动驱动程序，要枚举所有可用于spark-submit可用选项，使用--help运行它，以下是常见选项的几个示例：
 
@@ -842,7 +807,7 @@ local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \
 1000
 ```
 
-命令 4.19
+命令 10.19
 
 ### 10.5.1 Spark 4.1.1 Structured Streaming 提交模板（Kafka + Kubernetes）
 
@@ -876,7 +841,7 @@ local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \
 
 （4）如果任务为PySpark，可将主程序jar替换为`.py`文件，并按需增加`--py-files`。
 
-表格 4.1给出了传递给Spark的master URL是以下格式之一：
+下面给出传递给Spark的几种常见 `master URL` 格式：
 
 | master URL                      | 含义                                                                                                                                             |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -885,14 +850,14 @@ local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \
 | local\[K,F\]                    | 使用K个工作线程和F个maxFailures本地运行Spark，有关此变量的说明，参阅spark.task.maxFailures。                                                                             |
 | local\[\*\]                     | 在本地运行Spark，其工作线程与机器上的逻辑内核一样多。                                                                                                                  |
 | local\[\*,F\]                   | 在本地运行Spark，其工作线程与机器上的逻辑内核一样多和F个maxFailures。                                                                                                    |
-| spark://HOST:PORT               | 连接到给定的Spark独立集群主控，端口必须是主服务器配置使用的端口，默认情况下为7077。                                                                                                 |
-| spark://HOST1:PORT1,HOST2:PORT2 | 使用Zookeeper连接到带有备用主机的给定Spark独立集群。该列表必须具有使用Zookeeper设置的高可用性群集中的所有主机，端口必须是主服务器配置使用的端口，默认情况下为7077。                                                |
+| spark://HOST:PORT               | 连接到给定的Spark Standalone管理节点，端口通常是该管理节点暴露的服务端口，默认常见值为7077。                                                                                       |
+| spark://HOST1:PORT1,HOST2:PORT2 | 使用ZooKeeper连接到具备高可用配置的Spark Standalone集群；列表中应包含全部候选管理节点地址。                                                                                         |
 | k8s://https://HOST:PORT          | 连接到给定的 Kubernetes API Server，常见端口为 6443。通常配合 --deploy-mode cluster 与 spark.kubernetes.* 配置提交。 |
-| yarn                            | 根据--deploy-mode的值，以client或cluster模式连接到YARN群集，将基于HADOOP\_CONF\_DIR或YARN\_CONF\_DIR变量找到集群位置。                                                     |
+| yarn                            | 根据--deploy-mode的值，以client或cluster模式连接到YARN集群，将基于HADOOP\_CONF\_DIR或YARN\_CONF\_DIR变量找到集群位置。                                                     |
 
-表格 4.2Spark的master URL格式
+表格 10.1 Spark 的 master URL 格式
 
-另外，spark-submit脚本可以从属性文件加载默认的Spark配置值，并将它们传递到应用程序。默认情况下，它将从Spark目录中的conf/spark-defaults.conf中读取选项，以这种方式加载默认Spark配置可以避免需要某些配置信息通过spark-submit设置，例如如果设置了spark.master属性，则可以从spark-submit安全地省略--master标志。实际上可以通过三个地方设置运行Spark应用程序的配置信息，分别为：
+除了命令行参数，`spark-submit` 还会从属性文件里读取默认配置。默认情况下，它会加载 Spark 安装目录中的 `conf/spark-defaults.conf`。这意味着某些经常重复的配置不必每次都写在命令行里；例如如果默认文件里已经设置了 `spark.master`，提交时就可以不再显式传 `--master`。通常，运行配置主要来自三个地方：
 
 （1）应用程序中的SparkConf
 
@@ -900,9 +865,9 @@ local:///opt/spark/examples/jars/spark-examples_2.13-4.1.1.jar \
 
 （3）Spark目录中的配置文件
 
-通常，在应用程序的SparkConf上显式设置的配置值具有最高优先级，其次是通过spark-submit命令行参数传递配置值，然后将该值设置为默认值。如果不清楚配置选项的来源，可以使用--verbose选项运行spark-submit来打印出细粒度的调试信息。
+一般来说，应用代码里 `SparkConf` 的显式设置优先级最高，其次是 `spark-submit` 命令行参数，最后才是默认配置文件。如果某个参数的生效来源不清楚，可以用 `spark-submit --verbose` 查看更详细的解析过程。
 
-当使用spark-submit，应用程序jar以及--jars选项中包含的任何jar将被自动传输到群集。--jars之后提供的URL必须用逗号分隔。这些jar文件必须包含在驱动程序和执行器类路径上。目录扩展不适用于--jars。Spark使用以下URL方案来允许不同的策略来传播jar：
+当使用spark-submit，应用程序jar以及--jars选项中包含的任何jar将被自动传输到集群。--jars之后提供的URL必须用逗号分隔。这些jar文件必须包含在驱动程序和执行器类路径上。目录扩展不适用于--jars。Spark使用以下URL方案来允许不同的策略来传播jar：
 
 （1）file:绝对路径和file:/ URI由驱动程序的HTTP文件服务器提供，每个执行器从驱动程序HTTP服务器提取文件。
 
@@ -914,10 +879,9 @@ System）即网络文件系统，是FreeBSD支持的文件系统中的一种，�
 
   - 注意
 
-jar和文件将复制到执行器节点上每个SparkContext的工作目录，这可能会随着时间的推移占用大量空间，并需要清理。使用YARN时，清理将自动进行处理；如果通过Spark
-Standalone，可以使用spark.worker.cleanup.appDataTtl属性配置自动清理。
+这些 jar 和附加文件会被分发到执行器工作目录中；如果应用提交频繁、依赖又比较大，久而久之就会占用可观的磁盘空间。使用 YARN 时，这类临时文件通常会由运行环境自动清理；如果是 Spark Standalone，则可以通过 `spark.worker.cleanup.appDataTtl` 之类的配置控制清理策略。
 
-用户可能还包括任何其他依赖关系通过使用—packages参数，其中提供逗号分隔的Maven坐标列表。使用此命令时将处理所有传递依赖关系，搜索当地的maven资源库，然后搜索maven中心和由--repositories提供的任何其他远程存储库。坐标的格式应为groupId:artifactId:version。这些参数可以与pyspark、spark-shell和spark-submit一起使用。对于Python，等效的--py-files选项可用于将.egg、.zip和.py库分发到执行器上。
+如果某些依赖更适合在提交时动态拉取，也可以使用 `--packages` 传入逗号分隔的 Maven 坐标列表。Spark 会解析其传递依赖，并按顺序检查本地仓库、Maven Central 以及 `--repositories` 指定的额外仓库。这个机制同样适用于 `pyspark`、`spark-shell` 和 `spark-submit`。对于 Python 应用，等价思路通常是使用 `--py-files` 分发 `.py`、`.zip` 或 `.egg` 文件。
 
 ### 10.5.2 集群架构
 
@@ -927,50 +891,51 @@ Program）中的SparkContext对象协调。具体来说，要在集群上运行�
 ![park cluster
 components](media/10_running_applications/media/image2.png)
 
-图例 4‑1集群框架
+图例 10‑2集群框架
 
-Apache Spark遵循主/从架构，包含两个主要守护程序和一个集群管理器：
+如果用更贴近当前实践的说法来描述，Spark运行时通常由三类角色组成：
 
-（1）主（Master）进程：驱动程序（Driver Program）
+（1）驱动程序（Driver Program）：负责创建SparkSession或SparkContext，生成执行计划并调度任务。
 
-（2）从（Slaver）进程：工作节点（Worker Node）
+（2）执行器（Executor）：负责实际执行任务、缓存数据并回传状态。
 
-Spark集群有一个主进程和任意数量的从进程。驱动程序和执行器运行他们各自的Java进程，用户可以在同一个水平Spark集群上或在单独的机器上运行它们，即在垂直Spark集群或混合机器配置中运行它们，有关这种架构有几件有用的事情要注意。
+（3）集群管理器（Cluster Manager）：负责为应用分配资源，例如Standalone、YARN或Kubernetes。
+
+在Standalone模式里，还会看到管理节点（Master）和工作节点（Worker）这两个进程角色；它们负责资源管理与进程托管，但不应和Driver/Executor简单一一对应。Driver与Executor各自运行在独立的JVM进程中，可以部署在同一组机器上，也可以按网络与资源条件分开部署。
 
 每个应用程序都获得自己的执行器进程，这些进程在整个应用程序的持续时间内保持不变，并在多线程中运行任务。这有利于在调度方（每个驱动程序安排自己的任务）和执行方（在不同JVM中运行的不同应用程序的任务）之间彼此隔离应用程序，但是这也意味着数据不能在不写入外部存储系统的情况下在不同的Spark应用程序（SparkContext的实例）之间共享。
 
-Spark与底层群集管理器无关，只要可以获取执行器进程，并且这些进程彼此通信，即使在也支持其他应用程序的集群管理器上运行，它也是相对容易的。驱动程序必须在其生命周期中监听并接收其执行器的传入连接，因此驱动程序必须能够从工作节点进行网络寻址。
+Spark并不强绑定某一种底层集群管理器。只要资源管理器能够为应用分配执行器进程，并保证这些进程之间可以正常通信，Spark就可以在其上运行。需要额外注意的是，Driver在整个生命周期里都要接收来自执行器的连接与状态回报，因此工作节点必须能够稳定访问Driver所在地址。
 
-因为驱动程序调度集群上的任务，所以它应该靠近工作节点运行，最好在相同的局域网上运行。如果要远程发送求到集群，最好是向驱动程序打开一个RPC，并从附近提交操作，而不是从远离工作节点运行驱动程序。
+因为驱动程序负责向执行器分发任务并持续接收心跳、状态与结果，所以它最好部署在靠近工作节点的网络环境中，例如同一可用区或同一局域网。如果只是从远端发起作业，更合理的方式通常是把提交请求发送到靠近集群的入口，而不是让Driver长期运行在高延迟链路之外。
 
 #### 10.5.2.1 驱动程序
 
-Spark驱动程序（也称为应用程序的驱动程序进程）是为Spark应用程序承载SparkContext的JVM进程。它是Spark应用程序中的主节点。它是作业和任务执行的驾驶舱（使用DAGScheduler和任务计划程序）。它承载环境的Web
-UI。
+Spark驱动程序是承载SparkSession或SparkContext的JVM进程，也是应用的控制中心。它负责运行 `main` 函数、把用户代码转换成作业与阶段、与集群管理器协商资源，并通过Web UI暴露执行状态。
 
-驱动程序是Spark应用程序的主节点。将Spark应用程序分解为任务并安排它们在执行器上运行。一个驱动程序是任务调度程序生活和产生任务的工作节点司机协调工作节点和整体执行任务。
+驱动程序内部包含DAGScheduler、TaskScheduler以及与集群管理器通信的后端组件。它不会亲自完成大规模数据计算，而是把计算拆成任务后分发给执行器，再持续汇总任务状态、失败重试信息和最终结果。无论是Scala、Python还是R接口，真正的作业编排入口最终都会落到Driver进程。
 
-驱动程序是Spark交互界面的核心点和入口点，包括Scala，Python和R三种语言。驱动程序运行应用程序的main函数，并且是创建Spark上下文的地方。Spark驱动程序包含各种组件—DAGScheduler、TaskScheduler、BackendScheduler和BlockManager，负责将Spark用户代码转换为在集群上执行的实际Spark作业，其主要任务包括：
+从职责上看，驱动程序最值得记住的事情有：
 
-（1）在Spark集群的主节点上运行的驱动程序会调度作业执行，并与集群管理器协商；
+（1）Driver负责调度作业执行，并与集群管理器协商资源；
 
 （2）将RDD转换为执行图并将图分解成多个阶段；
 
-（3）驱动程序存储有关所有弹性分布式数据库及其分区的元数据；
+（3）驱动程序存储有关所有弹性分布式数据集及其分区的元数据；
 
-（4）作为作业和任务执行的控制部分，将用户应用程序转换为称为任务的较小执行单元，然后执行器执行任务，即运行单个任务的工作进程；
+（4）Driver把用户应用拆分成更小的任务单元，并交给执行器实际运行；
 
 （5）驱动程序通过端口4040（默认端口）的Web UI公开有关正在运行的spark应用程序的信息。
 
   - 注意
 
-Spark shell是一个Spark应用程序和驱动程序，创建一个可用作为sc的SparkContext。
+Spark shell 本身就是一个Spark应用，它会启动一个可直接使用的Driver，并预先创建名为 `sc` 的 `SparkContext`。
 
 #### 10.5.2.2 执行器
 
-工作节点也称从节点，是正在运行Spark实例，其中执行器（Executor）执行任务。它们是Spark中的计算节点。工作节点接收在线程池中运行的序列化任务，托管一个BlockManager可以向Spark群集中的其他工作节点提供块。工作节点之间使用其块管理器实例进行通信。BlockManager是Spark中数据块（简单的块）的键值存储。BlockManager充当在Spark应用程序中的每个节点上运行的本地缓存，即驱动程序和执行程序（并在创建SparkEnv时创建）
+工作节点负责承载执行器（Executor），因此可以把它理解为Spark中的计算节点。执行器在这些节点上运行任务、缓存数据，并通过BlockManager与其他节点交换所需的数据块。BlockManager本质上是Spark在各节点上的本地块存储与缓存组件。
 
-工作节点中执行器是负责执行任务的分布式代理，执行器为在Spark应用程序中缓存的RDD提供内存中的存储。执行器启动时，首先向驱动程序注册并直接通信执行任务。执行器可以在其生命周期内并行运行多个任务，并跟踪运行的任务。执行器是负责执行任务的分布式代理。每个Spark应用程序都有自己的执行器。执行者通常在Spark应用程序的整个生命周期中运行，这种现象称为执行器的静态分配。然而，用户还可以选择动态分配执行器，其中可以动态添加或删除Spark执行器以匹配总体负载。执行器的主要功能：
+执行器是Spark应用真正执行计算的地方。启动后，执行器会先向驱动程序注册，然后持续接收任务、执行计算、缓存中间结果，并把状态和结果回传给驱动程序。每个Spark应用都有自己独立的一组执行器；默认情况下，这些执行器会贯穿应用生命周期存在，也可以在启用动态分配时按负载变化动态增减。执行器的主要职责包括：
 
 （1）执行器执行所有的数据处理。
 
@@ -986,73 +951,71 @@ Spark shell是一个Spark应用程序和驱动程序，创建一个可用作为s
 Manager）是一个外部服务负责获取Spark集群上的资源并将其分配给Spark的作业（Job）。有3种不同类型的集群管理器，Spark应用程序可以利用其进行各种物理资源的分配和释放，例如Spark作业的内存、CPU内存等。Hadoop
 YARN、Kubernetes或Standalone集群管理器可以在内部或云端启动一个Spark应用程序来运行。
 
-为任何Spark应用选择集群管理器取决于应用程序的目标，因为所有集群管理器都提供不同的调度功能集。要开始使用Spark时，Standalone集群管理器是开发新的Spark应用程序时最容易使用的集群管理器。目前支持的三个集群管理器包括：
+选择哪种集群管理器，取决于应用目标、现有基础设施和团队运维方式。对于学习和轻量环境，Standalone最容易上手；对于已经运行在Hadoop体系中的平台，YARN更自然；对于云原生与容器化部署，Kubernetes通常是Spark 4.x更主流的选择。目前本章重点覆盖三种常见方案：
 
 （1）Standalone：Spark包含的简单集群管理器，可以轻松设置集群。
 
 （2）Kubernetes：容器化集群管理平台，适合云原生部署。
 
-（3）Hadoop YARN：Hadoop 2中的资源管理器。
+（3）Hadoop YARN：Hadoop生态中的资源管理器。
 
-（4）Kubernetes：Spark 4.x 中 Kubernetes 已是主流部署选项之一。Kubernetes 是提供以容器为中心基础设施的开源平台，相关文档可参考官方
-Github组织中积极开发。有关文档，参阅该项目的README。
+其中，Kubernetes 在 Spark 4.x 里已经成为生产环境的重要选项之一，尤其适合需要镜像化交付、弹性扩缩容和统一容器运维的平台。
 
 #### 10.5.3.1 Standalone
 
 要安装Spark
-Standalone模式，只需将Spark的编译版本放在群集上的每个节点上即可。可以使用每个版本获取Spark的预构建版本，也可以自行构建。
+Standalone模式，只需将Spark的编译版本放在集群上的每个节点上即可。可以使用每个版本获取Spark的预构建版本，也可以自行构建。
 
   - 手动启动集群
 
-可以通过执行以下命令启动独立的主服务器：
+可以通过以下命令启动Standalone管理节点：
 
 ./sbin/start-master.sh
 
-命令 4.20
+命令 10.20
 
-一旦开始，主节点的显示终端将打印出一个类似spark://HOST:PORT的URL，可以使用其连接工作节点，或作为“master”参数传递给SparkContext。还可以在主节点的Web
-UI上找到此URL，默认情况下Web
-UI的地址为http://localhost:8080。同样，可以启动一个或多个从节点，并通过以下方式将其连接到主服务器：
+启动后，管理节点终端会打印出一个类似 `spark://HOST:PORT` 的地址，工作节点连接它时会用到这个URL；把它传给应用时，也就是常见的 `--master spark://...` 参数。这个地址同样可以在管理节点的Web UI里看到，默认端口通常是 `8080`。接着可以启动一个或多个工作节点并注册到该管理节点：
 
-./sbin/start-slave.sh \<master-spark-URL\>
+./sbin/start-worker.sh \<master-spark-URL\>
 
-命令 4.21
+命令 10.21
 
-一旦开始工作，查看主节点的Web
-UI，应该看到列出的新节点，以及其CPU和内存的数量，其中内存为操作系统留下了一千兆字节，最后以下配置选项可以传递给主节点和从节点：
+启动完成后，在管理节点Web UI里应该能看到新加入的工作节点，以及它们可用于Spark的CPU和内存资源。下面列出的是启动管理节点和工作节点时最常见的一组参数：
 
 | 参数                                      | 含义                                                             |
 | --------------------------------------- | -------------------------------------------------------------- |
 | \-h HOST ，--host HOST                   | 要监听的主机名                                                        |
 | \-i HOST ，--ip HOST                     | 要监听的主机名（已弃用，使用-h或--host）                                       |
-| \-p PORT ，--port PORT                   | 用于侦听的服务端口，默认值主服务器为7077，工作节点为随机                                 |
-| \--webui-port PORT                      | Web UI端口，默认值为8080，主服务器为8081                                    |
+| \-p PORT ，--port PORT                   | 用于监听服务的端口；管理节点默认常见值为7077，工作节点通常为随机端口                               |
+| \--webui-port PORT                      | Web UI端口；管理节点默认通常为8080，工作节点默认通常为8081                               |
 | \-c CORES --cores CORES ， --cores CORES | 允许Spark应用程序在机器上使用的总CPU内核，默认值为全部可用; 仅在工作节点上                     |
 | \-m MEM ，--memory MEM                   | 允许Spark应用程序在计算机上使用的内存总量，格式为1000M或2G，默认值为计算机的总RAM减去1 GB；仅在工作节点上 |
 | \-d DIR ， --work-dir DIR                | 用于临时空间和作业输出日志的目录，默认值为SPARK\_HOME/work；仅在工作节点上。                 |
 | \--properties-file FILE                 | 要加载的自定义Spark属性文件的路径，默认值为conf/ spark-defaults.conf              |
 
-表格 4.3传递给主节点和从节点的配置选项
+表格 10.2 传递给管理节点和工作节点的配置选项
 
   - 集群启动脚本
 
-要启动具有启动脚本的Spark独立集群，应该在Spark目录conf中创建一个名为slaves的文件，该文件必须包含打算启动Spark工作的所有计算机的主机名，每行一个。如果slaves文件不存在，则启动脚本默认为单个机器（localhost），这对于测试非常有用。主机通过ssh访问每个工作机器。默认情况下，ssh并行运行，需要无密码（使用私钥）访问进行设置。如果没有无密码设置，可以设置环境变量SPARK\_SSH\_FOREGROUND，并为每个工作节点提供一个密码。设置此文件后，可以使用以下Shell脚本启动或停止集群，这些脚本基于Hadoop的部署脚本，并且可以在SPARK\_HOME/sbin中，其中包括：
+如果希望通过脚本批量启动Standalone集群，通常会在 `conf` 目录里准备一份工作节点清单文件。旧资料里常见 `conf/slaves`、`start-slaves.sh` 这类命名；当前版本更常见的是 `worker / workers` 这一套名称。无论使用哪一种命名，核心思路都一样：管理节点通过SSH登录到各台工作机器并启动对应进程。为了批量启动顺畅，通常需要提前配置免密SSH；如果没有免密配置，也可以通过 `SPARK_SSH_FOREGROUND` 在前台逐台输入密码。
 
-sbin/start-master.sh：在脚本执行的机器上启动主实例。
+常见脚本位于 `SPARK_HOME/sbin`，包括：
 
-sbin/start-slaves.sh：在conf/slaves文件中指定的每台机器上启动一个从实例。
+`sbin/start-master.sh`：在当前机器启动Standalone管理节点。
 
-sbin/start-slave.sh：在脚本执行的机器上启动一个从实例。
+`sbin/start-workers.sh`：按照工作节点清单批量启动多个工作节点。
 
-sbin/start-all.sh：启动主和多个从实例。
+`sbin/start-worker.sh`：在当前机器启动单个工作节点。
 
-sbin/stop-master.sh：停止通过sbin/start-master.sh脚本启动的主服务器。
+`sbin/start-all.sh`：一次性启动管理节点和多个工作节点。
 
-sbin/stop-slaves.sh：停止在conf/slaves文件中指定的计算机上的所有从实例。
+`sbin/stop-master.sh`：停止管理节点进程。
 
-sbin/stop-all.sh：停止主和从实例。
+`sbin/stop-workers.sh`：停止清单中的所有工作节点进程。
 
-这些脚本必须在要作为主节点的计算机上执行，而不是在本地计算机上执行，还可以通过在目录conf中的spark-env.sh设置环境变量来进一步配置集群。通过从spark-env.sh.template开始创建此文件，并将其复制到所有的工作机器，以使设置生效。以下设置可用：
+`sbin/stop-all.sh`：停止整个Standalone集群。
+
+这些脚本通常应在承担管理节点角色的机器上执行。除了命令行参数外，还可以通过 `conf/spark-env.sh` 设置环境变量；常见做法是从 `spark-env.sh.template` 复制一份并同步到相关机器。下面列出的是这份环境文件里最常用的配置项：
 
 | 环境变量                       | 含义                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------- |
@@ -1064,44 +1027,43 @@ sbin/stop-all.sh：停止主和从实例。
 | SPARK\_WORKER\_CORES       | 允许Spark应用程序在机器上使用的核心总数，默认值为所有可用内核。                                                            |
 | SPARK\_WORKER\_MEMORY      | 允许Spark应用程序在机器上使用的总内存量，例如1000m，2g，默认值为总内存减去1 GB；注意每个应用程序的单个内存都使用其spark.executor.memory属性进行配置。 |
 | SPARK\_WORKER\_PORT        | 在特定端口启动Spark worker，默认值为random。                                                               |
-| SPARK\_WORKER\_WEBUI\_PORT | 用于工作者Web UI的端口，默认值为8081。                                                                      |
+| SPARK\_WORKER\_WEBUI\_PORT | 工作节点Web UI使用的端口，默认值通常为8081。                                                                  |
 | SPARK\_WORKER\_DIR         | 用于运行应用程序的目录，其中将包括日志和临时空间，默认值为SPARK\_HOME/ work。                                               |
 | SPARK\_WORKER\_OPTS        | 仅适用于“-Dx = y”形式的工作的配置属性，有关可能的选项列表，参见下文。                                                       |
-| SPARK\_DAEMON\_MEMORY      | 内存分配给Spark主人和工程师守护进程自身（默认值：1g）。                                                               |
-| SPARK\_DAEMON\_JAVA\_OPTS  | Spark主和工作程序守护进程的JVM选项本身以“-Dx = y”的形式（默认值：无）。                                                  |
-| SPARK\_PUBLIC\_DNS         | Spark主人和工作节点的公共DNS名称（默认值：无）。                                                                  |
+| SPARK\_DAEMON\_MEMORY      | 分配给Spark守护进程本身的内存，默认值通常为 `1g`。                                                                 |
+| SPARK\_DAEMON\_JAVA\_OPTS  | Spark守护进程自身的JVM选项，形式为 `-Dx=y`。                                                                     |
+| SPARK\_PUBLIC\_DNS         | 管理节点和工作节点对外暴露时使用的公共DNS名称。                                                                    |
 
-表格 4.4spark-env.sh设置环境变量
+表格 10.3 spark-env.sh 设置环境变量
 
-  - 将应用程序连接到群集
+  - 将应用程序连接到集群
 
-要在Spark群集上运行应用程序，只需将主节点的URL地址，类似spark://IP:PORT，传递给SparkContext构造函数即可。要针对群集运行交互式，运行以下命令：
+要把应用连接到Standalone集群，只需把管理节点地址 `spark://IP:PORT` 传给 `SparkContext` 或 `spark-submit --master`。如果要在集群上开启交互式 Shell，可以使用：
 
 ./bin/spark-shell --master spark://IP:PORT
 
-命令 4.22
+命令 10.22
 
-还可以传递一个选项--total-executor-cores \<numCores\>来控制spark-shell在群集上使用的核心数。
+还可以传递一个选项--total-executor-cores \<numCores\>来控制spark-shell在集群上使用的核心数。
 
   - 启动Spark应用程序
 
-spark-submit脚本提供了将编译的Spark应用程序提交到集群的最直接方法。对于Standalone集群，Spark目前支持两种部署模式。在client模式下，驱动程序以与提交应用程序的客户端相同的进程启动，但是在cluster模式下，驱动程序是从群集中的一个工作节点中启动进程，客户端进程在履行其提交应用程序的责任后立即退出，而不必等待应用程序完成。
+`spark-submit` 是把编译好的Spark应用提交到集群的标准入口。对于Standalone集群，常见的两种部署模式分别是 `client` 和 `cluster`：`client` 模式下，Driver保留在提交命令的那台机器上运行；`cluster` 模式下，Driver会作为集群中的一个进程由工作节点托管，提交命令在完成提交后即可退出，不必一直等待应用执行结束。
 
-如果的应用程序是通过Spark提交启动的，则应用程序jar会自动分发到所有工作节点。对于应用程序所依赖的任何其他jar，应该使用逗号作为分隔符，通过--jars标志指定它们，例如--jars
-jar1,jar2。
+如果应用是通过 `spark-submit` 启动的，主应用jar会自动分发到相应节点。对于额外依赖的jar，可以通过 `--jars jar1,jar2` 这样的形式显式传入。
 
-此外，独立集群模式支持使用非零退出代码退出的应用程序自动重新启动，要使用此功能，我们可以在启动应用程序时传入--supervise标志给spark-submit命令，如果希望终止反复失败的应用程序，则可以通过以下方法进行：
+此外，Standalone支持对异常退出的Driver进行自动拉起。要启用这一能力，可以在提交时使用 `--supervise`。如果需要手动终止不断失败后反复重启的应用，可以执行：
 
 ./bin/spark-class org.apache.spark.deploy.Client kill \<master url\>
 \<driver ID\>
 
-命令 4.23
+命令 10.23
 
-可以通过Standalone的主Web UI（类似http://\<master url\>:8080）找到驱动程序ID。
+驱动程序ID可以在Standalone管理节点的Web UI里找到，例如 `http://<master-url>:8080`。
 
   - 资源调度
 
-独立集群模式目前只支持跨应用程序的简单FIFO调度器，但是为了允许多个并发用户，可以控制每个应用程序将使用的最大资源数量。默认情况下，它将获取集群中的所有内核，只有一次运行一个应用程序才有意义，可以通过在SparkConf中设置spark.cores.max来封顶核心数量，例如：
+Standalone默认提供的是跨应用的简单FIFO调度。为了避免单个应用独占整个集群，通常会限制每个应用可用的最大CPU核心数。默认情况下，一个应用可能拿走集群里的全部核心；对于共享环境，更常见的做法是在 `SparkConf` 里通过 `spark.cores.max` 设置上限，例如：
 
 val conf = new SparkConf()
 
@@ -1113,27 +1075,24 @@ val conf = new SparkConf()
 
 val sc = new SparkContext(conf)
 
-代码 4.54
-
-此外，我们可以在集群主进程上配置spark.deploy.defaultCores，如果应用程序没有设置spark.cores.max参数，将使用默认值而不是最多的核心数，为此请在conf/spark-env.sh中添加以下内容：：
+代码 10.29
+此外，还可以在管理节点上设置 `spark.deploy.defaultCores`。如果应用没有显式设置 `spark.cores.max`，就会采用这个默认值，而不是尽可能占满全部核心。做法是在 `conf/spark-env.sh` 中加入：
 
 export SPARK\_MASTER\_OPTS = "-Dspark.deploy.defaultCores=\<value\>"
 
-命令 4.24
+命令 10.24
 
-这对于共享群集而言非常有用，用户可能不能单独配置最大数量的内核。
+这对共享集群尤其有用，因为平台管理员可以先给出统一上限，避免用户因未显式配置而一次拿走过多核心。
 
   - 监控和记录
 
-Spark的独立模式提供基于Web的用户界面来监控集群，主节点和每个工作节点都有自己的Web
-UI，显示群集和作业统计信息。默认情况下，可以访问端口8080为的主服务器Web
-UI，可以在配置文件或命令行选项中更改端口。此外，每个作业的详细日志输出也会写入每个从节点的工作目录（默认情况下为SPARK\_HOME/work）。将看到每个作业stdout和stderr两个文件，其中所有输出都写入其控制台。
+Standalone模式自带基于Web的监控界面，管理节点和每个工作节点都有各自的UI页面，用来查看集群资源、已提交应用和运行状态。默认情况下，管理节点的Web UI通常监听在 `8080` 端口，端口也可以通过配置或启动参数调整。除了Web UI之外，每个应用的详细日志还会写入工作节点的工作目录，默认位置一般是 `SPARK_HOME/work`，其中常见的就是 `stdout` 与 `stderr` 两类输出文件。
 
   - 与Hadoop一起运行
 
 可以在现有的Hadoop集群上运行Spark，只需在同一台机器上将其作为单独的服务启动。要从Spark访问Hadoop数据，只需使用hdfs://URL，通常为hdfs://\<namenode\>:9000/path，可以在Hadoop
 Namenode的Web
-UI上找到正确的URL，或者可以为Spark设置单独的群集，并且仍然可以通过网络访问HDFS；这将比磁盘本地访问速度慢，但是如果仍然在同一局域网中运行可能不会产生网络通讯的问题，例如将Hadoop上的每个机架上放置一些Spark机器。
+UI上找到正确的URL，或者可以为Spark设置单独的集群，并且仍然可以通过网络访问HDFS；这将比磁盘本地访问速度慢，但是如果仍然在同一局域网中运行可能不会产生网络通讯的问题，例如将Hadoop上的每个机架上放置一些Spark机器。
 
 #### 10.5.3.2 YARN
 
@@ -1164,7 +1123,7 @@ ApplicationMaster 来表示已提交的应用程序。通过使用一个资源�
 注销其容器，执行周期就完成了。
 
 确保HADOOP\_CONF\_DIR或YARN\_CONF\_DIR指向包含Hadoop集群的（客户端）配置文件的目录。这些配置用于写入HDFS并连接到YARN
-ResourceManager。此目录中包含的配置将分发到YARN群集，以便应用程序使用的所有容器都使用相同的配置。如果配置引用了不受YARN管理的Java系统属性或环境变量，那么也应该在Spark应用程序的配置（驱动程序，执行程序和AM在客户端模式下运行时）中进行设置。
+ResourceManager。此目录中包含的配置将分发到YARN集群，以便应用程序使用的所有容器都使用相同的配置。如果配置引用了不受YARN管理的Java系统属性或环境变量，那么也应该在Spark应用程序的配置（驱动程序，执行程序和AM在客户端模式下运行时）中进行设置。
 
 有两种可用于在YARN上启动Spark应用程序的部署模式。在cluster模式下，Spark驱动程序在由集群上的YARN管理的应用程序主进程中运行，客户端可以在启动应用程序后离开。在client模式下，驱动程序在客户端进程中运行，应用程序主程序仅用于从YARN请求资源。不同于Spark独立和Kubernetes模式，其中master地址在--master参数中指定，在YARN模式下，ResourceManager的地址从Hadoop配置中提取。因此，--
 --master参数是yarn。要在cluster模式下启动Spark应用程序：
@@ -1174,7 +1133,7 @@ $ ./bin/spark-submit --class path.to.your.Class --master yarn
 --deploy-mode cluster [options] <app jar> [app options]
 ```
 
-命令 4.25
+命令 10.25
 
 例如：
 
@@ -1190,7 +1149,7 @@ lib/spark-examples*.jar \
 10
 ```
 
-命令 4.26
+命令 10.26
 
 上面启动了一个YARN客户端程序，该程序启动了默认的Application Master，然后SparkPi将作为Application
 Master的子线程运行。 客户端将定期轮询Application
@@ -1200,9 +1159,9 @@ Master以获取状态更新，并将其显示在控制台中，应用程序完�
 $ ./bin/spark-shell --master yarn --deploy-mode client
 ```
 
-命令 4.27
+命令 10.27
 
-在cluster模式下，驱动程序在与客户机不同的机器上运行，因此SparkContext.addJar将不会与客户端本地的文件一起使用，要使客户端上的文件可用于SparkContext.addJar，请在启动命令中使用--jars选项包含它们。
+在cluster模式下，驱动程序在与客户端不同的机器上运行，因此SparkContext.addJar将不会与客户端本地的文件一起使用，要使客户端上的文件可用于SparkContext.addJar，请在启动命令中使用--jars选项包含它们。
 
 ```bash
 $ ./bin/spark-submit --class my.main.Class \
@@ -1213,7 +1172,7 @@ my-main-jar.jar \
 app_arg1 app_arg2
 ```
 
-命令 4.28
+命令 10.28
 
 #### 10.5.3.3 Kubernetes
 
@@ -1247,4 +1206,5 @@ Kubernetes 模式下，`spark-submit` 通过 `k8s://` 连接 API Server，驱动
 当你需要跨环境一致交付（开发、测试、生产）时，Kubernetes 能显著降低运行时差异，通常是 Spark 4.x 的首选部署平台之一。
 ## 10.6 小结
 
-本章讲述如何设置一个完整的开发环境来开发和调试Spark应用程序。本章使用Scala作为开发语言，sbt作为构建工具，讲述如何使用管理依赖项、如何打包和部署Spark应用程序。另外还介绍了Spark应用程序的几种部署模式。
+本章围绕 Spark 4.x 应用的工程化交付展开，介绍了 SparkSession 统一入口、sbt 构建、jar 打包、`spark-submit` 提交，以及 Standalone、YARN、Kubernetes 等运行方式。读完本章后，读者应能把示例代码整理成可重复构建、可配置、可部署的应用，并根据环境选择合适的提交与资源配置方案。
+

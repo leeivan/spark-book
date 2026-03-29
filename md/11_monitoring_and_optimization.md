@@ -18,42 +18,38 @@
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
 > 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
-要获取关于Spark应用程序行为的信息，可以查看集群管理器日志和Spark
-Web应用程序界面。这两种方法提供补充信息。日志使可以在应用程序的生命周期中查看细粒度事件。Web界面提供了Spark应用程序行为和细粒度指标的各个方面的广泛概述。要访问正在运行的Spark应用程序的Web界面，可以在Web浏览器中打开http://spark\_driver\_host:4040。如果多个应用程序在同一主机上运行，则Web应用程序将绑定到以4040开始的连续端口，如4041、4402等，Web应用程序仅在应用程序期间可用。
+想理解 Spark 应用为什么慢，通常需要同时看两类信息：运行日志和 Spark UI。日志适合追踪细粒度事件与异常，Spark UI 更适合观察作业、阶段、任务、Shuffle 和存储使用的整体画像。两者结合，才能更快定位真正的瓶颈。
 
-由于大多数Spark基于内存的计算性质，Spark程序需要考虑如何有效的利用群集中的任何资源，包括CPU、带宽或内存。大多数情况下，如果数据适合内存的大小，瓶颈就有可能为网络带宽，但有时还需要进行一些其他方面的调整，例如以序列化形式存储RDD以减少内存使用，数据的序列化对于良好的网络性能至关重要，并且还可以降低内存使用和网络带宽。
+对 Spark 4.x 来说，性能优化不是“先调参数”，而是先确认瓶颈属于计算、网络、内存、序列化还是数据分布问题，再决定是否改代码、改分区、改 Join 策略或改资源配置。
 
 ## 11.3 工作原理
 
-在深入了解Apache Spark的工作原理之前，先了解一下Apache Spark的术语。
+在深入了解Apache Spark的工作原理之前，先统一几个最常见的术语。
 
-（1）作业（Job）：在单个机器上运行的执行单元，例如从HDFS或本地读取输入；对数据执行一些计算并输出数据。
+（1）作业（Job）：一次动作操作触发的一次完整执行过程，例如 `count`、`collect` 或写出结果。
 
-（2）阶段（Stage）：作业分为几个阶段。阶段可以被分类为Map或Reduce阶段。阶段根据计算操作边界划分，所有操作不能在单个阶段更新，而是发生在多个阶段。
+（2）阶段（Stage）：作业会被拆分成若干阶段，阶段通常以Shuffle边界为分隔点；同一阶段内的计算可以流水线执行。
 
-（3）任务（Task）：每个阶段都有一些任务，每个分区有一个任务。一个任务在一个执行器上的一个数据分区上执行。
+（3）任务（Task）：阶段内部的最小执行单元，通常一个分区对应一个任务。
 
-（4）有向无环图（DAG）：DAG代表有向无环图，是指按照一定顺序进行操作和创建RDD的逻辑图。Spark中的DAG是一组顶点和边，其中顶点代表RDD和边缘代表施加在上的RDD操作，每条边都是只有一个方向，而且不会形成循环。
+（4）有向无环图（DAG）：由RDD及其依赖关系构成的逻辑图，用来描述“先做什么、后做什么”。
 
-（5）执行器（Executor）：负责执行任务的进程。
+（5）执行器（Executor）：负责实际执行任务、缓存数据并回传状态的进程。
 
-（6）驱动程序（Driver Program）：负责通过Spark引擎运行作业的程序/进程
+（6）驱动程序（Driver Program）：负责编排作业、生成执行计划、向执行器分发任务的进程。
 
-（7）主节点（Master Node）：运行Driver程序的机器
-
-（8）从节点（Slave Node）：运行Executor程序的机器
+（7）管理节点 / 工作节点：旧资料里常见 `Master / Slave` 说法，本书统一改为更中性的“管理节点 / 工作节点”。实际部署时，Driver并不一定固定运行在某个管理节点上，而是取决于部署模式与集群管理器。
 
 ### 11.3.1 依赖关系
 
-Spark中的所有作业都由一系列操作组成，例如map、filter、reduce等，并运行在一组数据上，工作中的所有操作都被用来构造DAG。在可能的情况下，DAG通过重新排列和组合运算符进行了优化，例如提交一个Spark作业，其中包含一个map转换，然后是一个filter转换。Spark
-DAG优化器会重新排列这些运算符的顺序，因为filter将减少进行map操作的记录数量。
+Spark中的所有作业都由一系列操作组成，例如 `map`、`filter`、`reduce` 等，这些操作及其依赖关系共同构成DAG。更准确地说，Spark会先记录逻辑依赖，再在生成物理执行计划时尽量把可流水线化的窄依赖操作合并到同一阶段中执行。像 `map` 后接 `filter` 这样的链式转换，重点不在于“随意改写顺序”，而在于Spark会基于依赖关系与执行边界减少不必要的阶段切分与数据落盘。
 
 基本上，RDD的评估本质上是延迟的，这意味着在RDD上执行一系列转换，并没有立即对其进行评估。虽然从现有的RDD创建新的RDD，但新的RDD还带有指向父RDD的指针。就这样所有的RDD之间的依赖关系被记录在DAG中，而不是产生实际数据，所以DAG记录了依赖关系，也称为谱系图（Lineage
 Graph）。从一个例子开始，使用Cartesian或zip来理解RDD谱系图，当然也可以使用其他操作在Spark中构建RDD图。
 
 ![](media/11_monitoring_and_optimization/media/image1.jpeg)
 
-图例 4‑1 RDD谱系图或DAG
+图例 11‑1 RDD谱系图或DAG
 
 上图描绘了一个RDD图，是以下一系列转换的结果：
 
@@ -96,15 +92,14 @@ res1: String =
 | ParallelCollectionRDD[1] at parallelize at <console>:24 []
 ```
 
-代码 4.1
-
+代码 11.1
 在一个动作被调用之后，RDD的谱系图记录了需要执行什么转换，换句话说无论何时在现有RDD基础上创建新的RDD，使用谱系图管理这些依赖关系。基本上起到记录元数据作用，描述了与父RDD有什么类型的关系，每个RDD维护一个或多个父RDD指针。
 
 Spark是分布式数据处理的通用框架，提供用于大规模数据操作的方法API、内存数据缓存和计算重用，对分区数据应用一系列粗粒度转换，并依赖数据集的谱系来重新计算失败时的任务。Spark围绕RDD和DAG的概念构建，DAG表示了转换和它们之间的依赖关系。
 
 ![http://datastrophic.io/content/images/2016/03/Spark-Overview--1-.png](media/11_monitoring_and_optimization/media/image2.png)
 
-图例 4‑2Spark应用程序的执行过程
+图例 11‑2Spark应用程序的执行过程
 
 在高级别上，Spark应用程序（通常称为驱动程序或应用程序主控）由SparkContext和用户代码组成，用户代码与SparkContext交互创建RDD，并执行一系列转换以实现最终结果。RDD的这些转换过程会被Spark解释成DAG，并提交给调度器以在工作节点集群上执行。
 
@@ -130,17 +125,16 @@ RDD可以被认为是具有故障恢复可能性的不可变并行数据结构�
 
 键值对RDD的分区器
 
-对与这五种方法，通过代码 4.3将HDFS数据加载到RDD中进行说明：
+对于这五种方法，可以通过代码 11.2 中把HDFS数据加载到RDD的例子来理解：
 
 sparkContext.textFile("hdfs://...").map(…)
 
-代码 4.3
-
+代码 11.2
 首先在内存中加载HDFS块，然后应用map()过滤出键，创建两个RDD的键：
 
 ![http://datastrophic.io/content/images/2016/03/DAG-logical-vs-partitions-view--3-.png](media/11_monitoring_and_optimization/media/image3.png)
 
-图例 4‑3在内存中加载HDFS块
+图例 11‑3在内存中加载HDFS块
 
 两个RDD的属性分别为：
 
@@ -154,7 +148,7 @@ sparkContext.textFile("hdfs://...").map(…)
 
   - > compute = 加载内存中的块
 
-  - > getPrefferedLocations = HDFS块位置
+  - > getPreferredLocations = HDFS块位置
 
   - > partitioner = 无
 
@@ -176,18 +170,18 @@ sparkContext.textFile("hdfs://...").map(…)
 
 ### 11.3.2 划分阶段
 
-在深入研究细节之前，对执行工作流进行快速回顾：包含RDD转换的用户代码构成DAG，然后由DAG调度器将其分成若干阶段，如果对RDD操作不需要数据进行Shuffle或重新分区，则这些操作会组合成一个阶段，阶段由基于输入数据分区的任务组成。DAG调度器以优化和管理RDD操作，例如许多map操作可以安排在单一阶段，此优化是提升Spark性能的关键。DAG调度程序的最终结果是生成一系列阶段，这些阶段然后被传递给任务调度器，任务调度器通过集群管理器启动任务，而不需要知道阶段之间的依赖关系。集群从节点上的Executor或Worker执行任务，每个作业都启动一个新的Java虚拟机，Worker只获得传递给它的代码，任务在Worker上运行，然后结果返回到客户端。
+在深入研究细节之前，可以先快速回顾一次执行流程：包含RDD转换的用户代码会先形成DAG，然后由DAG调度器按Shuffle边界切分为若干阶段。若一串操作不需要Shuffle或重新分区，它们通常会被合并进同一个阶段。之后，这些阶段再被展开为基于分区的任务，由任务调度器提交给集群管理器分发到执行器上执行。执行器运行任务、返回结果，并在需要时把中间数据写入内存或磁盘。这里要注意的是，并不是“每个作业都会启动一个新的Java虚拟机”；更准确地说，是驱动程序与执行器进程在既定资源内持续协作完成一个或多个作业。
 
 ![Image result for rdd
 dag](media/11_monitoring_and_optimization/media/image4.jpeg)
 
-图例 4‑4阶段划分
+图例 11‑4阶段划分
 
 基本上，任何数据处理工作流都可以定义为读取数据源，然后应用一系列转换，最后以不同方式实现结果，转换创建RDD之间的依赖关系，通常被分类为“窄”和“宽”：
 
 ![alt](media/11_monitoring_and_optimization/media/image5.jpeg)
 
-图例 4‑5两种转换关系
+图例 11‑5两种转换关系
 
   - 窄依赖
 
@@ -195,7 +189,7 @@ dag](media/11_monitoring_and_optimization/media/image4.jpeg)
 
   - > 父RDD的每个分区被子RDD的最多一个分区使用
 
-  - > 允许在一个群集节点上进行流水线的执行
+  - > 允许在一个集群节点上进行流水线的执行
 
   - > 故障恢复更有效，因为只有丢失的父分区需要重新计算
 
@@ -215,7 +209,7 @@ dag](media/11_monitoring_and_optimization/media/image4.jpeg)
 
 ![http://datastrophic.io/content/images/2016/03/Making-Stages-from-DAG--2-.png](media/11_monitoring_and_optimization/media/image6.png)
 
-图例 4‑6通过打破Shuffle边界处的DAG创建Stage
+图例 11‑6通过打破Shuffle边界处的DAG创建Stage
 
 ### 11.3.3 实例分析
 
@@ -256,98 +250,94 @@ res1: Array[(String, Int)] = Array((package,1), (this,1),
 (provides,...
 ```
 
-代码 4.4
+代码 11.3
+第一个RDD `file` 是通过 `sc.textFile()` 创建的 `HadoopRDD`；这条谱系上的最后一个RDD `wordcount` 则是由 `reduceByKey()` 产生的 `ShuffledRDD`。如图例 11‑7 所示，左侧展示的是 `wordcount` 对应的逻辑DAG，图中小方块表示各RDD的分区；当调用 `collect` 这类动作时，Spark调度器会在此基础上生成对应的物理执行计划（Physical Execution Plan）并把它拆分为可提交的阶段和任务。
 
-第一个RDD为file是HadoopRDD类型，是通过调用sc.textFile()创建的，该系列中的最后一个RDD为wordcount是由reduceByKey()创建的ShuffledRDD类型。如图例
-4‑7所示，左边的部分是用于wordcount的DAG；RDD中的内部被小方块分割表示分区，当调用动作collect时，Spark的调度程序会为作业创建一个图右的物理执行计划（Physical
-Execution Plan），以执行该操作。
+![](media/11_monitoring_and_optimization/media/image7.jpeg)
 
-![adoopRDD图](media/11_monitoring_and_optimization/media/image7.jpeg)
+图例 11‑7创建一个物理执行计划
 
-图例 4‑7创建一个物理执行计划
+调度器会根据依赖关系把DAG拆成多个阶段。由于窄依赖通常不需要跨节点重分布数据，因此往往会被合并到同一个阶段里执行；而一旦出现 `reduceByKey` 这类引入Shuffle的操作，就会在此处形成新的阶段。这个例子最终得到两个阶段：前面的 `textFile`、`flatMap`、`map` 属于第一个阶段，生成 `ShuffledRDD` 及其后续动作则进入第二个阶段。
 
-调度器根据转换将DAG分解成阶段，由于窄依赖没有数据洗牌的转换，所以将被分组到一个单一的阶段，这个物理计划有两个阶段，除了生成的ShuffledRDD为第二个Stage
-2，其他都在Stage 1。
+![](media/11_monitoring_and_optimization/media/image8.jpeg)
 
-![huffledRDD图](media/11_monitoring_and_optimization/media/image8.jpeg)
-
-图例 4‑8通过集群管理器启动任务
+图例 11‑8通过集群管理器启动任务
 
 每个阶段是由任务组成，其基于RDD的分区，它将并行执行相同的计算，调度程序将任务集提交给任务调度程序，通过集群管理器启动任务，下图显示了示例Hadoop集群中的Spark应用程序：
 
-![park应用程序在Hadoop上](media/11_monitoring_and_optimization/media/image9.jpeg)
+![](media/11_monitoring_and_optimization/media/image9.jpeg)
 
-图例 4‑9Hadoop集群中的Spark应用程序
+图例 11‑9Hadoop集群中的Spark应用程序
 
 然后，可以使用Spark
 Web界面来查看Spark应用程序的行为和性能，网址为<http://localhost:4040>，这是运行单词计数作业后的Web
-UI的屏幕截图（图例
-4‑10）。在Jobs选项卡下，将看到已安排或运行的作业列表，在此示例中是计数的collect作业，Jobs页面显示作业、阶段和任务进度。
+UI的屏幕截图（图例 11‑10）。在Jobs选项卡下，将看到已安排或运行的作业列表，在此示例中是计数的collect作业，Jobs页面显示作业、阶段和任务进度。
 
 ![](media/11_monitoring_and_optimization/media/image10.jpeg)
 
-图例 4‑10 Jobs页面显示作业、阶段和任务进度
+图例 11‑10 Jobs页面显示作业、阶段和任务进度
 
 可以点击进入到Job 0的详细信息界面，可以看到DAG的行为，可以对照一下上面的分析结果：
 
 ![](media/11_monitoring_and_optimization/media/image11.jpeg)
 
-图例 4‑11 Job 0的详细信息界面
+图例 11‑11 Job 0的详细信息界面
 
 在Stages选项卡下，可以看到阶段的详细信息，以下是单词计数作业的阶段页面，Stage0以阶段管道中的最后一个RDD转换命名，并且Stage
 1以动作collect命名。
 
 ![](media/11_monitoring_and_optimization/media/image12.jpeg)
 
-图例 4‑12阶段的详细信息
+图例 11‑12阶段的详细信息
 
 可以在Storage选项卡中查看缓存的RDD。
 
 ![](media/11_monitoring_and_optimization/media/image13.jpeg)
 
-图例 4‑13查看缓存的RDD
+图例 11‑13查看缓存的RDD
 
 在Executors选项卡下，可以看到每个执行器的处理和存储。可以通过单击Thread Dump链接来查看线程调用堆栈。
 
 ![](media/11_monitoring_and_optimization/media/image14.jpeg)
 
-图例 4‑14Executors选项卡
+图例 11‑14Executors选项卡
 
 ## 11.4 洗牌机制
 
-在MapReduce框架中，洗牌是连接Map和Reduce之间的桥梁，Map的输出要用到Reduce中必须经过洗牌这个环节，洗牌的性能高低直接影响了整个程序的性能和吞吐量。Spark作为MapReduce框架的一种实现，自然也实现了洗牌逻辑。洗牌是MapReduce框架中的一个特定的阶段，介于Map阶段和Reduce阶段之间，当Map的输出结果要被Reduce使用时，输出结果需要按键哈希，并且分发到每一个Reducer上去，这个过程就是洗牌。由于洗牌涉及到了磁盘的读写和网络的传输，因此洗牌性能的高低直接影响到了整个程序的运行效率。下面这幅图清晰地描述了MapReduce算法的整个流程，其中洗牌阶段是介于Map阶段和Reduce阶段之间。
+可以把洗牌（Shuffle）理解为一次“跨分区重组数据”的过程。当上游计算结果需要按照新的键分布重新汇集，例如 `reduceByKey`、`groupByKey`、`join`、`repartition` 这类操作出现时，Spark就必须把部分数据从一个执行器传输到另一个执行器。由于这个过程通常会伴随网络传输、磁盘读写、序列化与反序列化，所以它往往是性能瓶颈最集中的环节之一。下面这幅图借用了经典MapReduce流程来帮助理解“洗牌发生在前后两个计算阶段之间”。
 
 ![](media/11_monitoring_and_optimization/media/image15.tiff)
 
-图例 4‑15 洗牌阶段是介于Map阶段和Reduce阶段之间
+图例 11‑15 洗牌阶段是介于Map阶段和Reduce阶段之间
 
-在分布式系统中，洗牌不可以避免。这是因为分布式系统基本点就是把一个很大的的任务或作业分成一百份或者是一千份，这一百份和一千份文件在不同的机器上独自完成各自不同的部份，然后针对整个作业获得最终结果，所以在后面会对各个部分的计算结果进行汇聚，这个汇聚过程的前一阶段到后一阶段以至网络传输的过程就是洗牌。在Spark中为了完成洗牌的过程会把真正的一个作业划分为不同的阶段，这个阶段的划分是跟据依赖关系去决定的，洗牌是整个Spark中最消耗性能的一个地方。
+在分布式系统里，洗牌很难完全避免。原因很简单：数据最初是分散在不同分区、不同节点上的，而某些计算又要求“相同键的数据必须被汇集到一起”。一旦需要重新分布这些数据，就会发生洗牌。在Spark里，阶段划分本身就与这种依赖关系紧密相关，因此只要作业里存在宽依赖，洗牌通常就是绕不过去的成本。
 
-还有一个非常影响性能的地方就是数据倾斜，就是指数据分布不均衡。在谈到洗牌机制中，不断强调不同机器从Mapper端抓取数据并计算结果，但有没有意识到数据可能会分布不均衡，什么时候会导致数据倾斜，答案就是洗牌会导致数据分布不均衡，也就是数据倾斜的问题。数据倾斜的问题会引申很多其他问题，比如网络带宽、硬件故障、内存过度消耗、文件掉失。同时，洗牌的过程中会产生大量的磁盘IO、网络IO、以及压缩、解压缩、序列化和反序列化等等，所以在讨论Spark优化之前，需要搞清楚洗牌的机制是是什么，这也是Spark设计中最有趣的话题之一。
+另一个常见性能问题是数据倾斜，也就是某些键、某些分区明显比其他分区承载更多数据。数据倾斜往往会在洗牌阶段被放大，最终表现为个别任务特别慢、内存压力异常、磁盘溢写增多，甚至拖慢整个Stage。因此，在讨论Spark优化之前，先把Shuffle机制和数据倾斜之间的关系看清楚，通常比直接改参数更有效。
 
 ![park
 Shuffle设计](media/11_monitoring_and_optimization/media/image16.jpeg)
 
-图例 4‑16Shuffle操作
+图例 11‑16Shuffle操作
 
-想象一下，有一张电话详细记录列表，想要计算每天发生的通话量。这样可以将日期设置为键，对于每个记录（即每个呼叫）将增加1作为值，之后汇集每个键的值，这将是问题的答案，即每一天的记录总量。但是，当将数据存储在群集中时，如何汇集存储在不同机器上的相同键的值？唯一的方法是使相同键的所有值在同一台机器上，之后可以汇集出来。
+想象一下，有一张电话详细记录列表，想要计算每天发生的通话量。这样可以将日期设置为键，对于每个记录（即每个呼叫）将增加1作为值，之后汇集每个键的值，这将是问题的答案，即每一天的记录总量。但是，当将数据存储在集群中时，如何汇集存储在不同机器上的相同键的值？唯一的方法是使相同键的所有值在同一台机器上，之后可以汇集出来。
 
 有许多不同的任务需要整个集群中的数据进行洗牌，例如join操作，要在字段“id”上连接两个表，必须确保所有的数据存储在相同块中。想象一下，整数键的范围从1到1000000。通过将数据存储在相同的块中，例如将两个表中的键为1到100之间的值都存储在单个分区或块中，而不是对第一个表的每个分区都遍历整个第二个表。这样可以直接将一个表的分区加入到另一个分区，因为知道1到100键的对应值只存储在这两个分区中，为了实现这两个表应该具有相同数量的分区，这样的连接将需要更少的计算，所以现在可以了解洗牌的重要性。
 
-讨论这个话题，将遵循MapReduce命名约定。在洗牌操作中，源执行器中发出数据的任务是“Mapper”，将数据消耗到目标执行器中的任务是Reducer，它之间发生的就是洗牌洗牌通常有两个重要的压缩参数：
+为便于说明，下面暂时沿用 MapReduce 风格的命名：把发送数据的一侧称为 “Mapper”，把接收并聚合数据的一侧称为 “Reducer”。对应到Spark内部，实现细节会更复杂，但这种类比足够帮助我们理解数据在洗牌过程中是如何移动的。与Shuffle直接相关的两个常见压缩参数是：
 
   - spark.shuffle.compress：引擎是否会压缩Shuffle输出
 
   - spark.shuffle.spill.compress：是否压缩中间Shuffle溢出文件
 
-两者都默认值为“true”，并且两者都将使用spark.io.compression.codec编解码器来压缩数据，这是默认的。可能知道，Spark中有许多可用的洗牌实现，在特定情况下使用哪个实现由spark.shuffle.manager参数的值决定，三个可能的选项是：Hash、Sort、Tungsten-sort。从Spark
-1.2.0开始，Sort选项是默认值。
+这两个参数的默认值通常都是 `true`，并且都会使用 `spark.io.compression.codec` 指定的编解码器。对大多数作业来说，先保持默认压缩设置是合理的；真正更值得关注的，往往是分区数、序列化方式、是否发生数据倾斜，以及是否出现了不必要的Shuffle。旧资料里常会展开讨论不同Shuffle实现的历史差异，但对Spark 4.x读者来说，更实用的重点是先读懂“哪里发生了Shuffle、为什么发生、代价有多大”，再决定是否调参数。
 
 ## 11.5 内存管理
 
 本节将介绍Spark中的内存管理，然后讨论用户可以采取的具体策略，以便在应用程序中更有效地使用内存。具体来说，将介绍如何确定对象的内存使用情况，以及如何改进数据结构，或通过以串行格式存储数据。然后将介绍调整Spark的缓存大小和Java垃圾回收器。
 
-Spark中的内存使用大部分属于两类：执行内存和存储内存。执行内存是指用于以洗牌、连接、排序和聚合计算的存储器，而存储内存是指用于在集群中缓存和传播内部数据的存储器。在Spark中，执行和存储共享一个统一的区域（M）。当不使用执行内存时，存储内存可以获取所有可用的存储器，反之亦然。如果需要，执行内存可以驱逐存储内存，但只有在总的可用存储内存低于某个阈值（R）情况下。换句话说，R描述了M内的子区域，其中被缓存的块永远不会被驱逐，由于执行的复杂性，存储内存不得驱逐执行内存，该设计确保了几个理想的性能。首先不使用缓存的应用程序可以将整个空间用于执行内存，从而避免不必要的磁盘溢出。第二使用缓存的应用程序可以保留的最小存储空间（R），使数据块免于被驱逐。最后，这种方法为各种工作负载提供了合理的开箱即用性能，而不需要用户具有专业知识理解Spark内部如何分配内存的。虽然有两种相关配置，但典型的用户不需要调整它，因为默认值适用于大多数工作负载：
+Spark中的堆内存，通常可以先从两类用途来理解：执行内存（Execution Memory）和存储内存（Storage Memory）。前者主要服务于Shuffle、Join、排序、聚合这类运行期计算；后者主要用于缓存RDD/DataFrame分区、广播变量以及部分中间结果。
+
+在统一内存模型下，两者共享同一块由Spark管理的内存区域 `M`。当执行侧压力较小时，存储侧可以占用更多空间；当执行侧需要更多空间时，又可以向存储侧借用一部分容量。这里常见的 `R` 可以理解为存储区域中的一个保留阈值，用来帮助缓存块尽量避免被过早驱逐。这个设计的核心目标很简单：让不缓存数据的应用能把更多空间用于执行，让大量依赖缓存的应用也至少保留一部分稳定的存储空间，同时尽量减少用户手动调参的负担。常见的两个配置如下：
 
 （1）spark.memory.fraction
 
@@ -358,14 +348,11 @@ Of Memory）错误。
 
 表示R的大小作为M，默认为0.5。R是M内的存储空间，其中缓存的块免于被执行驱逐。
 
-从Apache Spark
-1.6.0版本开始，内存管理模式发生了变化。旧的内存管理模型由StaticMemoryManager类实现，现在称为“Legacy”。默认情况下，“Legacy”模式被禁用，这意味着在Spark
-1.5.x和1.6.0上运行相同的代码会导致不同的行为。为了兼容性，可以使用spark.memory.useLegacyMode参数启用“Legecy”模型，默认情况下将关闭该模型。本节介绍在Apache
-Spark起始版本1.6.0中使用的新内存管理模型，它被实现为UnifiedMemoryManager，新的内存管理模式如下所示：
+从Spark 1.6.0开始，Spark把早期较固定的内存划分方式切换到了统一内存模型（UnifiedMemoryManager）。如果你在阅读更老的资料，可能还会看到“Legacy”内存管理的说法；那更多是历史背景。对Spark 4.x读者而言，本书建议把注意力放在统一内存模型本身，也就是“执行内存与存储内存共享同一块可动态伸缩的区域”这一核心机制上。下图展示了这种模型的基本结构：
 
-![park内存管理1.6.0+](media/11_monitoring_and_optimization/media/image17.jpeg)
+![](media/11_monitoring_and_optimization/media/image17.jpeg)
 
-图例 4‑17 3个主要的内存区域
+图例 11‑17 3个主要的内存区域
 
 可以在图表上看到3个主要的内存区域：
 
@@ -383,13 +370,13 @@ Memory分配后保留的内存池，完全由用户决定以任何方式使用�
 
 (Java Heap – Reserved Memory) \* （1.0 - spark.memory.fraction）
 
-公式 4‑1
+公式 11‑1
 
 默认值等于：
 
 （Java Heap - 300MB）\* 0.25
 
-公式 4‑2
+公式 11‑2
 
 例如，使用4GB
 Java堆，将拥有949MB的用户内存。另外，这是用户内存，完全用户决定将存储在这个内存中的数据，以及如何存储，Spark完全不会考虑在用户内存中做什么，是否遵守这个边界。如果在用户代码中不遵守此边界可能会导致OOM错误。
@@ -400,13 +387,13 @@ Java堆，将拥有949MB的用户内存。另外，这是用户内存，完全�
 
 (Java Heap – Reserved Memory) \* （spark.memory.fraction）
 
-公式 4‑3
+公式 11‑3
 
 使用Spark 1.6.0默认值为：
 
 （Java Heap - 300MB）\* 0.75
 
-公式 4‑4
+公式 11‑4
 
 例如，如果Java进程的堆为4GB，这个池的大小将是2847MB。整个池分为2个区域：存储内存和执行内存，它们之间的边界由spark.memory.storageFraction参数设置，默认为0.5。这种新的内存管理方案的优点是，这个边界不是静态的，而在内存压力的情况下，边界将被移动，即一个区域将通过借用另一个空间来增长。稍后会讨论关于移动这个边界，现在关注这两个内存如何被使用：
 
@@ -442,23 +429,21 @@ spark.memory.storageFraction
 
 ## 11.6 优化策略
 
-由于大多数Spark计算的内存性质，Spark程序可能会包括群集中的任何资源：CPU、网络带宽或内存。大多数情况下，如果数据适合内存，瓶颈就是网络带宽，但有时还需要进行一些调整，例如以序列化形式存储RDD，以减少内存使用。本节将涵盖两个主要的主题：一个为数据序列化，这对于良好的网络性能至关重要，并且还可以减少内存使用；另一个为内存调优。
+优化并不是“把所有参数都调一遍”，而是先判断瓶颈落在什么地方：CPU、网络、内存、序列化，还是数据分布。很多 Spark 作业在数据能够放入内存后，真正的成本会集中到 Shuffle、对象开销和网络传输上。本节主要讨论三件最常见的事情：序列化、内存使用以及并行度和数据局部性。
 
 ### 11.6.1 数据序列化 
 
-序列化在任何分布式应用程序的性能中起着重要的作用，数据格式的转换会大大减慢计算速度，例如将对象序列化需要消耗大量字节。通常情况下，这将是首先调整以优化Spark应用程序。Spark旨在在便利（允许使用操作中的任何Java类型）和性能之间取得平衡，提供了两个序列化库：
+序列化直接影响网络传输、磁盘落盘和缓存占用。对象越大、编码越低效，Shuffle 和持久化的成本就越高。因此，当任务明显受网络或内存压力影响时，序列化往往是最先值得检查的一环。Spark 常见的两类序列化方式如下：
 
   - Java序列化
 
-默认情况下，Spark使用Java的ObjectOutputStream框架序列化对象，并且可以与任何实现java.io.Serializable类的对象一起工作，还可以通过扩展java.io.Externalizable更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并导致许多类的大型序列化格式。
+默认情况下，Spark 可以使用 Java 的 `ObjectOutputStream` 体系序列化对象。它的优点是兼容性强，只要对象实现了 `java.io.Serializable` 基本就能工作；缺点是编码通常较大、速度也偏慢。
 
   - Kryo序列化
 
-Spark也可以使用Kryo库（从Spark版本2）更快地对对象进行序列化。Kryo比Java序列化（通常高达10x）要快得多，更紧凑，但并不支持所有的Serializable类型，并且要求提前在程序中注册所需的类，以获得最佳性能。
+Spark 也支持 Kryo。与 Java 序列化相比，Kryo 通常更紧凑、也更高效，因此在网络密集型或缓存密集型场景里更值得优先考虑。它的代价是：为了获得最好效果，通常需要提前注册自定义类型。
 
-可以通过使用SparkConf初始化的作业并调用conf.set("spark.serializer",
-"org.apache.spark.serializer.KryoSerializer")来切换到使用Kryo，此配置用于不仅在工作节点之间进行数据洗牌的串行器，而且还将RDD序列化到磁盘。Kryo不是默认值的原因是因为用户自定义注册的要求，但建议尝试在任何网络密集型应用程序中使用。从Spark
-2.0.0开始，在使用简单类型，数组或字符串类型的RDD进行洗牌时，内部使用Kryo 序列化。
+如果要显式切换到 Kryo，可以在 `SparkConf` 中设置 `spark.serializer=org.apache.spark.serializer.KryoSerializer`。这个配置不仅影响节点之间的数据传输，也会影响RDD落盘时的序列化方式。对于包含简单类型、数组或字符串的常见数据结构，Spark 内部已经做了不少优化；但如果应用里存在大量自定义对象，显式切换到 Kryo 往往仍然值得尝试。
 
 Spark自动包含AllScalaRegistrar，涵盖许多常用的核心Scala类的Kryo序列化程序。要使用Kryo注册自己的自定义类，使用registerKryoClasses方法。
 
@@ -469,13 +454,12 @@ classOf\[MyClass2\]))
 
 val sc = new SparkContext(conf)
 
-代码 4.5
-
-Kryo文档介绍了更多高级注册选项，例如添加自定义序列化代码，如果的对象很大，可能还需要增加spark.kryoserializer.buffer配置。该值需要足够大以容纳将序列化的最大对象。最后如果不注册自定义类，Kryo仍然可以工作，但它必须存储每个对象的完整类名。
+代码 11.4
+如果对象很大，还可能需要调高 `spark.kryoserializer.buffer`，确保缓冲区足以容纳最大的单个对象。即使不注册自定义类，Kryo 仍然能工作；只是它需要在字节流中额外保存完整类名，效率会打一些折扣。
 
 ### 11.6.2 内存调优
 
-在调整内存使用量方面有三个注意事项：对象使用的内存量，可能希望整个数据集适合内存；访问这些对象的成本以及垃圾收集的开销，如果对象周期有高的周转。默认情况下，Java对象可以快速访问，但是可以轻松地消耗比其字段中的原始数据多2-5倍的空间，这是由于以下几个原因：
+内存调优可以先抓住三个问题：对象本身占了多少空间、这些对象访问起来是否高效，以及垃圾回收是否已经开始反过来拖慢任务。Java/Scala 对象虽然使用方便，但其真实内存开销往往明显大于字段本身，常见原因包括：
 
 （1）每个不同的Java对象都有一个头，大约是16个字节，包含一个指向其类的指针，对于一个数据很少的对象（比如一个Int字段），其可以比数据大。
 
@@ -488,11 +472,11 @@ Kryo文档介绍了更多高级注册选项，例如添加自定义序列化代�
 
   - 确定内存消耗
 
-调整数据集所需内存量的最佳方法是创建RDD，将其放入缓存中，并查看Web界面中的“Storage”页面，该页面将告诉RDD占用多少内存。要估计特定对象的内存消耗，请使用SizeEstimator.estimate方法对于尝试了解使用不同的数据布局来调整内存的使用情况，以及确定广播变量在每个执行程序堆中占用的空间量是非常有用的。
+估算数据集真实占用内存，最直接的方式通常是把它缓存起来，再到 Spark UI 的 `Storage` 页面查看结果。若要粗估某类对象或广播变量的体积，可以使用 `SizeEstimator.estimate`。这对比较不同数据结构方案、判断广播是否过大都很有帮助。
 
   - 调整数据结构
 
-减少内存消耗的第一种方法是避免添加增加开销的Java功能，如基于指针的数据结构和包装对象，有几种方法可以做到这一点：
+减少内存占用的第一步，通常不是先改参数，而是先减少对象层面的额外开销，例如避免过多包装对象、深层嵌套结构和高指针密度的数据结构。常见做法包括：
 
 （1）设计数据结构采用对象数组和原始类型，而不是标准的Java或Scala集合类，例如HashMap。fastutil库为原始类型提供方便的收集类，这与Java标准库兼容。
 
@@ -505,15 +489,13 @@ GB，请设置JAVA虚拟机标志-XX:+UseCompressedOops，使指针为四个字�
 
   - 序列化存储
 
-尽管完成了优化调整，对象仍然太大而无法有效存储，一个更简单的方法来减少通过内存形式存储序列化，就是使用RDD持久化API中的StorageLevel方法序列化，如MEMORY\_ONLY\_SER。Spark会将每个RDD分区存储为一个大字节数组，以序列化形式存储数据的唯一缺点是访问时间较慢，因为必须对每个对象进行反序列化。如果要以串行化形式缓存数据，强烈建议使用Kryo
-，因为它导致比Java序列化更小的尺寸，而且肯定比原始Java对象更小。
+如果对象结构已经尽量压缩，但缓存后仍然太占内存，可以考虑使用序列化持久化级别，例如 `MEMORY_ONLY_SER`。这样每个RDD分区会以大块字节数组形式缓存，通常能明显减小占用；代价是访问时需要反序列化，因此 CPU 成本会增加。若走这条路线，通常优先配合 Kryo 使用。
 
   - 垃圾收集调整
 
-如果只需读取一次RDD，然后在其上运行许多操作，通常在程序中通常不会出现JAVA虚拟机垃圾收集的问题。如果存在很多RDD，并且由旧的RDD产生新的RDD，就可能产生JAVA虚拟机垃圾收集的问题。当Java需要驱逐旧对象为新对象腾出空间时，需要跟踪所有Java对象并找到未使用的。要记住的要点是垃圾收集的成本与Java对象的数量成正比，因此使用较少对象的数据结构，例如使用Int的数组而不是LinkedList，大大降低了这一成本。一个更好的方法是以序列化形式持久化对象，每个RDD分区只有一个对象，即一个字节数组。如果垃圾收集是一个问题，在尝试其他技术之前首先要使用序列化缓存。由于任务的工作内存（运行任务所需的空间）和缓存在节点上的RDD之间的互相干扰也会产生垃圾收集问题，下面将讨论如何控制分配给RDD缓存空间来减轻这个问题。
+垃圾回收问题通常出现在两类场景：对象数量太多，或者执行内存与缓存内存互相挤压。要记住的核心原则很简单：GC 成本与对象数量强相关，所以减少小对象、减少包装层级、必要时使用序列化缓存，往往比单纯调 GC 参数更先见效。
 
-垃圾收集调整的第一步是收集关于垃圾收集发生频率和花费时间的统计信息，这可以通过将-verbose:gc -XX:+PrintGCDetails
--XX:+PrintGCTimeStamps参数设置为Java选项，例如：
+调整 GC 的第一步是先拿到统计信息，而不是盲目改 JVM 参数。可以把 `-verbose:gc`、`-XX:+PrintGCDetails` 和 `-XX:+PrintGCTimeStamps` 加到 Java 选项里，例如：
 
 ./bin/spark-submit --name "My app" --master local\[4\] --conf
 spark.eventLog.enabled=false
@@ -523,43 +505,38 @@ spark.eventLog.enabled=false
 -XX:+PrintGCTimeStamps" myApp.jar
 ```
 
-代码 4.6
+代码 11.5
+下次运行作业时，就可以在工作节点日志里看到 GC 信息，而不只是驱动程序日志。理解这些日志时，可以先抓住一个简化模型：Java 堆通常分为 Young 和 Old 两大区域，前者更适合短命对象，后者保留生命周期较长的对象。Spark 调优的目标之一，就是尽量让任务临时对象在 Young 区里完成回收，而不要过早把压力推到 Old 区。
 
-下次运行Spark作业时，每当发生垃圾回收时，都会看到在工作日志中打印的消息。请注意，这些日志将在群集中的工作节点上，为其工作目录中的stdout文件，而不是的驱动程序上。为了进一步调整垃圾收集，首先需要了解JAVA虚拟机中有关内存管理的一些基本信息：Java堆空间划分为两个区域Young和Old，Young的目的是保持短命的对象，而Old是为了具有更长的使用寿命的对象；Young进一步分为三个区域\[Eden，Survivor1，Survivor2\]；当Eden已满时，在Eden上运行一个小型垃圾回收，并将Eden和Survivor1中存在的对象复制到Survivor2。如果一个对象已经够老了，或者Survivor2已经满了，就会被移动到Old。最后，当Old接近满时，一个完整的垃圾回收被调用。
+从实践上看，如果在单个任务完成前就频繁发生 Full GC，通常说明执行内存不足；如果 Minor GC 特别频繁，则可能说明 Young 区太小、对象创建过于密集，或者缓存与执行内存互相挤占。处理顺序通常是：先减少对象数量和缓存体积，再考虑调整 `spark.memory.fraction`、Young 区大小或具体 GC 选项。
 
-Spark中垃圾回收调整的目标是确保只有长寿命的RDD被存储在Old中，而且Young的大小足够容纳短命对象。这将有助于避免完整的垃圾回收，进行在任务执行期间创建的临时对象的收集。可能有用的一些步骤是：通过收集垃圾回收统计信息来检查垃圾收集是否太多。如果在任务完成之前多次调用完整的垃圾回收，这意味着没有足够的可用于执行任务的内存。如果存在大量的小垃圾回收，而不是很多主垃圾回收，为Eden分配更多的内存将有所帮助。可以将Eden的大小设置为对每个任务需要多少内存的估计。如果Eden的大小被确定为E，那么可以使用选项-Xmn=4/3\*E设置Young的大小。（按比例增加4/3是考虑Survivor地区使用的空间。）
-
-在打印出的GC统计信息中，如果OldGen接近于满，则通过降低spark.memory.fraction，减少用于缓存的内存量；缓存较少的对象比减慢任务执行更好，或者考虑减少Young的大小。如果把它设置为如上所述，这意味着降低了-Xmn。如果没有，请尝试更改JAVA虚拟机的NewRatio参数的值，许多JAVA虚拟机默认为2，这意味着Old占据堆的2/3，它应该足够大，使得该分数超过spark.memory.fraction。尝试使用-XX:+UseG1GC的G1GC垃圾回收器。在垃圾收集是瓶颈的一些情况下，它可以提高性能。请注意，对于大型执行器堆大小，使用-XX:G1HeapRegionSize增加G1区域大小可能很重要。例如，如果任务是从HDFS读取数据，则可以使用从HDFS读取的数据块的大小来估计任务使用的内存量。请注意，解压缩块的大小通常是块大小的2或3倍，所以如果希望有3或4个任务的工作空间，HDFS块的大小是128MB，可以估计Eden的大小是4\*3\*128MB。监控垃圾收集的频率和时间，观察如何随着新设置的变化而变化，经验表明垃圾回收调整的效果取决于的应用程序和可用的内存量。在高层次上，管理垃圾回收的全面发生频率有助于减少开销，可以通过在作业配置中设置spark.executor.extraJavaOptions来指定执行程序的垃圾回收调整标志。
+如果日志里显示 Old 区长期接近打满，常见做法包括：降低 `spark.memory.fraction` 以减少缓存挤占、减少对象数量、必要时使用 G1GC，并结合执行器堆大小观察 `NewRatio` 或 Young 区大小是否合理。这里没有一套放之四海而皆准的参数模板，真正有效的方式还是看 GC 日志、看 Spark UI、改一处、再复测一处。
 
 ### 11.6.3 其他方面
 
-群集将不会被充分利用，除非将每个操作的并行级别设置得足够高。尽管可以通过SparkContext.textFile等的可选参数控制它，Spark会根据大小自动设置每个文件上运行的Map任务的数量，以及对于分布式Reduce操作，如groupByKey和reduceByKey，它使用最大的父RDD的分区数，可以将并行级别作为第二个参数传递，或者将config属性spark.default.parallelism设置为更改默认值，一般来说建议的集群中每个CPU内核有2-3个任务。
+如果并行度设置得太低，再多的机器也跑不满；如果并行度过高，又会引入额外调度开销。Spark 会为很多操作推断默认并行度，例如文件输入、`groupByKey`、`reduceByKey` 等；必要时也可以通过参数或 `spark.default.parallelism` 显式覆盖。经验上，常见起点是让每个 CPU 内核对应 2 到 3 个任务，再结合任务耗时和 Shuffle 情况继续调。
 
-有时将获得一个OutOfMemory错误，不是因为RDD不适合内存，而是因为任务之一的工作集太大，如groupByKey中Reduce任务。Spark的洗牌操作，如sortByKey、groupByKey、reduceByKey、join等，在每个任务中构建一个哈希表以执行分组，这通常很大。这里最简单的解决方案是增加并行级别，以便每个任务的输入集都更小。Spark可以有效地支持200
-ms的任务，因为它可以将多个任务中的一个执行器JAVA虚拟机重用并且任务启动成本低，因此可以将并行级别安全地提高到集群中的核心数量。
+有时候看到 `OutOfMemory`，并不意味着整个RDD放不下，而是某个单独任务的工作集太大，例如 `groupByKey` 或 `join` 在单个分区上聚集了过多数据。这时最直接的办法往往是提高并行度、缩小单任务输入规模，或者从源头上减少数据倾斜与不必要的聚合压力。
 
-使用SparkContext可用的广播功能可以大大减少每个序列化任务的大小，以及在群集上启动作业的成本。如果任务使用驱动程序中的任何大对象，例如静态查找表，请考虑将其变为广播变量。Spark打印主机上每个任务的序列化大小，因此可以查看该任务以决定的任务是否过大；在一般任务大于20
-KB时值得优化。
+广播变量可以显著减少任务闭包大小和重复网络传输。如果任务依赖驱动程序上的大对象，例如静态字典、维表快照或规则集，通常应优先考虑把它们做成广播变量。Spark UI 和日志里也能看到任务序列化大小，这些信息有助于判断闭包是否已经过大。
 
   - 数据局部性
 
-数据局部性可能会对Spark作业的性能产生重大影响。如果数据和在其上运行的代码在一起，则计算往往是快速的。但是，如果代码和数据分开，则必须移动到另一个。通常，代码大小远小于数据，因此从一个地方到另一个地方的传输速度要比一大块数据快。Spark围绕数据局部性的这一普遍原则构建了它的调度。
+数据局部性会直接影响作业性能。原则很简单：尽量让计算靠近数据，而不是让大块数据在网络里来回移动。通常代码比数据小得多，所以 Spark 的调度策略会尽量优先选择“更靠近数据”的执行位置。
 
-数据区域性是指数据与处理它的代码有多近。根据数据的当前位置有几个局部性级别，从最近到最远的顺序：
+Spark 会按从近到远的顺序区分几个局部性级别：
 
-> （1）PROCESS\_LOCAL数据与运行代码在同一个JAVA虚拟机中，这是最佳的区域级别。
+> （1）PROCESS\_LOCAL：数据和代码在同一个 Java 进程内，这是最理想的情况。
 > 
-> （2）NODE\_LOCAL数据位于同一个节点上，例如可能在同一节点上的HDFS或同一节点上的另一个执行程序中，这比PROCESS\_LOCAL慢一些，因为数据必须在进程之间传播。
+> （2）NODE\_LOCAL：数据和代码位于同一台机器上，但不在同一进程里。
 > 
-> （3）NO\_PREF数据从任何地方同样快速访问，并且没有局部性偏好。
+> （3）NO\_PREF：数据从哪里读都差不多，没有明显局部性偏好。
 > 
-> （4）RACK\_LOCAL数据位于同一机架式服务器上。数据位于同一机架上的不同服务器上，因此需要通过网络发送，通常通过单个交换机发送。
+> （4）RACK\_LOCAL：数据在同一机架内的其他机器上，需要经过局域网络传输。
 > 
-> （5）ANY数据都在网络上的其他位置，而不在同一个机架中。
+> （5）ANY：数据在更远的网络位置上，代价最高。
 
-Spark喜欢将所有任务安排在最佳的区域级别，但这并不总是可能的。在任何空闲执行程序上，没有未处理数据的情况下，Spark将切换到较低的区域性级别。有两个选项：a）等待一个繁忙的CPU释放，启动任务在同一个服务器的数据上；b）立即在更远的地方启动一个新的任务，需要在那里移动数据。
-
-Spark通常做的是等待一个繁忙的CPU释放。一旦超时，它将开始将数据从远处移动到可用的CPU上。每个级别之间的回退等待超时可以在一个参数中单独配置或全部配置，如果任务很长和比较差的局域性应该增加这些设置，但默认值通常就可以满足。
+Spark 会优先等待更好的局部性机会，但不会无限等待。也就是说，它会先尝试把任务调度到最合适的位置；如果迟迟没有合适资源，才退而求其次接受更差的局部性。每个级别之间的等待时间都可以配置，但在大多数场景里默认值已经足够，只有在任务很长、数据很大且跨网络代价明显时，才值得专门调整这些参数。
 
 ## 11.7 最佳实践
 
@@ -585,8 +562,7 @@ val conf = new SparkConf()
 
 val sc = new SparkContext(conf)
 
-代码 4.7
-
+代码 11.6
 这里使用local
 \[2\]意味着两个线程，表示最小并行性，这可以帮助检测只有在分布式环境中运行时才存在的错误。指定某个持续时间的属性应该使用时间单位进行配置，以下格式被接受：
 
@@ -602,8 +578,7 @@ val sc = new SparkContext(conf)
 
 1y (years)
 
-代码 4.8
-
+代码 11.7
 指定字节大小的属性应该使用大小单位进行配置。以下格式被接受：
 
 1b (bytes)
@@ -618,14 +593,12 @@ val sc = new SparkContext(conf)
 
 1p or 1pb (pebibytes = 1024 tebibytes)
 
-代码 4.9
-
+代码 11.8
 虽然没有单位的数字通常被解释为字节，但少数解释为KiB或MiB，请参阅各个配置属性的文档，在可能的情况下指定单位是可取的。在某些情况下，可能希望避免在SparkConf中对某些配置进行硬编码，例如如果想用不同的Spark集群或不同的内存运行相同的应用程序，Spark允许简单地创建一个空的conf：
 
 val sc = new SparkContext(new SparkConf())
 
-代码 4.10
-
+代码 11.9
 然后可以在运行时提供配置值：
 
 ./bin/spark-submit --name "My app" --master local\[4\] --conf
@@ -636,8 +609,7 @@ spark.eventLog.enabled=false
 -XX:+PrintGCTimeStamps" myApp.jar
 ```
 
-代码 4.11
-
+代码 11.10
 Spark
 shell和spark-submit工具支持两种动态加载配置的方式，第一个是命令行选项如上所示--master。spark-submit可以使用该--conf
 标志接受任何Spark属性，但对于启动Spark应用程序的属性使用特殊标志。运行./bin/spark-submit
@@ -651,8 +623,7 @@ spark.eventLog.enabled true
 
 spark.serializer org.apache.spark.serializer.KryoSerializer
 
-代码 4.12
-
+代码 11.11
 指定为标志或属性文件中的任何值都将传递到应用程序，并与通过SparkConf指定的值合并。直接在SparkConf上设置的属性具有最高的优先级，然后将标志传递给spark-submit或spark-shell，最后选择spark-defaults.conf文件中的选项。自早期版本的Spark以来，一些配置键已被重命名；在这种情况下，旧键名仍然可以接受，但优先级低于新键的任何实例。
 
 Spark属性主要可以分为两种：一种是与部署相关的，比如“spark.driver.memory”，spark.executor.instances。对于这些属性，在通过SparkConf编程进行设置，而运行时可能不会受到影响，或者行为取决于选择的集群管理器和部署模式，因此建议通过配置文件或spark-submit命令行选项进行设置；另一个主要与Spark运行时控制有关，比如spark.task.maxFailures，这种属性可以用任何方式设置。
@@ -673,10 +644,10 @@ http://\<driver\>:4040，其列出了“Environment”选项卡中的Spark属性
 | SPARK\_LOCAL\_IP        | 要绑定计算机的IP地址。                                                                             |
 | SPARK\_PUBLIC\_DNS      | Spark程序的主机名将通告给其他机器。                                                                     |
 
-表格 4‑1spark-env.sh中设置的变量
+表格 11‑1spark-env.sh中设置的变量
 
 除上述之外，还可以选择设置Spark
-Standalone群集脚本，例如每台计算机上使用的内核数量和最大内存。由于spark-env.sh是一个交互命令脚本，其中一些可以通过程序设置，例如可以通过查找特定网络接口的IP来进行计算SPARK\_LOCAL\_IP。在cluster模式中，在YARN上运行Spark时，需要使用conf/spark-defaults.conf文件中的spark.yarn.appMasterEnv.\[EnvironmentVariableName\]属性设置环境变量。设置的环境变量spark-env.sh不会反映在cluster模式中的YARN
+Standalone集群脚本，例如每台计算机上使用的内核数量和最大内存。由于spark-env.sh是一个交互命令脚本，其中一些可以通过程序设置，例如可以通过查找特定网络接口的IP来进行计算SPARK\_LOCAL\_IP。在cluster模式中，在YARN上运行Spark时，需要使用conf/spark-defaults.conf文件中的spark.yarn.appMasterEnv.\[EnvironmentVariableName\]属性设置环境变量。设置的环境变量spark-env.sh不会反映在cluster模式中的YARN
 Application Master进程中。
 
 #### 11.7.1.3 设置日志
@@ -711,24 +682,21 @@ log4j.logger.org.apache.hadoop.hive.metastore.RetryingHMSHandler=FATAL
 log4j.logger.org.apache.hadoop.hive.ql.exec.FunctionRegistry=ERROR
 ```
 
-代码 4.13
-
+代码 11.12
 把log4j.rootCategory=INFO, console改为log4j.rootCategory=WARN,
 console即可抑制Spark把INFO级别的日志打到控制台上。如果要显示全面的信息，则把INFO改为DEBUG。如果希望一方面把代码中的println打印到控制台，另一方面又保留Spark
 本身输出的日志，可以将它输出到日志文件中。配置根Logger，其语法为：
 
 log4j.rootLogger = \[level\],appenderName,appenderName2,...
 
-代码 4.14
-
+代码 11.13
 level是日志记录的优先级，分为OFF、TRACE、DEBUG、INFO、WARN、ERROR、FATAL、ALL。Log4j建议只使用四个级别，优先级从低到高分别是DEBUG、INFO、WARN、ERROR。通过在这里定义的级别，可以控制到应用程序中相应级别的日志信息的开关，比如在这里定义了INFO级别，则应用程序中所有DEBUG级别的日志信息将不被打印出来。appenderName就是指定日志信息输出到哪个地方，可同时指定多个输出目的。配置日志信息输出目的地Appender，其语法为：
 
 log4j.appender.appenderName = fully.qualified.name.of.appender.class
 
 log4j.appender.appenderName.optionN = valueN
 
-代码 4.15
-
+代码 11.14
 Log4j提供的appender有以下几种：
 
 > （1）org.apache.log4j.ConsoleAppender，输出到控制台
@@ -863,14 +831,13 @@ HH:mm:ss,SSS}，输出类似：2012年01月05日 22:10:28,921
 
 #### 11.7.2.1 collect
 
-当在RDD上发布collect操作时，数据集将被复制到驱动程序，即主节点。如果数据集太大而不适合内存，将抛出内存异常；take或者takeSample可以用来取回只有数量上限的元素，另一种方法可以得到分区索引数组：
+当在RDD上调用 `collect` 时，数据会被拉回到Driver进程。如果结果集太大而无法放入Driver内存，就可能触发内存异常。因此，排查数据问题时更安全的做法通常是使用 `take`、`takeSample` 这类带上限的动作；另一种办法是先取到分区数组，再只查看单个分区的数据：
 
 val parallel = sc.parallelize(1 to 9)
 
 val parts = parallel.partitions
 
-代码 4.16
-
+代码 11.15
 然后创建一个更小的RDD，过滤掉除了单个分区以外的所有内容，从较小的RDD收集数据并遍历单个分区的值：
 
 for(p \<- parts){
@@ -886,8 +853,7 @@ val data = partRDD.collect
 
 }
 
-代码 4.17
-
+代码 11.16
 也可以使用foreachPartition操作：
 
 parallel.foreachPartition(partition =\> {
@@ -898,14 +864,12 @@ partition.toArray
 
 })
 
-代码 4.18
-
+代码 11.17
 因为只有当分区中的数据足够小时，才会起到作用。可以使用coalesce方法随时增加分区数量：
 
 rdd.coalesce(numParts, true)
 
-代码 4.19
-
+代码 11.18
 #### 11.7.2.2 count
 
 当你不需要返回确切的行数时，不要使用count()，可以使用：
@@ -914,22 +878,19 @@ DataFrame inputJson = sqlContext.read().json(...);
 
 if (inputJson.take(1).length == 0) {}
 
-代码 4.20
-
+代码 11.19
 代替使用：
 
 if (inputJson.count() == 0) {}
 
-代码 4.21
-
+代码 11.20
 #### 11.7.2.3 迭代器列表
 
 通常当读入一个文件时，要使用由某个分隔符分隔的每行中包含的各个值，分割分隔线是一项简单的操作：
 
 newRDD = textRDD.map(line =\> line.split(","))
 
-代码 4.22
-
+代码 11.21
 但是这里的问题是返回的RDD将是迭代器组成的，想要的是调用split函数后获得的各个值，换句话说需要一个Array\[String\]不是Array\[Array\[String\]\]，为此将使flatMap方法：
 
 ```scala
@@ -946,8 +907,7 @@ scala> println (flatMappedResults.mkString (" : ") )
 foo : bar : baz : larry : moe : curly : one : two : three
 ```
 
-代码 4.23
-
+代码 11.22
 #### 11.7.2.4 groupByKey
 
 正如所看到的，Map示例返回一个包含3个Array\[String\]实例的数组，而该flatMap调用返回了包含在一个数组中的各个值。假设有一个RDD项目，例如：
@@ -992,16 +952,14 @@ foo : bar : baz : larry : moe : curly : one : two : three
 
 ...
 
-代码 4.24
-
+代码 11.23
 代表(id, age, count)，希望将这些行生成一个数据集，其中的每一行代表的是每个id的年龄分布（ID，age），这是唯一的，例如：
 
 (1779744180, (10,1), (11,1), (12,2), (13,2) ...)
 
 (3922774869, (10,1), (11,1), (12,3), (13,4) ...)
 
-代码 4.25
-
+代码 11.24
 这是代表(id,(age,count),age,count)…)，最简单的方法是首先聚合两个字段，然后使用groupBy：
 
 rdd.map { case (id, age, count) =\> ((id, age), count) }.reduceByKey(\_
@@ -1009,8 +967,7 @@ rdd.map { case (id, age, count) =\> ((id, age), count) }.reduceByKey(\_
 
 .map { case ((id, age), count) =\> (id, (age, count)) }.groupByKey()
 
-代码 4.26
-
+代码 11.25
 其中返回一个RDD\[(Long, Iterable\[(Int, Int)\])\]，对于上面的输入它将包含这两个记录：
 
 (1779744180,CompactBuffer((16,3), (15,1), (14,1), (11,1), (10,1),
@@ -1019,8 +976,7 @@ rdd.map { case (id, age, count) =\> ((id, age), count) }.reduceByKey(\_
 (3922774869,CompactBuffer((11,1), (12,3), (16,4), (13,3), (15,3),
 (10,1), (14,5)))
 
-代码 4.27
-
+代码 11.26
 但是如果有一个非常大的数据集，为了减少洗牌我们不应该使用groupByKey()，而是可以使用aggregateByKey()：
 
 import scala.collection.mutable
@@ -1039,15 +995,13 @@ mutable.HashSet\[(Int, Int)\]) =\> p1 ++= p2
 val uniqueByKey = rddById.aggregateByKey(initialSet)(addToSet,
 mergePartitionSets)
 
-代码 4.28
-
+代码 11.27
 这将导致的结果为：
 
 uniqueByKey: org.apache.spark.rdd.RDD\[(AnyVal,
 scala.collection.mutable.HashSet\[(Int, Int)\])\]
 
-代码 4.29
-
+代码 11.28
 能够将值打印为：
 
 ```scala
@@ -1057,8 +1011,7 @@ scala> uniqueByKey.foreach(println)
 (3922774869,Set((12,3), (11,1), (10,1), (14,5), (16,4), (15,3), (13,3)))
 ```
 
-代码 4.30
-
+代码 11.29
 洗牌可能是一个很大的瓶颈，以下是比groupByKey更好的推荐方法：combineByKey和foldByKey。
 
 #### 11.7.2.5 reduceByKey
@@ -1068,8 +1021,7 @@ scala> uniqueByKey.foreach(println)
 rdd.map(kv =\> (kv.\_1, new Set\[String\]() + kv.\_2)) .reduceByKey(\_
 ++ \_)
 
-代码 4.31
-
+代码 11.30
 此代码导致大量不必要的对象创建，因为必须为每条记录分配一个新的Set。最好使用aggregateByKey()，可以更高效地执行聚合，就是尽量将聚合发生在Map阶段：
 
 val zero = new collection.mutable.Set\[String\]()
@@ -1077,11 +1029,10 @@ val zero = new collection.mutable.Set\[String\]()
 rdd.aggregateByKey(zero)( (set, v) =\> set += v, (set1, set2) =\> set1
 ++= set2)
 
-代码 4.32
-
+代码 11.31
 #### 11.7.2.6 广播变量
 
-Spark的难点之一是理解跨群集执行代码时变量和方法的范围和生命周期，如果RDD操作修改了范围之外的变量可能经常造成混淆​​。在下面的示例中，将查看foreach()用于增加计数器的代码，其他操作也会出现类似的问题。考虑以下简单的RDD元素求和，根据执行是否发生在同一个JAVA虚拟机中，这可能会有不同的表现。一个常见的例子是在local模式中运行或者将Spark应用程序部署到集群（例如，通过spark-submit
+Spark的难点之一是理解跨集群执行代码时变量和方法的范围和生命周期，如果RDD操作修改了范围之外的变量可能经常造成混淆​​。在下面的示例中，将查看foreach()用于增加计数器的代码，其他操作也会出现类似的问题。考虑以下简单的RDD元素求和，根据执行是否发生在同一个JAVA虚拟机中，这可能会有不同的表现。一个常见的例子是在local模式中运行或者将Spark应用程序部署到集群（例如，通过spark-submit
 to YARN）：
 
 var counter = 0
@@ -1094,8 +1045,7 @@ rdd.foreach(x =\> counter += x)
 
 println("Counter value: " + counter)
 
-代码 4.34
-
+代码 11.32
 上述代码的行为是未定义的，并且可能无法按预期工作。为了执行作业，Spark将RDD操作的处理分解为任务，每个任务由执行器完成。在执行之前，Spark会计算任务的闭合。闭合是执行器在RDD上执行其计算的那些可见的变量和方法，例如代码中的foreach()。该闭合被序列化并发送给每个执行器。
 
 如在集群环境，发送给每个执行器闭合中的变量现在被拷贝，因此当在foreach函数内引用counter()时，它不再是驱动程序节点上的counter()。驱动程序节点的内存中仍有一个counter()，但对于执行器来说是不可见的，执行器只能看到序列化后闭合的副本，因此counter()的最终值仍然为零，因为counter()上的所有操作都引用了序列化闭包内的值。
@@ -1109,26 +1059,22 @@ val array: Array\[Int\] = // some huge array
 
 val broadcasted = sc.broadcast(array)
 
-代码 4.35
-
+代码 11.33
 还有一些RDD
 
 val rdd: RDD\[Int\] =
 
-代码 4.36
-
+代码 11.34
 下面的代码，数组每次将与闭合传输。
 
 rdd.map(i =\> array.contains(i))
 
-代码 4.37
-
+代码 11.35
 如果使用broadcasted，将会得到巨大的性能优势
 
 rdd.map(i =\> broadcasted.value.contains(i))
 
-代码 4.38
-
+代码 11.36
 一旦向工作节点广播了该值，就不应该对其值进行更改，以确保每个节点具有完全相同的数据副本，修改后的值可能会发送到另一个节点，这会产生意外的结果。
 
 如果RDD足够小以适应每个工作节点的内存，可以将其变成广播变量，并将整个操作转变为所谓的更大RDD的map-side连接。通过这种方式，更大的RDD根本不需要Shuffle。如果较小的RDD是维度表，这很容易发生。
@@ -1145,8 +1091,7 @@ smallLookup.value.get(key).map { otherValue =\>
 
 }
 
-代码 4.39
-
+代码 11.37
 如果中等规模的RDD不能完全适应内存，但它的键集却可以。由于join操作会放弃大RDD中与小RDD中键没有匹配的所有元素，因此可以使用小RDD的键集在Shuffle之前执行此操作。如果有大量的条目被这种方式抛弃，则最终的Shuffle将需要传输很少的数据。
 
 val keys = sc.broadcast(mediumRDD.map(\_.\_1).collect.toSet)
@@ -1156,8 +1101,7 @@ keys.value.contains(key) }
 
 reducedRDD.join(mediumRDD)
 
-代码 4.40
-
+代码 11.38
 值得注意的是，这里的效率增益取决于实际filter操作减小多少RDD的尺寸。如果在这里减少的条目不多，可能因为小RDD中的键是大RDD的大部分，那么这种策略就没有什么作用。
 
 #### 11.7.2.7 存储级别
@@ -1172,16 +1116,16 @@ Shell可以看到缓存数据集的大小。通过默认，Spark将使用MEMORY\
 | MEMORY\_ONLY\_SER                     | 将RDD存储为序列化的 Java对象（每个分区一个字节的数组）。与反序列化的对象相比，这通常更节省空间，特别是在使用 [快速序列化器时](https://spark.apache.org/docs/4.1.1/tuning.html)，但需要更多的CPU密集型读取。 |
 | MEMORY\_AND\_DISK\_SER                | 与MEMORY\_ONLY\_SER类似，但将不适合内存的分区溢出到磁盘上，而不是每次需要时重新计算它们。                                                                                 |
 | DISK\_ONLY                            | 将RDD分区仅存储在磁盘上。                                                                                                                        |
-| MEMORY\_ONLY\_2，MEMORY\_AND\_DISK\_2等 | 与上面的级别相同，但复制两个群集节点上的每个分区。                                                                                                             |
+| MEMORY\_ONLY\_2，MEMORY\_AND\_DISK\_2等 | 与上面的级别相同，但复制两个集群节点上的每个分区。                                                                                                             |
 | OFF\_HEAP（实验）                         | 与MEMORY\_ONLY\_SER类似，但将数据存储在[堆内存储器中](https://spark.apache.org/docs/4.1.1/configuration.html#memory-management)。这需要启用堆堆内存。             |
 
-表格 4‑2存储级别
+表格 11‑2存储级别
 
 以Tachyon的序列化格式存储RDD。与MEMORY\_ONLY\_SER相比，OFF\_HEAP减少了垃圾回收开销，并允许执行程序更小并共享内存池，使其在具有大堆或多个并发应用程序的环境中更具吸引力。此外，由于RDD驻留在Tachyon中，执行程序的崩溃不会导致内存缓存丢失。在这种模式下，Tachyon中的内存是可丢弃的。因此，Tachyon不会尝试重建它从记忆中消失的区块。
 
 ## 11.8 案例分析
 
-在本节中，将介绍Spark执行模型的组件，看到用户程序如何转换为物理执行的单位。
+这一节回到一个更具体的问题：一段 Spark 用户代码，最终是怎样被拆成作业、阶段和任务的。理解这条链路，有助于把前面讲过的 DAG、Stage、Shuffle 和执行器行为真正对应到实际运行过程。
 
 ### 11.8.1 执行模型
 
@@ -1199,8 +1143,7 @@ catRDD: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[7] at
 reduceByKey at <console>:28
 ```
 
-代码 4.61
-
+代码 11.39
 第一行语句从sfpd.csv文件创建名为inputRDD的RDD；第二行创建的RDD为sfpdRDD，其将基于所述逗号分隔符输入RDD的数据；第三条语句通过map和reduceByKey转换创建catRDD。上面的代码还没有执行任何动作，只是定义了这些RDD对象的DAG。每个RDD维护指向其所依赖RDD的指针，以及这个依赖关系的元数据。RDD使用这些关系数据来跟踪其关联的RDD，要显示的RDD谱系，使用toDebugString方法：
 
 ```scala
@@ -1214,27 +1157,20 @@ res0: String =
 | /root/data/sfpd.csv HadoopRDD[2] at textFile at <console>:24 []
 ```
 
-代码 4.62
-
+代码 11.40
 在这个例子中，显示了catRDD谱系。谱系显示了catRDD所有依赖结构。sc.textFile首先创建一个HadoopRDD，然后是MapPartitionsRDD。每次应用map转换时，它会产生MapPartitionsRDD。当应用reduceByKey转换时，它会产生ShuffledRDD。
 
 目前为止还没有进行任何生成RDD的计算，因为没有执行任何动作操作。当在catRDD上添加collect动作时，collect动作触发了RDD计算。Spark调度程序创建一个物理计划来计算所需的RDD。当调用collect动作时，RDD的每个分区都会被实现，并传输到启动程序上。此时，Spark调度程序从catRDD开始逆向运作，建立必要的物理规划计算所有依赖的RDD。
 
 ![](media/11_monitoring_and_optimization/media/image18.jpeg)
 
-图例 4‑24 物理规划
+图例 11‑24 物理规划
 
-调度程序通常为图中的每个RDD输出一个计算阶段。然而，当RDD可以从其上级依赖进行计算而不移动数据时，多个RDD将被折叠成单个阶段。而将多个RDD的操作折叠到一个阶段的处理被称为流水线。在计算中，流水线是串联连接的一组数据处理元素，其中一个元素的输出是下一个元素的输入。管道的元素通常以并行或时间分割的方式执行；在这种情况下，通常会在元素之间插入一定量的缓冲存储器。
+调度器并不会机械地为“每一个 RDD”都单独生成一个阶段。更准确地说，Spark 会沿着依赖链向前分析：只要一串转换之间不需要 Shuffle，也不需要从已经物化的结果重新起步，它们就有机会被压进同一个 Stage 里执行。这种把多步窄依赖转换串起来连续执行的方式，通常就叫流水线化（pipelining）。
 
-在该示例中，map操作在RDD的分区之间不移动任何数据，因此两个对RDD进行的map转换合并到流水线中，产生STAGE1。由于reduceByKey转换做了Shuffle操作，需要在RDD的分区之间根据相同键传递值和计算值，所以被安排到下一阶段STAGE2。这就是调度程序可能会合并谱系的一种情况，当然还有其他几种情况。这里列出了调度程序可以合并RDD谱系的情况：
+在图中的例子里，两个 `map` 都只是对各自分区做局部计算，不涉及跨分区数据交换，所以可以放在同一个 Stage 中顺序完成；而 `reduceByKey` 需要把相同键的数据重新汇集到一起，因此会形成新的 Shuffle 边界，并被拆到下一阶段。理解 Stage 切分时，最重要的不是记住某个固定规则，而是先问一句：这里有没有跨分区重组数据，或者有没有从已缓存/已物化结果重新开始？
 
-  - 当依赖的上级RDD没有数据移动时，Spark调度程序将多个RDD合并到单个阶段。
-
-  - 当RDD持久化到集群内存或磁盘时，Spark调度程序将合并RDD谱系。
-
-  - 如果较早的Shuffle操作已经将RDD物理化，就是将RDD的计算结构保存了下来，就不需要再执行生成这个RDD的所有操作，可以在这个RDD的基础上开始操作。此优化内置于Spark中。
-
-当执行一个动作时，例如collect操作，DAG被转换成一个物理计划，以计算执行操作所需的RDD。Spark调度程序提交作业以计算所有必需的RDD。每个作业（Job）由一个或多个阶段组成，每个阶段由任务（Task）组成。阶段按顺序处理，并且在集群上调度和执行单个任务。对于同一阶段中的RDD，其中每个分区都有对应一个任务。这些任务被阶段启动，对RDD特定分区执行相同的事情，每个任务执行相同的步骤：
+当某个动作（例如 `collect()`）触发执行时，逻辑 DAG 会被细化成真正要运行的作业。一个作业可以包含多个阶段，每个阶段又会针对其输入分区生成一组任务。任务才是最终被提交到执行器上的最小运行单元：它读取输入分区、执行本阶段的那串算子，并把结果返回给下游阶段、Driver，或者外部存储系统。
 
 （1）获取输入（从数据存储、现有的RDD或Shuffle输出）
 
@@ -1278,9 +1214,7 @@ res0: String =
 
 ### 11.8.2 监控界面
 
-在本节中，将使用Web UI来监视Spark应用程序。Spark Web
-UI提供有关Spark作业的进度和性能详细信息。默认情况下，此信息仅在应用程序运行或Spark
-Shell启动期间可用。每个SparkContext都会启动一个Web UI，默认情况下在端口4040上显示有关应用程序的有用信息，其中包括：
+接下来把视角切到 Spark Web UI。它是定位执行瓶颈、观察阶段划分和查看缓存/执行器状态的第一现场。默认情况下，每个 `SparkContext` 都会启动一个 Web UI，通常监听在 `4040` 端口；应用运行期间，可以在这里看到与作业进度和性能相关的大量细节，包括：
 
 （1）调度程序阶段和任务的列表
 
@@ -1337,14 +1271,13 @@ scala> catRDD.count()
 res3: Long = 39
 ```
 
-代码 4.63
-
+代码 11.41
 要访问Web
 UI，使用Web浏览器打开驱动程序的ip地址和端口4040。Jobs页面提供活动和最近完成的Spark作业的详细执行信息，提供Job的表现，以及运行Job的进度、阶段和任务。
 
 ![](media/11_monitoring_and_optimization/media/image19.jpeg)
 
-图例 4‑25 Spark作业的详细执行信息
+图例 11‑25 Spark作业的详细执行信息
 
 Job0是被第一个执行的，对应于collect动作，由2个阶段组成，每个阶段由4个任务组成。Job1对应于第二个collect动作，由1个阶段组成，其由两个任务组成。Job2对应于count动作，并且还由1个阶段组成，其包含两个任务。需要注意的是第一个Job花了2秒，而对比Job1历时36毫秒。
 
@@ -1357,43 +1290,43 @@ Details”页面。此页面提供了运行作业的进度、阶段和任务。�
 
 ![](media/11_monitoring_and_optimization/media/image20.jpeg)
 
-图例 4‑26 Job Details页面
+图例 11‑26 Job Details页面
 
 而在Job1的详细信息中，可以看到跳过了map阶段。
 
 ![](media/11_monitoring_and_optimization/media/image21.jpeg)
 
-图例 4‑27Job1的详细信息
+图例 11‑27Job1的详细信息
 
 在此页面中，可以看到完成的阶段和跳过阶段的细节。请注意，这里的collect只用了30毫秒。一旦确定了感兴趣的阶段，可以点击链接深入到阶段的详细信息页面。
 
 ![](media/11_monitoring_and_optimization/media/image22.jpeg)
 
-图例 4‑28阶段的详细信息
+图例 11‑28阶段的详细信息
 
 这里为所有任务的汇总指标。
 
 ![](media/11_monitoring_and_optimization/media/image23.png)
 
-图例 4‑29Storage页面
+图例 11‑29Storage页面
 
 Storage页面提供有关持久化RDD的信息。如果在RDD上调用persist和cache操作，并且随后执行了一个动作，那么这个RDD就会被持久化。该页面告诉RDD哪个部分被缓存，并且包括多少比例的RDD被缓存，已经在不同存储介质中的大小，以查看重要数据集是否适合内存。
 
 ![](media/11_monitoring_and_optimization/media/image24.png)
 
-图例 4‑30有关持久化RDD的信息
+图例 11‑30有关持久化RDD的信息
 
 Environment页面列出了运行Spark应用程序的环境变量。当想要查看启用了哪些配置标志时，请使用此页面。请注意，只有通过Spark-default.conf、SparkConf或者在命令行中指定的值将在这里显示。对于所有其它配置属性，则使用默认值。
 
 ![](media/11_monitoring_and_optimization/media/image25.png)
 
-图例 4‑31Environment页面
+图例 11‑31Environment页面
 
 Executors页面列出了应用程序中活动的执行器，还包括关于每个执行器的处理和存储的一些指标。使用此页面确认的应用程序是否具有期望的资源数量。
 
 ![](media/11_monitoring_and_optimization/media/image26.png)
 
-图例 4‑32Executors页面
+图例 11‑32Executors页面
 
   - 可用通过Web UI监控哪些事情？
 
@@ -1415,7 +1348,7 @@ UI，还可以找到那些在读取、计算和写入上花费太多时间的任
 
 ![](media/11_monitoring_and_optimization/media/image27.jpeg)
 
-图例 4‑33 Spark将基于它认为最佳的并行度进行分区
+图例 11‑33 Spark将基于它认为最佳的并行度进行分区
 
   - 并行性水平如何影响性能？
 
@@ -1430,26 +1363,21 @@ UI，还可以找到那些在读取、计算和写入上花费太多时间的任
 
 （2）在RDD中重新分配数据，这可以通过增加或减少分区数来完成，可以使用repartition方法来指定分区或coalesce减少分区的数量。
 
-当在Shuffle操作期间通过网络传输大量数据时，Spark将对象序列化为二进制格式。序列化将对象的状态信息转换为可以存储或传输的形式的过程。在序列化期间，对象将其当前状态写入到临时或持久性存储区。以后，可以通过从存储区中读取或反序列化对象的状态，重新创建该对象。对象序列化有时会造成瓶颈。默认情况下，Spark采用内置的Java序列化。然而，往往是更有效地应该使用Kryo系列化。在Spark中可以用不同的方式使用内存。调整Spark的使用内存可以帮助优化的应用程序，默认情况下Spark将使用：
+当 Shuffle 期间需要在网络上传输大量数据时，Spark 会先把对象序列化成二进制字节流。序列化格式会直接影响 CPU 开销、网络负载和内存占用，因此它经常成为性能调优里的关键变量。Java 序列化通用但体积较大、速度也通常不占优；如果你的数据类型适合 Kryo，切换到 Kryo 往往能获得更紧凑的对象表示和更高的传输效率。
 
-（1）RDD存储空间的60％
+内存部分也不建议再用固定比例去死记硬背。现代 Spark 更强调统一内存管理：执行内存和存储内存在整体预算内动态平衡，具体表现会受到算子类型、缓存行为、广播变量和任务并发度共同影响。真正值得关注的是三件事：哪些数据需要缓存、哪些算子会放大执行期内存压力，以及对象表示和序列化方式是否过重。
 
-（2）20％Shuffle
-
-（3）20％用于用户程序
-
-可以通过调整用于RDD存储、Shuffle和用户程序的内存区域来调整内存使用情况。在RDD上使用cache或persist方法。在RDD上使用cache将RDD分区存储在内存缓冲区中。persist有各种选项，有关RDD的持久性选项，请参阅Apache
-Spark文档。默认情况下，persist()与cache()或persist(MEMORY\_ONLY)功能是相同的。如果没有足够的空间来缓存新的RDD分区，那么旧的分区将被删除并在需要时进行重新计算。最好使用persist(MEMORY\_AND\_DISK)，这将在磁盘上存储数据，并在需要时将其加载到内存中，这减少了昂贵的计算。使用MEMORY\_ONLY\_SER选项将减少垃圾回收。缓存序列化对象可能比缓存原始对象慢，但是它确实减少了垃圾收集的时间。
+在缓存策略上，`cache()` 等价于默认的 `persist()` 存储级别，适合那些会被重复访问且放得进默认存储层的数据；如果数据量较大、重算成本又高，`MEMORY_AND_DISK` 往往比一味追求纯内存更稳妥。是否使用序列化缓存、是否需要减少分区粒度或调整并发，不应靠固定配方决定，而应结合 Spark UI、执行时间、GC 日志和失败模式一起判断。
 
 Spark日志子系统基于log4j，记录级别或日志输出可以自定义。log4j的配置属性的一个例子在Spark安装目录conf中提供，可以被复制并适当地进行编辑的。Spark日志文件的位置取决于部署模式。在Spark独立模式下，日志文件位于每个Worker的Spark部署目录中。在Kubernetes中，日志通常通过kubectl logs或集中式日志系统采集，
 而在YARN中可通过YARN日志收集工具访问。
 
 如果可能的话，避免Shuffle大量数据。在使用聚合操作的情况下，尽量使用aggregateByKey。对于大量数据，使用groupByKey的结果会产生大量的Shuffle操作。如果可能的话使用reduceByKey，还可以使用combineByKey或
-foldByKey。collect动作试图将在RDD中每一个元素传送到驱动程序上。如果有一个非常大的RDD，这可能会导致驱动程序崩溃。countByKey、countByValue和collectAsMap也会出现同样的问题。过滤掉尽可能多的数据集。如果有很多空闲的任务，则需要减少分区。如果没有使用群集中的所有插槽，则重新分区。
+foldByKey。collect动作试图将在RDD中每一个元素传送到驱动程序上。如果有一个非常大的RDD，这可能会导致驱动程序崩溃。countByKey、countByValue和collectAsMap也会出现同样的问题。过滤掉尽可能多的数据集。如果有很多空闲的任务，则需要减少分区。如果没有使用集群中的所有插槽，则重新分区。
 
   - 可以使用哪些方法提高Spark的性能？
 
 ## 11.9 小结
 
-Spark性能调整是调整设置以记录系统使用内存、内核和实例的过程。这个过程保证Spark具有最佳性能并防止Spark中的资源瓶颈。在本章中，提供有关如何调整Apache
-Spark作业的相关信息，性能调优介绍、Spark序列化库（如Java序列化和Kryo序列化）、Spark内存调优，还学习了Spark数据结构调优，Spark数据区域性和垃圾收集调优。
+本章从“先监控、再优化”的思路出发，介绍了 Spark 作业的执行模型、Shuffle 与内存机制，以及定位瓶颈时最常看的 UI 页面和调优手段。读完本章后，读者应能根据作业现象判断问题更可能出在数据倾斜、分区数量、序列化、缓存策略还是资源配置，并据此做出有证据支撑的优化决策。
+

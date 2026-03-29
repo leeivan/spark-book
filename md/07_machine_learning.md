@@ -18,44 +18,36 @@
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
 > 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
-机器学习是一门多领域交叉学科，涉及概率论、统计学、逼近论、凸分析、算法复杂度理论等多门学科。专门研究计算机怎样模拟或实现人类的学习行为，以获取新的知识或技能，重新组织已有的知识结构使之不断改善自身的性能。本课程将学习怎样定义Spark机器学习库；学习三种流行的机器学习技术：分类，聚类和协同过滤（推荐算法），并利用协同过滤来预测用户会喜欢什么。
+在 Spark 4.x 中，本章的目标不是罗列所有算法名词，而是建立一条可落地的机器学习工作流：准备数据、构造特征、训练模型、评估效果、调节参数并产出可复用的推理流程。书中仍保留部分 `spark.mllib` / RDD 风格示例，用于解释历史 API 与存量系统；如果你是新项目，请优先把注意力放在 `spark.ml`、DataFrame 和 Pipeline 上。
 
-## 7.3 MLlib和ML
+## 7.3 Spark 4.x 机器学习主线
 
-在本文中，将讨论机器学习概念以及如何使用Apache Spark
-MLlib库来运行预测分析。将使用示例应用程序来说明Spark机器学习领域中功能强大的API。
+Spark 机器学习 API 历史上分为两层：
 
-> 迁移建议（Spark 4.x）：
-> 本章部分示例仍使用`spark.mllib`（RDD API）以便解释算法原理与历史写法。新项目建议优先使用`spark.ml`（DataFrame API），并将特征工程、训练、评估与推理统一到Pipeline中。
+- `spark.ml`：构建在 DataFrame/Dataset 之上的主线 API，适合特征工程、模型训练、评估、调参与 Pipeline 组合。
+- `spark.mllib`：构建在 RDD 之上的早期 API，目前处于维护模式，主要用于兼容历史代码和少数旧示例。
 
-目前，Spark 机器学习是Apache Spark生态系统中重要的大数据分析库，如图例 4‑1所示。Spark机器学习
-API包括两个名为spark.mllib和spark.ml软件包。spark.mllib软件包基于弹性分布式数据集（RDD）的原始机器学习API，其提供机器学习的基本统计算法，包括相关性、分类和回归、协同过滤、聚类和降维。另一方面，
-spark.ml包提供了建立在DataFrame上的机器学习API，DataFrame正在成为Spark
-SQL库的核心部分。使用该包可用于开发和管理机器学习管道，还提供特征提取器、转换器、选择器，以及机器学习技术，如分类和回归，以及聚集算法。
+对 Spark 4.x 读者来说，本章应按下面方式理解：
+
+（1）训练数据优先组织成 DataFrame，通常以 `label`、`features` 等列为核心。
+
+（2）特征工程、模型、评估器和调参器优先使用 `org.apache.spark.ml`。
+
+（3）训练、验证、推理尽量放到同一条 Pipeline 中，减少训练时和上线时预处理不一致的问题。
+
+（4）遇到 `spark.mllib` 示例时，把它看作“历史写法/迁移资料”，重点理解算法思想与 API 差异。
 
 ![https://cdn.infoq.com/statics\_s1\_20171010-0642/resource/articles/apache-sparkml-data-pipelines/en/resources/3fig2.jpg](media/07_machine_learning/media/image1.jpeg)
 
-图例 4‑1Spark的生态系统
+图例 7‑1Spark的生态系统
 
-基于RDD的MLlib API处于维护模式。Spark 4.x下，官方机器学习主线是`spark.ml`（基于DataFrame/Dataset的管道化API），而`spark.mllib`主要用于兼容历史代码并接收必要修复。实践中，新项目应优先使用`spark.ml`，仅在维护存量系统或处理个别未迁移能力时才使用RDD风格API。目前很多生产系统仍会在迁移过程中混合使用RDD与DataFrame能力，所以需要回答下面几个问题：
+为什么主线转向基于 DataFrame 的 API？因为它同时带来更统一的数据源接口、SQL 与 Catalyst/Tungsten 优化、跨语言一致性，以及更自然的 Pipeline 组织方式。对真实项目来说，这比单独调用某个算法 API 更重要。
 
-  - 为什么要将MLlib切换到基于DataFrame的API？
-
-DataFrame提供比RDD更加用户友好的API。DataFrame的许多优点包括Spark数据源、SQL查询、Tungsten和Catalyst优化以及跨语言的统一API。基于DataFrame的MLlib为跨机器学习算法和跨多种语言提供了统一的API。DataFrame有助于实际的机器学习建立数据管道，特别是应用于特征变换。
-
-  - 什么是Spark ML？
-
-Spark
-ML不是官方名称，而是偶尔用于引用基于DataFrame的API。这主要是由于基于DataFrame的API使用的Scala软件包名称为org.apache.spark.ml，以及最初用于强调数据管道的概念。
-
-  - MLlib是否被弃用？
-
-MLlib包括基于RDD的API和基于DataFrame的API，而基于RDD的API现在处于维护模式。所以MLlib
-API没有被弃用，但不是Spark机器学习的全部。
+需要注意的是，`spark.mllib` 并不是完全不可用，而是已经不再作为新项目首选。它仍然能帮助你理解旧代码、线性代数类型、分布式矩阵以及部分经典案例；但如果目标是构建新的业务模型，优先级应当明显低于 `spark.ml`。
 
 ## 7.4 数据类型
 
-MLlib支持单个机器上存储的局部向量和矩阵，以及由一个或多个RDD支持的分布式矩阵。局部向量和局部矩阵是简单的数据类型，用作公共接口。局部向量和矩阵的基本线性代数运算由Breeze提供。另外，在有监督学习的训练示例中使用了MLlib中的标记点数据类型。
+本节介绍本章后续会反复用到的数据表示方式。对于 Spark 4.x 新项目，最常见的入口是 DataFrame 中的 `features` 向量列和 `label` 列，以及 `org.apache.spark.ml.linalg` 下的向量/矩阵类型。分布式矩阵与部分 `spark.mllib` 类型仍有学习价值，但更多属于底层能力或历史 API 视角，而不是多数业务建模任务的起点。
 
 ### 7.4.1 局部向量
 
@@ -66,7 +58,7 @@ scala> import org.apache.spark.ml.linalg.{Vectors, Vector}
 import org.apache.spark.ml.linalg.{Vectors, Vector}
 ```
 
-代码 4‑1
+代码 7‑1
 
   - 创建稠密向量(1.0, 0.0, 3.0)
 
@@ -75,7 +67,7 @@ scala> val dv: Vector = Vectors.dense(1.0, 0.0, 3.0)
 dv: org.apache.spark.ml.linalg.Vector = [1.0,0.0,3.0]
 ```
 
-代码 4‑2
+代码 7‑2
 
   - 通过指定非零条目的索引和值，创建一个稀疏向量（1.0，0.0，3.0）。
 
@@ -85,7 +77,7 @@ scala> val sv1: Vector = Vectors.sparse(3, Array(0, 2), Array(1.0,
 sv1: org.apache.spark.ml.linalg.Vector = (3,[0,2],[1.0,3.0])
 ```
 
-代码 4‑3
+代码 7‑3
 
   - 通过指定非零条目来创建一个稀疏向量（1.0，0.0，3.0）。
 
@@ -94,9 +86,9 @@ scala> val sv2: Vector = Vectors.sparse(3, Seq((0, 1.0), (2, 3.0)))
 sv2: org.apache.spark.ml.linalg.Vector = (3,[0,2],[1.0,3.0])
 ```
 
-代码 4‑4
+代码 7‑4
 
-代码 4‑2、代码 4‑3、代码 4‑4分别创建相同的局部向量。
+代码 7‑2、代码 7‑3、代码 7‑4分别创建相同的局部向量。
 
 ### 7.4.2 标签向量
 
@@ -110,7 +102,7 @@ scala> import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.feature.LabeledPoint
 ```
 
-代码 4‑5
+代码 7‑5
 
   - 使用正标签和稠密特征向量创建标签向量
 
@@ -119,7 +111,7 @@ scala> val pos = LabeledPoint(1.0, Vectors.dense(1.0, 0.0, 3.0))
 pos: org.apache.spark.ml.feature.LabeledPoint = (1.0,[1.0,0.0,3.0])
 ```
 
-代码 4‑6
+代码 7‑6
 
   - 使用负标签和稀疏特征向量创建标签向量
 
@@ -130,14 +122,14 @@ neg: org.apache.spark.ml.feature.LabeledPoint =
 (0.0,(3,[0,2],[1.0,3.0]))
 ```
 
-代码 4‑7
+代码 7‑7
 
 在实践中，使用稀疏的训练数据是很常见的。Spark
 ML支持以LIBSVM格式存储的阅读训练样本，这是LIBSVM和LIBLINEAR使用的默认格式。这是一种文本格式，其中每行代表使用以下格式标记的稀疏特征向量：
 
 label index1:value1 index2:value2 ...
 
-代码 4‑8
+代码 7‑8
 
 索引从一开始并按升序排列。
 加载后，特征索引将转换为基于零的索引。libsvm包用于将LIBSVM数据加载为DataFrame的数据源API。加载的DataFrame有两列：包含作为双精度存储的标签和包含作为向量存储的特征。要使用LIBSVM格式数据源，需要在DataFrameReader中将格式设置为“libsvm”，并可以指定option，例如：
@@ -146,7 +138,7 @@ val df = spark.read.format("libsvm").option("numFeatures", "780")
 
 .load("data/mllib/sample\_libsvm\_data.txt")
 
-代码 4‑9
+代码 7‑9
 
 libsvm数据源支持以下选项：
 
@@ -173,12 +165,11 @@ os,代码本身是c++写的，同时也有matlab，python，java，c/c++扩展�
 
 ### 7.4.3 局部矩阵
 
-局部矩阵具有整数类型的行和列索引以及双重类型的值，它们存储在单个计算机上。MLlib支持密集矩阵（其条目值以列优先顺序图例
-4‑2存储在单个双精度数组中）和稀疏矩阵（其非零条目值以列优先顺序和压缩稀疏列格式存储）。
+局部矩阵具有整数类型的行和列索引以及双重类型的值，它们存储在单个计算机上。MLlib支持密集矩阵（其条目值以列优先顺序图例 7‑2存储在单个双精度数组中）和稀疏矩阵（其非零条目值以列优先顺序和压缩稀疏列格式存储）。
 
 ![](media/07_machine_learning/media/image2.jpeg)
 
-图例 4‑2按列排序从左到右，从上到下
+图例 7‑2按列排序从左到右，从上到下
 
 例如下面的稠密矩阵：
 
@@ -188,7 +179,7 @@ os,代码本身是c++写的，同时也有matlab，python，java，c/c++扩展�
 5.0 & 6.0 \\
 \end{pmatrix}\]
 
-公式 4‑1
+公式 7‑1
 
 以矩阵大小（3,2）存储在一维数组\[1.0,3.0,5.0,2.0,4.0,6.0\]中。局部矩阵的基类是Matrix，提供了两个实现：DenseMatrix和SparseMatrix。建议使用在矩阵中实现的工厂方法来创建局部矩阵。请记住，MLlib中的局部矩阵以列优先顺序存储。
 
@@ -197,7 +188,7 @@ scala> import org.apache.spark.ml.linalg.{Matrix, Matrices}
 import org.apache.spark.ml.linalg.{Matrix, Matrices}
 ```
 
-代码 4‑10
+代码 7‑10
 
   - 创建稠密矩阵((1.0, 2.0), (3.0, 4.0), (5.0, 6.0))
 
@@ -210,7 +201,7 @@ dm: org.apache.spark.ml.linalg.Matrix =
 5.0 6.0
 ```
 
-代码 4‑11
+代码 7‑11
 
   - 创建稀疏矩阵 ((9.0, 0.0), (0.0, 8.0), (0.0, 6.0))
 
@@ -229,7 +220,7 @@ res4: org.apache.spark.ml.linalg.DenseMatrix =
 0.0 6.0
 ```
 
-代码 4‑12
+代码 7‑12
 
   - def sparse(numRows: Int, numCols: Int, colPtrs: Array\[Int\],
     rowIndices: Array\[Int\], values: Array\[Double\]): Matrix
@@ -250,11 +241,13 @@ res4: org.apache.spark.ml.linalg.DenseMatrix =
 Array(0, 1, 3)、rowIndices= Array(0, 2, 1)、values=Array(9, 6,
 8)，numRows和numCols代表此矩阵为3行2列；values代表矩阵中的非零数值为9、6、8，其顺序是按列分布排序的；rowIndices数组的长度与数值的个数相同，数组中的每个值代表对应数值的行索引；colPtrs数组的长度等于numCols+1，一般第一个元素为0，代表从第一个值9开始，第二个元素为1-0=1，代表第一列只包含一个值9，第三个元素为3-1=2，代表第二列包括两个值6和8。
 
-### 7.4.4 分布矩阵
+### 7.4.4 分布式矩阵（历史/底层能力）
 
-分布矩阵具有长整型行和列索引以及双型值，它们以分布式方式存储在一个或多个RDD中。选择正确的格式来存储大型的分布式矩阵是非常重要的。将分布式矩阵转换为不同的格式可能需要全局洗牌，这相当耗费系统资源。到目前为止，已经实现了四种类型的分布矩阵。基本类型称为RowMatrix，是面向行的分布式矩阵，例如特征向量的集合，行索引不具有意义。RowMatrix条目的保存格式为RDD，每行是一个局部向量。假设RowMatrix的列数并不是很大，因此如果单个局部向量可以合理地传递给驱动程序，也可以使用单个节点进行存储和操作。IndexedRowMatrix与RowMatrix类似，但具有行索引，可用于识别行和执行连接操作。CoordinateMatrix是以坐标列表格式存储的分布式矩阵，其条目的保存格式为RDD。BlockMatrix是分布式矩阵，其中是由包含MatrixBlock的RDD组成。MatrixBlock是(Int,Int,Matrix)的元组。
+本节介绍的分布式矩阵类型主要位于 `spark.mllib.linalg.distributed`，更适合用来理解 Spark 早期在线性代数与分布式矩阵上的底层抽象。对 Spark 4.x 新项目来说，多数机器学习任务不会直接从这些类型起步，而是优先使用 DataFrame 中的 `features` 向量列、`spark.ml` 估算器以及 Pipeline；只有在需要底层矩阵运算、兼容旧代码或学习历史接口时，才会直接接触这些对象。
 
-#### 7.4.4.1 RowMatrix
+分布式矩阵具有长整型行和列索引以及双精度值，它们以分布式方式存储在一个或多个 RDD 中。选择正确的格式来存储大型分布式矩阵非常重要，因为不同格式之间的转换往往需要全局洗牌，成本较高。这里保留四种典型类型：`RowMatrix`、`IndexedRowMatrix`、`CoordinateMatrix` 和 `BlockMatrix`。阅读时建议重点理解“什么时候需要索引”“什么时候矩阵足够稀疏”“什么时候按块切分更合适”。
+
+#### 7.4.4.1 RowMatrix（历史/兼容）
 
 RowMatrix就是将每行对应一个RDD，将矩阵的每行分布式存储，矩阵的每行是一个局部向量。由于每一行均由局部向量表示，因此列数受整数范围限制，但实际上应小得多。
 
@@ -265,7 +258,7 @@ scala> import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 ```
 
-代码 4‑13
+代码 7‑13
 
 创建RDD\[Vector\]：
 
@@ -279,7 +272,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.Vector] =
 ParallelCollectionRDD[0] at parallelize at <console>:25
 ```
 
-代码 4‑14
+代码 7‑14
 
 从RDD\[Vector\]创建RowMatrix：
 
@@ -289,7 +282,7 @@ mat: org.apache.spark.mllib.linalg.distributed.RowMatrix =
 <org.apache.spark.mllib.linalg.distributed.RowMatrix@14e8304b>
 ```
 
-代码 4‑15
+代码 7‑15
 
 得到RowMatrix的长度：
 
@@ -300,9 +293,9 @@ scala> val n = mat.numCols()
 n: Long = 3
 ```
 
-代码 4‑16
+代码 7‑16
 
-#### 7.4.4.2 IndexedRowMatrix
+#### 7.4.4.2 IndexedRowMatrix（历史/兼容）
 
 IndexedRowMatrix类似于RowMatrix，但行索引有意义。它由带索引行的RDD存储，因此每行都由长整型索引和局部向量表示。IndexedRowMatrix可以用RDD
 \[IndexedRow\]实例创建，其中IndexedRow是一个基于(Long,Vector)的包装器。IndexedRowMatrix可以通过删除行索引来转换为RowMatrix。
@@ -320,7 +313,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.IndexedRow]
 = ParallelCollectionRDD[9] at parallelize at <console>:28
 ```
 
-代码 4‑17
+代码 7‑17
 
 用RDD\[IndexedRow\]创建IndexedRowMatrix：
 
@@ -330,7 +323,7 @@ mat02: org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix =
 <org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix@46b4cddb>
 ```
 
-代码 4‑18
+代码 7‑18
 
 得到长度：
 
@@ -341,7 +334,7 @@ scala>val n02 = mat02.numCols()
 n02: Long = 2
 ```
 
-代码 4‑19
+代码 7‑19
 
 去掉行索引：
 
@@ -351,9 +344,9 @@ rowMat: org.apache.spark.mllib.linalg.distributed.RowMatrix =
 <org.apache.spark.mllib.linalg.distributed.RowMatrix@435e857c>
 ```
 
-代码 4‑20
+代码 7‑20
 
-#### 7.4.4.3 CoordinateMatrix
+#### 7.4.4.3 CoordinateMatrix（历史/兼容）
 
 CoordinateMatrix也是分布式矩阵，每个条目由RDD保存。每个条目是(i:Long,j：Long,value：Double)的一个元组，其中i是行索引，j是列索引，value是条目值。CoordinateMatrix只有在矩阵的两个维度都很大且矩阵非常稀疏时才能使用。CoordinateMatrix可以由RDD
 \[MatrixEntry\]实例创建，其中MatrixEntry是基于(Long,Long,Double)的包装器。可以通过调用toIndexedRowMatrix将CoordinateMatrix转换为具有稀疏行的IndexedRowMatrix。目前还不支持CoordinateMatrix的其他计算。
@@ -372,7 +365,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.MatrixEntry]
 = ParallelCollectionRDD[13] at parallelize at <console>:30
 ```
 
-代码 4‑21
+代码 7‑21
 
 用RDD\[MatrixEntry\]创建CoordinateMatrix：
 
@@ -382,7 +375,7 @@ mat03: org.apache.spark.mllib.linalg.distributed.CoordinateMatrix =
 <org.apache.spark.mllib.linalg.distributed.CoordinateMatrix@17c158ca>
 ```
 
-代码 4‑22
+代码 7‑22
 
 得到长度：
 
@@ -393,7 +386,7 @@ scala>val n03 = mat03.numCols()
 n03: Long = 5
 ```
 
-代码 4‑23
+代码 7‑23
 
 转换成IndexRowMatrix，其中的行为稀疏向量：
 
@@ -404,9 +397,9 @@ org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix =
 <org.apache.spark.mllib.linalg.distributed.IndexedRowMatrix@c34e260>
 ```
 
-代码 4‑24
+代码 7‑24
 
-#### 7.4.4.4 BlockMatrix
+#### 7.4.4.4 BlockMatrix（历史/兼容）
 
 BlockMatrix是分布式矩阵，其中的MatrixBlock是由RDD方式保存。MatrixBlock是((Int，Int),Matrix)的元组，其中(Int,Int)是块的索引，Matrix是给定索引的子矩阵，其大小为rowsPerBlock\*colsPerBlock。BlockMatrix支持加和乘另一个BlockMatrix。BlockMatrix还有一个帮助函数validate，可以用来检查BlockMatrix是否正确设置。
 
@@ -426,7 +419,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.linalg.distributed.MatrixEntry]
 = ParallelCollectionRDD[18] at parallelize at <console>:31
 ```
 
-代码 4‑25
+代码 7‑25
 
 用RDD\[MatrixEntry\]创建CoordinateMatrix：
 
@@ -436,7 +429,7 @@ coordMat: org.apache.spark.mllib.linalg.distributed.CoordinateMatrix =
 <org.apache.spark.mllib.linalg.distributed.CoordinateMatrix@2142b70d>
 ```
 
-代码 4‑26
+代码 7‑26
 
 将CoordinateMatrix转换为BlockMatrix：
 
@@ -446,7 +439,7 @@ matA: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 <org.apache.spark.mllib.linalg.distributed.BlockMatrix@42e58f8e>
 ```
 
-代码 4‑27
+代码 7‑27
 
 验证BlockMatrix是否设置正确。当它是无效的，抛出一个异常。
 
@@ -454,7 +447,7 @@ matA: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 scala> matA.validate()
 ```
 
-代码 4‑28
+代码 7‑28
 
 计算A^T A：
 
@@ -464,16 +457,15 @@ ata: org.apache.spark.mllib.linalg.distributed.BlockMatrix =
 <org.apache.spark.mllib.linalg.distributed.BlockMatrix@7e09407a>
 ```
 
-代码 4‑29
+代码 7‑29
 
 ## 7.5 统计基础
 
-给定一个数据集，数据分析师一般会先观察一下数据集的基本情况，称之为汇总统计或者概要性统计。一般的概要性统计用于概括一系列观测值，包括位置或集中趋势（比如算术平均值、中位数、众数和四分位均值），展型（比如四分位间距、绝对偏差和绝对距离偏差、各阶矩等），统计离差，分布的形状，依赖性等。spark.mllib库也提供了一些基本的统计分析工具，包括相关性、分层抽样、假设检验，随机数生成等，包括在RDD和数据帧数据进行汇总统计功能；包括使用皮尔逊或斯皮尔曼方法计算数据之间的相关性；还提供了假设检验和随机数据生成的支持。
+给定一个数据集，数据分析师一般会先观察一下数据集的基本情况，称之为汇总统计或者概要性统计。一般的概要性统计用于概括一系列观测值，包括位置或集中趋势（比如算术平均值、中位数、众数和四分位均值），展型（比如四分位间距、绝对偏差和绝对距离偏差、各阶矩等），统计离差，分布的形状，依赖性等。对 Spark 4.x 而言，这部分内容的主线应优先理解为 `spark.ml.stat` 与 DataFrame 上的统计分析能力；`spark.mllib` 的部分工具仍有参考价值，但更多属于历史接口与兼容场景。
 
 ### 7.5.1 相关分析
 
-计算两个系列数据之间的相关性是统计中的常见操作。spark.mllib提供了灵活性来计算许多序列之间的成对相关性。目前支持的相关分析是皮尔逊和斯皮尔曼。org.apache.spark.ml.stat提供了计算序列之间相关性的方法，根据输入的类型（两个RDD
-\[Double\]或一个RDD \[Vector\]），输出分别是Double或相关矩阵。
+计算两个系列数据之间的相关性是统计中的常见操作。今天更推荐直接使用 `org.apache.spark.ml.stat` 在 DataFrame 的向量列上完成相关性分析；如果阅读旧资料，仍会看到 `spark.mllib` 中基于 RDD 的相关性接口。下面示例采用现代 `spark.ml.stat.Correlation` 写法。
 
 ```scala
 scala> import org.apache.spark.ml.linalg.{Matrix, Vectors}
@@ -508,7 +500,7 @@ NaN NaN 1.0 NaN
 0.40000000000000174 0.9486832980505141 NaN 1.0
 ```
 
-代码 4‑30
+代码 7‑30
 
   - 皮尔逊相关系数(Pearson's correlation coefficient)
 
@@ -517,7 +509,7 @@ NaN NaN 1.0 NaN
 
 \[\rho_{X,Y} = \frac{\text{cov}(X,Y)}{\sigma_{X}\sigma_{Y}}\]
 
-公式 4‑4
+公式 7‑4
 
 分子是协方差，分母是两个变量标准差的乘积。显然要求X和Y的标准差都不能为0。
 
@@ -529,7 +521,7 @@ NaN NaN 1.0 NaN
 
 \[r_{s} = \rho_{\text{rg}_{X},\text{rg}_{Y}} = \frac{\text{cov}(\text{rg}_{X},\text{rg}_{Y})}{\sigma_{\text{rg}_{X}}\sigma_{\text{rg}_{Y}}}\]
 
-公式 4‑5
+公式 7‑5
 
 ### 7.5.2 假设检验
 
@@ -567,7 +559,7 @@ scala> println("statistics = " + chi.getAs[Vector](2))
 statistics = [0.75,1.5]
 ```
 
-代码 4‑31
+代码 7‑31
 
   - 卡方检验
 
@@ -618,8 +610,7 @@ without weight: mean = [3.0,4.5,6.0], sum = [2.0,4.5,2.0]
 ## 7.6 算法概述
 
 MLlib
-中包括了Spark的机器学习功能，实现了可以在计算机集群上并行完成的机器学习算法。MLlib拥有多种机器学习算法用于二元以及多元分类和回归问题的解决，这些方法包括线性模型、决策树和朴素贝叶斯方法等；使用基于交替最小二乘算法建立协同过滤推荐模型。在这一部分，将使用协同过滤算法来预测用户会喜欢什么样的电影。MLlib还提供了基于K均值的聚类，经常用于大型数据集的数据挖掘，支持使用RowMatrix类进行降维，提供奇异值分解和主成分分析的功能（表格
-4‑1）。
+中包括了Spark的机器学习功能，实现了可以在计算机集群上并行完成的机器学习算法。MLlib拥有多种机器学习算法用于二元以及多元分类和回归问题的解决，这些方法包括线性模型、决策树和朴素贝叶斯方法等；使用基于交替最小二乘算法建立协同过滤推荐模型。在这一部分，将使用协同过滤算法来预测用户会喜欢什么样的电影。MLlib还提供了基于K均值的聚类，经常用于大型数据集的数据挖掘，支持使用RowMatrix类进行降维，提供奇异值分解和主成分分析的功能（表格 7‑1）。
 
 | **机器学习算法** | **描述**                                |
 | ---------- | ------------------------------------- |
@@ -629,13 +620,13 @@ MLlib
 | 降维         | 支持使用RowMatrix类进行降维，其提供奇异值分解和主成分分析的功能。 |
 | 特征抽取和转换    | 包括常用的几个特征转换的类                         |
 
-表格 4‑1MLib中的机器学习算法
+表格 7‑1MLib中的机器学习算法
 
 目前机器学习领域包括许多算法，同时还有更多新颖的算法被设计和开发。如果要搞清楚所有算法的原理，其学习曲线会非常陡峭。初学者经常面临着如何从各种各样的机器学习算法中选择解决不同问题的方法，要解决该问题可以考虑几个因素：数据量的大小和性质；可以接收的计算时间；任务的紧迫程度以及期望挖掘的内容。即使是经验丰富的数据科学家也无法在尝试所有可能的算法之前，就可以确定哪个算法性能最好。但是，初学者应该知道机器学习算法的功能和适用的实际问题。本小结只是希望能够提供一些指导性的建议，可以根据一些因素选择用于解决问题可能性较大的算法。本节提供两种方式来对机器学习算法进行分类：首先是通过学习方式进行分类，包括有监督学习和无监督学习，有监督学习算法使用带有标记的数据训练模型，而无监督学习算法不需要；第二种是按形式或功能上的相似性将算法分组。
 
 ![](media/07_machine_learning/media/image3.png)
 
-图例 4‑3机器学习算法
+图例 7‑3机器学习算法
 
 ### 7.6.1 有监督学习
 
@@ -647,20 +638,19 @@ MLlib
 
 分类算法是解决分类问题的方法，是数据挖掘、机器学习和模式识别中一个重要的研究领域。分类算法通过对已知类别训练集的分析，从中发现分类规则，以此预测新数据的类别。分类算法的应用非常广泛，银行中风险评估、客户类别分类、文本检索和搜索引擎分类、安全领域中的入侵检测以及软件项目中的应用等等。基于监督学习的分类算法将输入数据指定属于若干预先定义的分类中。一些常见的使用分类的案例包括信用卡欺诈检测和垃圾邮件检测，这两者都是二元分类问题，只有两种类别（是与非）。分类数据被标记，例如标记为垃圾邮件或非垃圾邮件、欺诈或非欺诈。分类算法通过训练模型为新数据分配标签或类别，可以根据预先确定的特征进行分类。
 
-某些邮件系统基于电子邮件的数据，即发件人、收件人、主题和邮件正文，使用称为分类的机器学习技术来判断电子邮件是否为垃圾邮件。分类采用一组已知标签的数据，并学习如何根据该信息标记新记录。分类是有监督学习的算法意味着其使用标记的，训练数据和其标签将提供给分类算法。分类算法获取带有已知标签的数据，学会如何判断新数据的标签，例如基于已知垃圾邮件的数据特征，分类算法标识新邮件是否是垃圾邮件。亚马逊使用协同过滤（通常称为用户推荐）的机器学习技术，根据用户的历史记录和与其他用户的相似度来确定用户将会喜欢哪些产品。
+一个容易理解的分类例子是垃圾邮件识别：训练数据里已经标注了“垃圾”或“非垃圾”，模型要学习的是如何根据发件人、主题、正文特征为新邮件分配标签。类似地，信用风险判断、欺诈检测、用户流失预测，也都属于“根据已知标签学习分类边界”的问题。与之相对，后面要讲的协同过滤更偏向推荐场景，它关心的是在历史行为基础上预测用户可能喜欢什么。
 
 ### 7.6.2 无监督学习
 
-如果训练数据没有标签，说明没有的先验知识，无监督学习需要从数据中计算出内在的规律，可以将训练数据想象成没有标准答案的试卷。一般来说，无监督学习适用于难以人工标注类别或进行人工类别标注的成本太高，希望计算机能代替完成这些工作，或至少提供一些帮助。根据没有被标记的训练数据解决模式识别中的各种问题，称之为无监督学习。无监督学习在没有标签的情况下自主获取输入数据本身的内在意义，例如聚类算法获取输入对象的内在分组模式。另外，用户还需要对通过无监督学习获取的内在意义进行理解，有时候可能找到未曾发现的知识。机器学习算法可以根据标题和内容将新闻文章分组到不同的类别。聚类算法发现数据集合中发生的分组。聚类算法仅基于数据本身对一组数据进行分组，事先不需要知道数据的任何分组信息。
+如果训练数据没有标签，任务就转成了无监督学习。此时模型不会直接学习“正确答案”，而是尝试从数据本身的分布中找结构、找模式、找相似性。无监督学习适合那些人工标注成本较高，或者我们本来就想先探索数据结构的场景，例如客户分群、新闻聚类、相似商品发现和异常点检测。
 
-聚类算法通过分析输入实例之间的相似性将其进行分类。聚集使用无监督的算法，其前提不需要输出。没有任何已知的类被用作参考，这与有监督算法不同的。在聚类中，算法通过分析输入示例之间的相似性将对象分组，聚集用途包括搜索结果的分组；数据的分组例如查找相似客户；异常检测例如欺诈检测；文本分组例如对书籍进行分类。在图例
-4‑4例子中，给出了一组原始数据点。聚类算法的目标是创造一定数量的簇，使得簇中的点表示最相似的，或最近的数据。
+聚类是最典型的无监督学习任务之一。它不依赖预先给定的类别，而是根据样本之间的相似程度把数据划分成若干组。理想情况下，同一簇内部的样本更相似，不同簇之间的样本差异更大。图例 7‑4 给出了最直观的示意：原始数据点分布在平面上，聚类算法试图把它们整理成若干具有业务意义的分组。
 
 ![](media/07_machine_learning/media/image4.png)
 
-图例 4‑4聚类分组
+图例 7‑4聚类分组
 
-使用K-均值的聚类算法，开始通过初始化所有的坐标为重心。有多种方法可以初始化点，包括随机的方式。随着算法的每次迭代，每个点根据距离度量，通常为欧几里德距离，分配给其最接近的重心。然后在每次迭代中，对于所有被分配给重心的点，重心被更新为“中心”。算法根据多个参数条件停止运行，条件包括：从最后一次迭代中值的最小变化；足够小的簇内距离；足够大的簇间距离。
+以 K-Means 为例，算法会先初始化若干个簇中心，然后在每一轮迭代中完成两件事：先把每个样本分配给最近的中心，再根据新分配结果重新计算各簇中心。这个过程会持续到中心变化足够小、达到最大迭代次数，或者目标函数基本稳定为止。K-Means 简单高效，因此常被用作无监督学习的入门算法；但它对簇数选择、异常值和尺度差异比较敏感，实践中通常需要结合特征标准化与指标评估一起使用。
 
 ### 7.6.3 多种算法介绍
 
@@ -724,23 +714,23 @@ MLlib
 
 ### 7.6.4 协同过滤
 
-推荐系统是构建智能推荐器系统时最常用的技术，随着收集有关用户的更多信息，该系统可以学习为潜在用户提供更好的推荐。大多数购物或内容网站都使用系统过滤作为其复杂推荐系统的一部分，可以使用此技术构建推荐器。推荐系统简单来说是利用兴趣相投、拥有共同体验群体的喜好来为潜在用户提供可能感兴趣的信息，需要由用户通过合作的机制给予信息相当程度的回应（例如为产品或内容评分）并记录下来，这个过程可以为后续算法的筛选和过滤提供数据。所以，推荐系统又可分为评分和过滤两个部分，其后成为电子商务当中很重要的一环，即根据某顾客以往的购买行为，通过协同过滤系统对比相似顾客群的购物行为，为顾客提供可能喜欢的产。因此，推荐系统是指能够预测用户可能偏好的系统，本节重点主要介绍协同过滤的算法。协同过滤有两种形式：
+推荐系统的目标，是根据用户历史行为推断“这个用户接下来可能喜欢什么”。在电商、视频、音乐和资讯场景里，这通常意味着结合评分、点击、收藏、停留时长等信号，为用户排序出一组候选内容。协同过滤是其中最经典的一类方法，它不要求先理解商品的完整语义，而是直接从“用户和物品之间的交互关系”中学习偏好模式。协同过滤最常见的两种思路如下：
 
-（1）基于用户的协同过滤：基于用户的协同过滤算法先使用统计技术寻找与目标用户有相同喜好的邻居，然后根据目标用户的邻居的喜好产生向目标用户的推荐。基本原理就是利用用户访问行为的相似性来互相推荐用户可能感兴趣的资源，如图所示：
+（1）基于用户的协同过滤：先找出“和目标用户行为相似的一群用户”，再根据这些相似用户喜欢但目标用户尚未接触的项目生成推荐。它强调的是“相似用户会做出相似选择”。
 
 ![](media/07_machine_learning/media/image5.png)
 
-图例 4‑5 基于用户的协同过滤
+图例 7‑5 基于用户的协同过滤
 
-上图示意出基于用户的协同过滤算法的基本原理，假设用户A喜欢项目A、项目C，用户B喜欢项目B，用户C喜欢项目A、项目C和项目D；从这些用户的历史喜好信息中，我们可以发现用户A和用户C的口味和偏好是比较类似的，同时用户C还喜欢项目D，那么我们可以推断用户A可能也喜欢项目D，因此可以将项目D推荐给用户A。
+图例 7‑5 展示了一个最小示意。假设用户 A 和用户 C 都喜欢项目 A、C，而用户 C 还喜欢项目 D，那么系统就可能把 D 推荐给 A，因为 C 的历史偏好为 A 提供了相似用户参考。
 
-（2）基于项目的协同过滤：根据所有用户对项目或者信息的评价，发现项目和项目之间的相似度，然后根据用户的历史偏好信息将类似的项目推荐给该用户，如图所示：
+（2）基于项目的协同过滤：先根据所有用户的行为数据计算“项目与项目之间的相似度”，再把与用户已喜欢项目相近的其他项目推荐给该用户。它强调的是“喜欢 A 的人往往也喜欢和 A 相似的 B”。
 
 ![](media/07_machine_learning/media/image6.png)
 
-图例 4‑6基于项目的协同过滤
+图例 7‑6基于项目的协同过滤
 
-上图表明基于项目的协同过滤推荐的基本原理，用户A喜欢项目A和项目C，用户B喜欢项目A、项目B和项目C，用户C喜欢项目A，从这些用户的历史喜好中可以认为项目A与项目C比较类似，喜欢项目A的都喜欢项目C，基于这个判断用户C可能也喜欢项目C，所以推荐系统将项目C推荐给用户C。
+图例 7‑6 展示的就是这种思路：如果大量用户同时喜欢项目 A 和项目 C，那么系统会认为这两个项目相近；当用户 C 表现出对 A 的兴趣时，就有理由把 C 推荐给他。
 
 ## 7.7 交叉验证
 
@@ -769,17 +759,17 @@ MLlib
 
 ## 7.8 机器学习管道
 
-什么是机器学习管道？实际上，管道是日常生活中的一个自然概念，例如生成车间的流水线。如果考虑汽车组装流水线，假设装配线中的某些步骤是安装发动机，然后安装发动机罩并安装车轮。装配线上的汽车只能一次完成三个步骤中的一个。在汽车安装了发动机后，它将继续安装发动机罩，为下一辆汽车留下发动机安装设施。装配流水线上最多应该有3辆车，分别是第一辆车移动到车轮安装，第二辆车引擎盖安装，第三辆车开始安装引擎。如果发动机安装需要20分钟，引擎盖安装需要5分钟，安装轮子需要10分钟。当流水线上一次只有一辆汽车存在，如果三辆车装备完成将需要105=3\*（20+5+10）分钟；当流水线上可以同时存在三辆车，三辆车装备完成将需要75=20+20+5+10+10+10分钟，所以说管道模型的目的之间就是提高生成效率。机器学习管道包括了用于机器学习工作流程中的创建、调优和检查等过程，用户更多地关注数据需求和机器学习任务，而不是花费时间和精力在设计基础架构和实现分布式计算。机器学习管道还包括特征工程与模型组合的自动迭代，最终找到最优的解决方案。
+本节是本章最重要的工程化部分。现实中的机器学习任务很少只是“调用一个算法就结束”，通常还包括数据清洗、特征提取、模型训练、评估、调参与推理输出。Pipeline 的作用，就是把这些阶段组织成一条可重复、可保存、可复用的处理链路。
+
+在 Spark 中，机器学习管道主要由三类对象协作完成：Transformer 负责把一个 DataFrame 转成另一个 DataFrame；Estimator 负责在训练数据上调用 `fit()` 生成模型；Evaluator 负责度量模型效果并为调参提供依据。把这些部件按顺序组合起来，才能让训练集、验证集和线上推理使用同一套前处理逻辑。
+
+从 Spark 4.x 的实践角度看，Pipeline 不是“可选高级话题”，而是 `spark.ml` 的默认工作方式。只要任务包含特征工程和模型训练，就应该优先思考如何把流程写成可复用的 Pipeline。
 
 ### 7.8.1 概念介绍
 
-机器学习管道可以用来定义工作流程，自动完成模型训练。管道的工作方式是使一系列数据可以在模型中进行转换和关联，模型可以进行测试和评估。机器学习管道包括几个训练模型的步骤，每个步骤都可以重复迭代执行，以不断提高模型的准确性并获得最优的结果。通过定义机器学习管道，模型训练过程可以被有效的控制，可以灵活分解和替换。在模型训练的过程中，机器学习算法可以在训练数据中找到将输入数据映射到标签（要预测的答案）的模式，然后保存这些模式到模型中。模型可以具有许多依赖性，并且可以存储所有组件以确保所有功能都可以脱机使用，也可以联机进行部署。
-
-当今的许多机器学习模型大部分是经过训练的神经网络，能够执行特定任务，可以提供从“发生了什么（分析数据）”到“可能发生什么（预测结果）”解决方法。这些模型很复杂，需要不停的进行运算，这个过程是重复的基于上一次的运算结果进行数学计算，并在每次迭代中进行改进使其更接近于最佳的结果。数据科学家希望可以获得更多的数据，可以源源不断地输入到机器学习管道中。典型的机器学习管道包括：数据采集、数据清理、特征提取（标注和降维）、模型验证、可视化。
-
 ![https://miro.medium.com/max/1360/1\*c4SNMDj18FHQakGS6Gmgsg.png](media/07_machine_learning/media/image7.png)
 
-图例 4‑7 Spark 机器学习工作流
+图例 7‑7 Spark 机器学习工作流
 
 在构建管道的初始阶段，数据质量及其可访问性是将遇到的两个主要挑战。如果要想从原始数据中获得有意义的信息，机器学习管道的首要任务就是定义数据收集和数据清理，但是在实际应用环境中会遇到很大的难度。机器学习管道通常还涉及一系列数据转换和训练模型阶段，会按照一定的标准被定义为操作序列，其中包括转换器（Transformer）、估算器（Estimator）、评价器（Evaluator）。这些阶段按顺序执行，并且在流经管道中的每个阶段时输入的数据被进行了转换。
 
@@ -787,7 +777,7 @@ MLlib
 
 ### 7.8.2 Spark 管道
 
-Spark从版本1.2开始引入了机器学习管道概念，提供API创建和执行复杂的机器学习工作流程。其目标是通过标准化让用户快速轻松地组装和配置分布式机器学习管道。Spark机器学习管道API在org.apache.spark.ml包中可用，可以将多个机器学习算法组合到一个管道中。Spark机器学习API具有两个名为spark.mllib和spark.ml软件包。spark.mllib软件包在RDD之上构建的API，而spark.ml软件包提供了构建在DataFrame之上的API。使用DataFrame作为机器学习算法的操作形式，可以容纳各种数据类型。本节将介绍Spark机器学习管道的几个关键概念，其中管道概念主要受到scikit-learn项目的启发。
+Spark 的机器学习管道 API 位于 `org.apache.spark.ml` 包中，建立在 DataFrame 之上，能够与特征工程、模型、评估器和参数网格搜索自然组合。这也是为什么本章把 Pipeline 视为新项目主线，而把 RDD 风格 API 视为兼容材料。
 
   - 转换器（Transformer）
 
@@ -797,29 +787,25 @@ Spark从版本1.2开始引入了机器学习管道概念，提供API创建和执
 
 估算器抽象了学习算法的概念，或者任何拟合和训练数据的算法。在技术上讲，估算器实现了方法fit()，用来接受DataFrame并产生模型（转换器）。例如，LogisticRegression算法是一个估算器，调用fit()训练出LogisticRegressionModel，它是模型也是转换器。
 
-在训练机器学习模型中，通常需要运行一系列算法对数据进行处理和拟合。例如，简单的自然语言处理工作流可能包括几个阶段，首先将每个文档的文本分割成单词；然后将每个文档的单词转换为特征向量；最后使用特征向量和标签拟合预测模型，可以将这样的工作流程定义为机器学习管道（Pineline）。管道由PipelineStage（转换器和估算器）序列组成，并且按特定顺序运行。下面的内容将具体讲解转换器和估算器在Spark机器学习管道中的作用，并使用这个简单的自然语言处理流程作为示例。
+在真实项目里，模型训练通常不是“一个算法调用”就结束了，而是由一串有顺序约束的步骤组成。例如在文本分类任务中，你可能先做分词，再做向量化，最后训练分类器；在推荐或风控任务中，则常常先做数据清洗、类别编码、特征拼接，再进入模型训练和评估。Spark 把这类流程统一抽象为 Pipeline：它由多个 `PipelineStage` 顺序组成，每个阶段要么负责转换数据，要么负责根据训练数据拟合模型。
 
-实际上，机器学习管道是由包含特定阶段的序列组成，每个阶段可以是转换器或估算器。这些阶段按顺序运行，DataFrame通过每个阶段时被转换。如果通过的阶段为转换器，则在DataFrame上调用transform()方法；如果通过的阶段为估算器，调用fit()方法来生成一个转换器，会成为PipelineModel一部分，或者经过拟合的Pipeline；可以继续在DataFrame上调用这个转换器的transform()方法。下图（图例
-4‑8）为机器学习管道作用在训练数据上的过程。
+运行时可以把 Pipeline 理解成一条固定的数据处理链。对于 Transformer，Spark 会直接调用 `transform()` 把一个 DataFrame 变成另一个 DataFrame；对于 Estimator，Spark 会先调用 `fit()` 产出训练后的模型，再把这个模型作为后续链路中的 Transformer 使用。训练完成后，整条链路会固化成一个 `PipelineModel`，从而让训练集、验证集和线上推理都复用同一套预处理步骤。下图（图例 7‑8）展示了这条链路如何作用在训练数据上。
 
 ![L Pipeline Example](media/07_machine_learning/media/image8.jpeg)
 
-图例 4‑8训练模型阶段使用的机器学习管道
+图例 7‑8训练模型阶段使用的机器学习管道
 
-上图中包含由三个阶段组成的机器学习管道，前两个Tokenizer和HashingTF是转换器，第三个LogisticRegression是一个估算器；还表示了流经管道各个阶段的的数据变化，其中圆柱形表示DataFrame。原始DataFrame（Raw
-text）包括原始文本文档和标签，通过调用Pipeline.fit()方法，Tokenizer.transform()方法将原始DataFrame中的文本文档分割成单词，转换成新的单词DataFrame（Words），HashingTF.transform()方法将单词DataFrame转换为特征向量，转换成新的特征向量DataFrame（Feature
-vectors）。由于LogisticRegression是一个估算器，所以机器学习管道调用LogisticRegression.fit()来生成LogisticRegressionModel。如果机器学习管道还有更多的估算器，那么在将此DataFrame传递到下一个阶段之前，在此DataFrame上调用LogisticRegressionModel的transform()方法。从上面的例子来看，机器学习管道整体可以作为估算器，所以运行fit()方法之后，生成一个PipelineModel转换器。然后，PipelineModel转换器可以用在测试数据上，下图（图例
-4‑9）说明了这个过程。PipelineModel具有与机器学习管道相同的级数，但所有估算器都已成为转换器。当在测试数据集上调用PipelineModel中的transform()方法时，数据按顺序通过已经拟合过的机器学习管道，每个阶段的transform()方法更新DataFrame并将其传递到下一个阶段。这种机器学习管道的机制有助于确保训练和测试数据通过相同的处理步骤。
+图例 7‑8 中，`Tokenizer` 和 `HashingTF` 负责把原始文本逐步变成可训练的特征列，`LogisticRegression` 则负责在这些特征上拟合分类模型。调用 `Pipeline.fit()` 时，前面的转换器依次改写 DataFrame，最后由估算器产出训练后的模型；等整条链路完成拟合后，Spark 会返回一个 `PipelineModel`。随后，测试集或线上数据只需要调用这个 `PipelineModel` 的 `transform()`，就能沿着相同的步骤得到预测结果。这样做的价值在于：训练时用什么预处理逻辑，推理时就沿用什么逻辑，从而减少“训练和上线不一致”的风险。
 
 ![L PipelineModel Example](media/07_machine_learning/media/image9.jpeg)
 
-图例 4‑9机器学习管道应用在测试数据的过程
+图例 7‑9机器学习管道应用在测试数据的过程
 
-机器学习管道中阶段被指定为有序数组。示例中的Pineline全部为线性，即Pipeline中的每个阶段使用前一阶段产生的数据。只要管道中的数据流形成有向非循环图，就有可能创建非线性Pipeline。当前，数据流图根据每个阶段的输入和输出列名称（通常通过参数指定）隐式指定。如果管道形成有向非循环图，则必须按拓扑顺序指定阶段。
+Pipeline 中的阶段按顺序放在一个数组里。最常见的是线性链路，也就是后一阶段直接消费前一阶段产出的列；如果数据流能组成有向无环图，也可以构造更复杂的非线性 Pipeline，但这时就需要格外注意各阶段的输入列、输出列和先后顺序。
 
-由于Pipeline可以对具有不同类型的DataFrame进行操作，因此不能使用编译时类型检查。在实际运行Pipeline之前，Pipeline和PipelineModel在进行运行时检查。此类型检查是使用DataFrame模式完成的，描述了DataFrame中列的数据类型。
+由于 Pipeline 要处理的是运行时 DataFrame，而不是编译期静态类型，很多合法性检查都会推迟到运行阶段完成。Spark 会根据 DataFrame 的 schema 校验列名、列类型和阶段依赖是否匹配。因此，给每个阶段明确设置输入列和输出列，是保持管道可读性与可维护性的关键做法。
 
-管道中的阶段应该是唯一的实例，例如同一个实例myHashingTF不应该被插入Pipeline两次，因为阶段必须有唯一的ID。然而，不同的实例myHashingTF1和myHashingTF2（都是HashingTF类型）都可以放入同一个管道，因为使用不同的ID创建不同的实例。
+另外，Pipeline 里的阶段实例应该保持唯一。如果你需要两次使用 `HashingTF`，最好创建两个独立实例并分别配置各自参数，而不是把同一个对象重复塞进阶段数组。这样做既能避免 ID 冲突，也更方便排查参数配置问题。
 
 估算器和转换器使用统一的API来指定参数。Param是具有独立文件的命名参数，ParamMap是一组键值对(参数,值)，将参数传递给算法有两种主要方法：
 
@@ -845,7 +831,7 @@ scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
 ```
 
-代码 4‑32
+代码 7‑32
 
 准备训练数据：
 
@@ -869,7 +855,7 @@ scala> training.show
 +---+----------------+-----+
 ```
 
-代码 4‑33
+代码 7‑33
 
 配置ML管道，由三个阶段组成：tokenizer、hashingTF和lr：
 
@@ -890,7 +876,7 @@ hashingTF, lr))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_b07867b9cf3e
 ```
 
-代码 4‑34
+代码 7‑34
 
 使用fit()方法将训练文档传递给管道：
 
@@ -899,7 +885,7 @@ scala> val model = pipeline.fit(training)
 model: org.apache.spark.ml.PipelineModel = pipeline_b07867b9cf3e
 ```
 
-代码 4‑35
+代码 7‑35
 
 现在，可以将拟合后的管道保存：
 
@@ -908,7 +894,7 @@ scala>
 model.write.overwrite().save("/tmp/spark-logistic-regression-model")
 ```
 
-代码 4‑36
+代码 7‑36
 
 也可以将没有执行fit()的管道保存：
 
@@ -916,7 +902,7 @@ model.write.overwrite().save("/tmp/spark-logistic-regression-model")
 scala> pipeline.write.overwrite().save("/tmp/unfit-lr-model")
 ```
 
-代码 4‑37
+代码 7‑37
 
 加载保存的管道：
 
@@ -926,7 +912,7 @@ PipelineModel.load("/tmp/spark-logistic-regression-model")
 sameModel: org.apache.spark.ml.PipelineModel = pipeline_b07867b9cf3e
 ```
 
-代码 4‑38
+代码 7‑38
 
 准备测试文档，为没有标记的元组(id, text)：
 
@@ -940,7 +926,7 @@ scala> val test = spark.createDataFrame(Seq(
 test: org.apache.spark.sql.DataFrame = [id: bigint, text: string]
 ```
 
-代码 4‑39
+代码 7‑39
 
 在测试文档上进行预测：
 
@@ -960,7 +946,7 @@ prob=[0.06926633132976273,0.9307336686702373], prediction=1.0
 prediction=0.0
 ```
 
-代码 4‑40
+代码 7‑40
 
 打印出参数对（名称：数值），名称中包含LogisticRegression实例的唯一ID(20733c862f55)：
 
@@ -984,7 +970,7 @@ logreg_20733c862f55-tol: 1.0E-6
 }
 ```
 
-代码 4‑41
+代码 7‑41
 
 可替代地使用ParamMap中的不同方法指定参数：
 
@@ -1001,7 +987,7 @@ logreg_20733c862f55-threshold: 0.55
 }
 ```
 
-代码 4‑42
+代码 7‑42
 
 从上面的例子中可以看到，maxIter参数被重新赋值，并替代了原来的值，而且一个put()可以定义多个参数。
 
@@ -1023,7 +1009,7 @@ logreg_20733c862f55-threshold: 0.55
 }
 ```
 
-代码 4‑43
+代码 7‑43
 
 使用paramMapCombined中定义的参数学习新的模型，并且覆盖之前lr中参数：
 
@@ -1055,7 +1041,7 @@ logreg_20733c862f55-tol: 1.0E-6
 }
 ```
 
-代码 4‑44
+代码 7‑44
 
 ### 7.8.3 模型选择
 
@@ -1100,7 +1086,7 @@ scala> import org.apache.spark.sql.Row
 import org.apache.spark.sql.Row
 ```
 
-代码 4‑45
+代码 7‑45
 
 准备训练数据：
 
@@ -1140,7 +1126,7 @@ scala> training.show
 +---+----------------+-----+
 ```
 
-代码 4‑46
+代码 7‑46
 
 配置ML管道，有三个阶段组成：tokenizer、hashingTF和lr：
 
@@ -1160,7 +1146,7 @@ hashingTF, lr))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_51032200df93
 ```
 
-代码 4‑47
+代码 7‑47
 
 使用ParamGridBuilder构建一个参数网格来保存和检索参数：
 
@@ -1190,7 +1176,7 @@ logreg_ea85c25b7a9e-regParam: 0.01
 })
 ```
 
-代码 4‑48
+代码 7‑48
 
 hashingTF.numFeatures有3个值，lr.regParam有2个值，这个网格有3 x 2 =
 6种参数合组合。现在，我们将管道视为估算器，将其包装在CrossValidator实例中。这将使我们能够为所有Pipeline阶段共同选择参数。CrossValidator需要一个估算器、参数网格和评估器，此处的评估器是BinaryClassificationEvaluator及其默认指标是areaUnderROC。
@@ -1202,7 +1188,7 @@ BinaryClassificationEvaluator).setEstimatorParamMaps(paramGrid).setNumFolds(2)
 cv: org.apache.spark.ml.tuning.CrossValidator = cv_16c0f7c44720
 ```
 
-代码 4‑49
+代码 7‑49
 
 运行交叉验证，选择最好的参数组合：
 
@@ -1212,7 +1198,7 @@ cvModel: org.apache.spark.ml.tuning.CrossValidatorModel =
 cv_16c0f7c44720
 ```
 
-代码 4‑50
+代码 7‑50
 
 准备测试文档：
 
@@ -1226,7 +1212,7 @@ scala> val test = spark.createDataFrame(Seq(
 test: org.apache.spark.sql.DataFrame = [id: bigint, text: string]
 ```
 
-代码 4‑51
+代码 7‑51
 
 cvModel使用最好的模型在测试文档上进行预测：
 
@@ -1246,7 +1232,7 @@ prob=[0.43181531442975374,0.5681846855702464], prediction=1.0
 prediction=0.0
 ```
 
-代码 4‑52
+代码 7‑52
 
 #### 7.8.3.2 TrainValidationSplit
 
@@ -1266,7 +1252,7 @@ import org.apache.spark.ml.tuning.{ParamGridBuilder,
 TrainValidationSplit}
 ```
 
-代码 4‑53
+代码 7‑53
 
 准备训练和测试数据：
 
@@ -1312,7 +1298,7 @@ lr: org.apache.spark.ml.regression.LinearRegression =
 linReg_4653e1bfeb16
 ```
 
-代码 4‑54
+代码 7‑54
 
 使用ParamGridBuilder构建参数网格：
 
@@ -1348,7 +1334,7 @@ linReg_4653e1bfeb16-regPa...
 scala>
 ```
 
-代码 4‑55
+代码 7‑55
 
 TrainValidationSplit会调用所有的参数组合，使用评估器确定最好的模型。其包括线性回归评估器，评估器参数集合和估算器。80%的数据被用来作为训练数据，20%作为测试数据。
 
@@ -1360,7 +1346,7 @@ trainValidationSplit: org.apache.spark.ml.tuning.TrainValidationSplit =
 tvs_ec6640a05517
 ```
 
-代码 4‑56
+代码 7‑56
 
 运行TrainValidationSplit，选择最好的参数组合：
 
@@ -1370,7 +1356,7 @@ model: org.apache.spark.ml.tuning.TrainValidationSplitModel =
 tvs_ec6640a05517
 ```
 
-代码 4‑57
+代码 7‑57
 
 在测试数据上进行预测：
 
@@ -1404,31 +1390,33 @@ scala>model.transform(test).select("features", "label",
 only showing top 20 rows
 ```
 
-代码 4‑58
+代码 7‑58
 
 ## 7.9 实例分析
 
-本章的实例通过协同过滤算法进行用户偏好的预测，并且利用决策树进行飞机延误的分析。
+本节保留两个案例：一个围绕推荐系统，一个围绕分类问题。需要注意，案例中的部分代码仍使用 `spark.mllib` / RDD 风格 API，目的是帮助读者理解历史写法和存量系统；如果在 Spark 4.x 中新建项目，应优先选择 `spark.ml`、DataFrame 和 Pipeline 的等价实现。
 
 ### 7.9.1 预测用户偏好
 
-在接下来的小节中，将利用协同过滤来预测用户会喜欢什么，使用电影推荐作为例子。协同过滤算法的工作过程是将来收集到的用户偏好数据输入，并创建可用于建议或预测的模型。在图例
-4‑10中，Ted喜欢电影A、B和C，Carol喜欢电影B和C，使用这些数据来建立一个模型，并预测Bob将喜欢什么。Spark协同过滤算法采用交替最小二乘，近似将K维的稀疏用户项目评分矩阵，分解为两个稠密矩阵的乘积得来，分别为：长度为U×K的用户因子矩阵（User）和I×K的项目因子矩阵（Item）。这两个因子矩阵也被称为潜在特征模型，用户因子矩阵试图描述每个用户潜在或隐藏的特征，项目因子矩阵试图描述每部电影的潜在特征，代表交替最小二乘尝试发现的隐藏特征。这个过程用到了矩阵分解。什么是矩阵分解？矩阵分解是线性代数中矩阵的一系列数学运算。具体而言，矩阵分解是将矩阵分解为矩阵的乘积。在协作过滤的情况下，矩阵分解算法将用户和项目交互矩阵分解为两个较低维的矩形矩阵乘积。
-一个矩阵可以看作是用户矩阵，其中行代表用户，列是潜在因素。 另一个矩阵是项目矩阵，其中行是潜在因子，列表示项目。
+> 兼容性说明：下面的 ALS 示例使用 RDD 风格写法，适合说明矩阵分解与旧项目代码结构。Spark 4.x 新项目建议优先参考 `org.apache.spark.ml.recommendation.ALS` 的 DataFrame API。
+
+如果今天重新实现这一类推荐任务，通常会先把评分数据整理成包含 `user`、`item`、`rating` 三列的 DataFrame，再把特征清洗、训练与评估放进更一致的工程流程中。保留下面的写法，是为了帮助读者识别历史推荐系统代码最常见的组织方式。
+
+下面继续用电影推荐说明协同过滤。假设 Ted 喜欢电影 A、B、C，Carol 喜欢电影 B、C，那么系统就会尝试根据这些交互记录推断 Bob 可能喜欢什么。Spark 里的 ALS（Alternating Least Squares，交替最小二乘）正是围绕这类“用户 - 物品评分矩阵”构建的经典矩阵分解方法。
+
+ALS 的核心思路，是把原始的稀疏评分矩阵分解成两个更低维的稠密矩阵：一个表示用户在若干潜在因子上的偏好强度，另一个表示项目在同一组潜在因子上的表现。用户和项目在这些潜在因子上的匹配程度，决定了模型给出的预测评分。图例 7‑10 展示了这种“把用户兴趣和项目属性投影到同一潜在空间”的直观理解。
 
 ![](media/07_machine_learning/media/image10.jpeg)
 
-图例 4‑10交替最小二乘法
+图例 7‑10交替最小二乘法
 
-交替最小二乘也是矩阵分解算法，以并行方式运行。在Apache Spark
-ML中实现了交替最小二乘，并针对大规模的协作式过滤问题而构建。交替最小二乘在解决评分数据的扩展性和稀疏性方面做得非常出色，并且可以很好地扩展到非常大的数据集。交替最小二乘是一种迭代算法，在每次迭代期间该算法可交替地固定一个因子矩阵，并解决另一个，这个过程一直持续直到收敛。最小二乘法（又称最小平方法）是一种数学优化技术，通过最小化误差的平方和寻找数据的最佳函数匹配，利用最小二乘法可以简便地求得未知的数据，并使得这些求得的数据与实际数据之间误差的平方和为最小。交替最小二乘的训练过程需要两个损失函数，首先保持用户矩阵固定，并使用项目矩阵进行梯度下降；然后保持项目矩阵固定，并使用用户矩阵进行梯度下降，而且训练数据分布在机器集群的多个分区上，可以并行运行其梯度下降，实现数据扩展性。
+ALS 是一种迭代优化算法。训练时，它会先固定用户因子，更新项目因子；再固定项目因子，更新用户因子，如此交替进行，直到损失函数收敛或达到迭代上限。对于推荐问题，这种方法的优点在于能够较好地处理评分矩阵的稀疏性，并且天然适合并行化，因此长期都是分布式推荐系统里的经典方案。阅读下面的历史示例时，重点可以放在三件事上：评分数据如何组织、训练集与测试集如何拆分，以及模型如何从用户 - 物品交互中学习出潜在偏好结构。
 
-一个典型的机器学习工作流程如图例
-4‑15所示。为了进行预测，将执行以下步骤：加载样本数据，并且将数据解析成用于交替最小二乘算法的输入格式；拆分数据分为两个部分，一个用于构建模型和一个用于测试模型；然后运行交替最小二乘算法建立和训练用户的产品矩阵模型；使用训练数据做出预测，并观察结果；然后使用测试数据试验模型。在下面的示例中，从ratings.dat数据集中加载评价数据，每一行包括用户ID、电影ID、评价（从1到5）和时间戳。
+一个典型的机器学习工作流程如图例 7‑15所示。为了进行预测，将执行以下步骤：加载样本数据，并且将数据解析成用于交替最小二乘算法的输入格式；拆分数据分为两个部分，一个用于构建模型和一个用于测试模型；然后运行交替最小二乘算法建立和训练用户的产品矩阵模型；使用训练数据做出预测，并观察结果；然后使用测试数据试验模型。在下面的示例中，从ratings.dat数据集中加载评价数据，每一行包括用户ID、电影ID、评价（从1到5）和时间戳。
 
 ![](media/07_machine_learning/media/image11.png)
 
-图例 4‑11机器学习的工作流程
+图例 7‑11机器学习的工作流程
 
 ```scala
 scala> import org.apache.spark.mllib.recommendation.{ ALS,
@@ -1448,7 +1436,7 @@ res3: Array[String] = Array(1::1193::5::978300760,
 1::661::3::978302109)
 ```
 
-代码 4‑59
+代码 7‑59
 
 转换ratingText为RDD，将parseRating函数适用于ratingText的每个元素，并返回一个新的评价对象ratingsRDD，因为将利用这些数据来构建矩阵模型，所以需要缓存，。
 
@@ -1482,7 +1470,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
 = MapPartitionsRDD[4] at randomSplit at <console>:31
 ```
 
-代码 4‑60
+代码 7‑60
 
 使用ALS.train()调用交替最小二乘算法构建一个新的用户和产品矩阵模型，使用的参数为(rank=20,
 iterations=10)，交替最小二乘中最重要的超参数为：
@@ -1499,7 +1487,7 @@ model: org.apache.spark.mllib.recommendation.MatrixFactorizationModel =
 <org.apache.spark.mllib.recommendation.MatrixFactorizationModel@6f2f9ba4>
 ```
 
-代码 4‑61
+代码 7‑61
 
 已经训练了一个模型model，想要得到测试数据的电影预测评价。首先用testRatingsRDD创建新的RDD，其中包括测试用户ID和影片ID，没有任何评价。
 
@@ -1511,7 +1499,7 @@ testUserProductRDD: org.apache.spark.rdd.RDD[(Int, Int)] =
 MapPartitionsRDD[392] at map at <console>:35
 ```
 
-代码 4‑62
+代码 7‑62
 
 然后，调用model.predict()方法，输入新的testUserProductRDD，以获取每个测试用户ID和影片ID对应的预测评级。
 
@@ -1522,7 +1510,7 @@ org.apache.spark.rdd.RDD[org.apache.spark.mllib.recommendation.Rating]
 = MapPartitionsRDD[401] at map at MatrixFactorizationModel.scala:140
 ```
 
-代码 4‑63
+代码 7‑63
 
 接下来对比测试评级的预测结果。在这里，创建用户ID，ID电影收视率键值对，这样就可以比较测试评级的预测评级。
 
@@ -1566,7 +1554,7 @@ res5: String =
 ((3650,2701),(3.0,1.9368462777917386))
 ```
 
-代码 4‑64
+代码 7‑64
 
 通过比较评分的预测，将预测评级为高，而实际评分较低作为误报。下面代码中测试评级\<= 1，而预测的评级是\> = 4为误报。
 
@@ -1582,7 +1570,7 @@ Array(((1038,3545),(1.0,4.64155564571005)),
 ((5878,2875),(1.0,4.1482372423348295)))
 ```
 
-代码 4‑65
+代码 7‑65
 
 该模型也可以通过平均绝对误差计算实际测试评价和预测评价之间的绝对误差的平均值来判断模型的训练效果。
 
@@ -1595,7 +1583,7 @@ scala> val meanAbsoluteError = testAndPredictionsJoinedRDD.map {
 meanAbsoluteError: Double = 0.6895645970856591
 ```
 
-代码 4‑66
+代码 7‑66
 
 在下面的代码中，创建一个ID为0的新用户电影评价newRatingsRDD，然后与ratingsRDD合并成unionRatingsRDD，然后输出到ALS返回一个新的推荐模型model。现在，可以通过调用model.recommendProducts()来获得建议，输入参数用户ID=
 0和建议项目的数量=5。
@@ -1621,9 +1609,13 @@ Rating(0,260,3.9826456201257963), Rating(0,2323,3.955009095763199),
 Rating(0,1196,3.860915147369469), Rating(0,1198,3.6932753705094252))
 ```
 
-代码 4‑67
+代码 7‑67
 
 ### 7.9.2 分析飞行延误
+
+> 兼容性说明：下面的决策树示例使用 `spark.mllib` 的 `LabeledPoint` 与 RDD 风格 API，用于解释历史代码和算法参数。新项目建议优先使用 `spark.ml.classification.DecisionTreeClassifier` 配合 DataFrame/Pipeline。
+
+如果按现代主线重做这个案例，通常会先把 CSV 读成 DataFrame，再用 `StringIndexer`、`VectorAssembler`、`DecisionTreeClassifier` 与 `BinaryClassificationEvaluator` 组织成一条 Pipeline。下面保留旧写法，主要是为了帮助你在存量项目中读懂特征准备、训练/测试拆分和模型评估这些基本步骤。
 
 这实例的数据来自与航班信息，对于每次航班都有以下信息：
 
@@ -1647,7 +1639,7 @@ Rating(0,1196,3.860915147369469), Rating(0,1198,3.6932753705094252))
 | crselapsedtime (Double) | 经过时间        | 390    |
 | dist (Int)              | 距离          | 2475   |
 
-表格 4‑3数据描述
+表格 7‑3数据描述
 
 这个任务是通过构建决策树预测飞机是否晚点，如果延迟40分钟则delayed为Yes，否则为No。训练决策树用到的特征字段包括dofM、dofW、crsDepTime、crsArrTime、carrier、crselapsedtime、origin、dest，标记字段为delayed。首先，从csv文件加载和解析数据。
 
@@ -1666,7 +1658,7 @@ scala> import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.mllib.util.MLUtils
 ```
 
-代码 4‑68
+代码 7‑68
 
 示例中，每个航班是一个项目，使用case class定义与csv数据文件中的一行相对应的Flight模式：
 
@@ -1679,7 +1671,7 @@ crselapsedtime: Double, dist: Int)
 defined class Flight
 ```
 
-代码 4‑69
+代码 7‑69
 
 定义函数将数据文件的一行解析到Flight类：
 
@@ -1696,7 +1688,7 @@ line(14).toDouble, line(15).toDouble, line(16).toInt)
 parseFlight: (str: String)Flight
 ```
 
-代码 4‑70
+代码 7‑70
 
 从CSV文件加载数据然后进行转换和缓存，调用first()返回RDD中的第一个元素。
 
@@ -1712,7 +1704,7 @@ res0: Flight =
 Flight(1,3,AA,N338AA,1,12478,JFK,12892,LAX,900.0,914.0,14.0,1225.0,1238.0,13.0,385.0,2475)
 ```
 
-代码 4‑71
+代码 7‑71
 
 要建立分类器模型，首先提取最有助于分类的特征，定义二元类别标签：Yes为延迟和No为不延迟。如果延迟超过40分钟，飞行被认为是延迟的。每个项目的特征和标签包括dofM、dofW、crsdeptime、crsarrtime、carrier、crselapsedtime、origin、dest、delayed。下面将非数字特征转换为数值，例如运营商AA是数字6，始发机场ATL是273。
 
@@ -1774,7 +1766,7 @@ BTM -> 217, LSE -> 33, FCA -> 55, JAC -> 110, ATL -> 273, CHA ->
 EAU -> ...
 ```
 
-代码 4‑72
+代码 7‑72
 
 定义特征向量：
 
@@ -1800,9 +1792,9 @@ res14: Array[Array[Double]] = Array(Array(0.0, 0.0, 2.0, 900.0,
 1225.0, 6.0, 385.0, 216.0, 294.0))
 ```
 
-代码 4‑73
+代码 7‑73
 
-从包含RDD的特征数组中，创建包含LabeledPoints数组的[RDD](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/api/scala/index.html&usg=ALkJrhidcKbBeXAVZTbwdX7KfoWhzqj2VQ#org.apache.spark.mllib.regression.LabeledPoint)，其中定义了数据点的特征向量和标签：
+从包含RDD的特征数组中，创建包含LabeledPoints数组的[RDD](https://spark.apache.org/docs/latest/api/scala/org/apache/spark/mllib/regression/LabeledPoint.html)，其中定义了数据点的特征向量和标签：
 
 //Making LabeledPoint of features - this is the training data for the
 model
@@ -1818,7 +1810,7 @@ res15: Array[org.apache.spark.mllib.regression.LabeledPoint] =
 Array((0.0,[0.0,2.0,900.0,1225.0,6.0,385.0,216.0,294.0]))
 ```
 
-代码 4‑74
+代码 7‑74
 
 接下来数据被拆分，以获得延迟和不延迟航班的合适百分比。然后将其分为训练数据集和测试数据集。mldata0是85%的非延迟，mldata1是100%的延迟，将mldata0与mldata1合并为mldata2：
 
@@ -1858,9 +1850,9 @@ res16: Array[org.apache.spark.mllib.regression.LabeledPoint] =
 Array((0.0,[23.0,4.0,900.0,1225.0,6.0,385.0,216.0,294.0]))
 ```
 
-代码 4‑75
+代码 7‑75
 
-接下来，准备[决策树所需参数](https://translate.googleusercontent.com/translate_c?depth=1&hl=en&rurl=translate.google.com&sl=en&sp=nmt4&tl=zh-CN&u=http://spark.apache.org/docs/latest/mllib-decision-tree.html&usg=ALkJrhiVbZ_pw9Jsn6eRhn6QDrzKgWg4AA)的值：
+接下来，准备[决策树所需参数](https://spark.apache.org/docs/latest/mllib-decision-tree.html)的值：
 
 categoricalFeaturesInfo：指定哪些特征是分类的，以及每个特征可以采用多少种分类值。这是从特征索引到该特征的类别数量的映射。第一个分类特征categoricalFeaturesInfo
 = (0 -\> 31)代表月中的日期，具有31个类别（值从0到31）。第二个categoricalFeaturesInfo = (1 -\>
@@ -1889,7 +1881,7 @@ scala> val numClasses = 2
 numClasses: Int = 2
 ```
 
-代码 4‑76
+代码 7‑76
 
 定义其他参数：
 
@@ -1919,7 +1911,7 @@ If (feature 6 in
 {88.0,247.0,288.0,196.0,46.0,152.0,228.0,29.0,179.0,211.0,106.0,238.0,121.0,61.0,132.0,133.0,1.0,248.0,201.0,102.0,260.0,38.0,297.0,165.0,252.0,197.0,156.0,109.0,256.0,212.0,129.0,237.0,2.0,266.0,148.0,264.0,279.0,118.0,281.0,54.0,181.0,219.0,76.0,7.0,245.0,39.0,98.0,208.0,103.0,66.0,251.0,241.0,162.0,112.0,194.0,50.0,67.0,199.0,182.0,154.0,143.0,87.0,158.0,186.0,55.0,119.0,246.0,190.0,19.0,239....
 ```
 
-代码 4‑77
+代码 7‑77
 
 Model.toDebugString打印出决策树。接下来，使用测试数据来获得预测，然后将航班延迟的预测与实际航班延迟进行比较。错误的预测率是错误预测除以测试数据值的总数，约为31％。
 
@@ -1946,9 +1938,9 @@ scala> val ratioWrong=wrongPrediction.count().toDouble/testData.count()
 ratioWrong: Double = 0.31526520418877885
 ```
 
-代码 4‑78
+代码 7‑78
 
 ## 7.10 小结
 
-从Apache
-Spark项目发布之初，MLlib就被认为是Spark成功的基础。MLlib的关键优势在于允许数据科学家更多地专注于数据和模型，而不需要考虑怎样实现分布式数据基础架构和配置问题。Spark的核心组件是基于分布式系统实现的，MLib可以利用Spark集群优势提高机器学习的规模和速度。目前，MLlib实现了大部分机器学习算法，Spark提供了开放社区允许对现有机器学习框架进行构建和扩展。通过本章学习，了解了机器学习基本算法，MLlib用到的数据类型和API，最后通过实用程序介绍了机器学习算法的应用。
+在 Spark 4.x 中，机器学习章的主线应当理解为：以 DataFrame 组织数据，以 `spark.ml` 构建特征工程和模型，以 Pipeline 保证训练、验证与推理过程一致。本章同时保留了部分 `spark.mllib` / RDD 风格内容，用于帮助读者读懂旧代码、理解 API 演进以及掌握若干底层数据类型。学完本章后，读者应能区分“现代主线”和“历史兼容”两套写法，并据此选择合适的工程方案。
+

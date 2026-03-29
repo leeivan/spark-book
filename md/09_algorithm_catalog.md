@@ -14,21 +14,23 @@
 
 先做“基线模型”，是降低试错成本的关键。
 
+本章定位是“算法索引与选型速查”，不是Spark 4.x机器学习主线的顺序式教程。对新项目，应优先使用DataFrame/Dataset之上的`spark.ml`；文中带有“基于RDD”标记的小节主要用于理解历史API、阅读旧代码和迁移存量系统。
+
 ## 9.3 决策树和集成
 
-决策树和集成树是分类和回归的机器学习任务流行的方法。决策树广泛使用，因为它很容易解释，处理类别特征，延伸到多类分类设置，不需要的功能扩展，并能够捕捉到非线性和特征的交互。集成树算法，如随机森林和提高是表现最佳的分类和回归任务之一。
+决策树及其集成方法是分类和回归中最常见的一组算法。它们的优点是可解释性较强，能够处理非线性关系与特征交互；在工程实践中，随机森林和梯度提升树也常常作为效果稳健的基线或强基线模型。
 
 ### 9.3.1 决策树
 
-在spark.ml实现支持决策树的二进制和多分类和回归，同时使用连续和分类功能。按行实现分区的数据，允许使用数百万甚至数十亿的实例进行分布式训练。这个API和MLlib决策树之间的主要区别是：
+`spark.ml` 中的决策树同时支持二元分类、多分类和回归任务，也支持连续特征与类别特征。在工程上，它已经是 Spark 4.x 里默认的决策树入口。与早期 MLlib 决策树相比，这套 API 的主要差别在于：
 
-（1）对于ML管道支持
+（1）原生支持 DataFrame 与 ML Pipeline。
 
-（2）决策树被分离用于分类与回归
+（2）分类与回归分别使用独立估算器，接口更清晰。
 
-（3）使用DataFrame的元数据来区分连续和分类特征
+（3）可以利用 DataFrame 元数据区分连续特征和类别特征。
 
-决策树管道API提供了比原来的API更多的功能。特别地对于分类，用户可以获取每个类（又名类条件概率）的预测概率；对于回归，用户可以得到预测的偏置样本方差。Spark在这里列出输入和输出（预测）列类型。所有输出列都是可选的；排除一个输出列，设置其相应参数为空字符串。
+相比旧式 RDD API，DataFrame / Pipeline 写法更容易和特征工程、模型评估、参数搜索串成完整流程。对于分类任务，还可以直接得到每个类别的原始分数和概率输出；对于回归任务，也可以获得更完整的预测结果列。下面列出最常见的输入输出列。
 
   - 输入列
 
@@ -37,7 +39,7 @@
 | labelCol    | Double | "label"    | 标签预测 |
 | featuresCol | Vector | "features" | 特征向量 |
 
-表格 4‑1输入列
+表格 9‑1输入列
 
   - 输出列
 
@@ -48,9 +50,9 @@
 | probabilityCol   | Vector | "probability"   | 长度为＃个类的向量，等于归一化为多项式分布的rawPrediction | 只有分类 |
 | varianceCol      | Double |                 | 预测的偏差的样本方差                          | 只有回归 |
 
-表格 4‑2输出列
+表格 9‑2输出列
 
-#### 9.3.1.1 基于RDD
+#### 9.3.1.1 基于RDD（历史/兼容）
 
 决策树是一种贪婪算法，执行特征空间的递归二进制分区。该树为每个最底部（叶子）的分区预测相同的标签,通过从一组可能的分割中选择最佳分割来贪婪地选择每个分区，以使树节点的信息增益最大化。换句话说，在每个树节点处选择的拆分是从集合 $\underset{s}{\text{argmax}}IG(D,s)$ 中选择的,其中 $IG(D,s)$ 是将分割s应用于数据集D时的信息增益。
 
@@ -289,16 +291,16 @@ Trees，GBTs），两者都采用spark.ml决策树作为其基本模型。DataFr
 
 #### 9.3.2.1 随机森林
 
-随机森林是集成决策树，其结合大量的决策树可以减少过度拟合的风险。spark.ml实现支持二元分类和多元分类和回归随机森林，同时使用连续和类别特征，关于算法本身的更多信息可以参阅spark.mllib随机森林文档。Spark在这里列出输入和输出（预测）列类型。所有输出列都是可选的；排除一个输出列，设置其相应参数为空字符串。
+随机森林可以看作“多棵决策树的集成”。它通过对样本和特征做随机采样来训练多棵树，再对结果做投票或平均，因此通常比单棵决策树更稳健，也更不容易过拟合。`spark.ml` 中的随机森林支持二元分类、多分类和回归任务，仍以 DataFrame 的 `label` 与 `features` 列作为标准输入。
 
   - 输入列
 
-| 参数名称        | 类型     | 默认              | 描述   |
-| ----------- | ------ | --------------- | ---- |
-| labelCol    | Double | "prediction"    | 预测标签 |
-| featuresCol | Vector | "rawPrediction" | 特征向量 |
+| 参数名称        | 类型     | 默认         | 描述   |
+| ----------- | ------ | ---------- | ---- |
+| labelCol    | Double | "label"    | 训练标签 |
+| featuresCol | Vector | "features" | 特征向量 |
 
-表格 4‑3输入列
+表格 9‑3输入列
 
   - 输出列（预测）
 
@@ -308,34 +310,36 @@ Trees，GBTs），两者都采用spark.ml决策树作为其基本模型。DataFr
 | rawPredictionCol | Vector | "rawPrediction" | 长度为＃个类的向量，在进行预测的树节点上有训练实例标签的数量      | 只有分类 |
 | probabilityCol   | Vector | "probability"   | 长度为＃个类的向量，等于归一化为多项式分布的rawPrediction | 只有分类 |
 
-表格 ‑4输出列
+表格 9‑4输出列
 
 #### 9.3.2.2 梯度提升树
 
-梯度提升树是集成决策树，迭代的训练决策树，以尽量减少损失函数。在spark.ml中实现支持了二元分类和回归梯度提升树，同时使用连续和类别特征，关于算法本身的更多信息可以参见spark.mllib上文档。Spark在这里列出输入和输出（预测）列类型，所有输出列都是可选的；排除一个输出列，设置其相应参数为空字符串。
+梯度提升树（GBT）也是树模型集成方法，但它不是并行训练许多独立树，而是按迭代顺序一棵棵地修正前面模型的误差。它通常比随机森林更敏感于参数设置，但在一些结构化数据任务上也能得到很强的效果。`spark.ml` 中的 GBT 目前主要支持二元分类和回归任务。
 
   - 输入列
 
-| 参数名称        | 类型     | 默认              | 描述   |
-| ----------- | ------ | --------------- | ---- |
-| labelCol    | Double | "prediction"    | 预测标签 |
-| featuresCol | Vector | "rawPrediction" | 特征向量 |
+| 参数名称        | 类型     | 默认         | 描述   |
+| ----------- | ------ | ---------- | ---- |
+| labelCol    | Double | "label"    | 训练标签 |
+| featuresCol | Vector | "features" | 特征向量 |
 
 请注意，GBTClassifier目前只支持二进制标签。
 
-表格 4‑5输入列
+表格 9‑5输入列
 
   - 输出列（预测）
 
 | 参数名称          | 类型     | 默认           | 描述   |
 | ------------- | ------ | ------------ | ---- |
 | predictionCol | Double | "prediction" | 预测标签 |
+| rawPredictionCol | Vector | "rawPrediction" | 原始预测分数 |
+| probabilityCol | Vector | "probability" | 归一化后的类别概率 |
 
-表格 4‑6输出列
+表格 9‑6输出列
 
-在将来，GBTClassifier也将输出列rawPrediction和probability，就像RandomForestClassifier做的一样。
+与随机森林分类器类似，`GBTClassifier` 也可以输出原始预测分数和概率列，便于后续阈值调整、排序或评估。
 
-#### 9.3.2.3 基于RDD
+#### 9.3.2.3 基于RDD（历史/兼容）
 
 集成方法是一种学习算法，该算法创建一组由其他基模型构成的模型。spark.mllib支持两种主要的集成算法：GradientBoostedTrees和RandomForest。两者都使用决策树作为其基础模型。梯度提升树和随机森林都是树集成学习算法，但训练过程是不同的，需要进行一些实际的权衡：
 
@@ -616,11 +620,11 @@ TreeEnsembleModel regressor with 3 trees
 | 平方误差 | 回归 | $\sum_{i = 1}^{N}{}(y_{i} - F(x_{i}))^{2}$             | 也称为L2损失函数，回归任务的默认损失。     |
 | 绝对误差 | 回归 | $\sum_{i = 1}^{N} \mid y_{i} - F(x_{i}) \mid$                   | 也称为L1损失函数，对于离群值比平方误差更健壮。 |
 
-表格 4‑7 损失函数
+表格 9‑7 损失函数
 
 通过讨论各种参数，我们包括一些使用梯度提升树的准则，由于决策树指南中介绍了这些参数，因此我们省略了一些决策树参数。
 
-loss：有关损失函数及其对任务的适用性的信息，请参见表格 4‑7。根据数据集的不同，不同的损失函数可能会产生明显不同的结果。
+loss：有关损失函数及其对任务的适用性的信息，请参见表格 9‑7。根据数据集的不同，不同的损失函数可能会产生明显不同的结果。
 
 numIterations：设置集成中树木的数量，每次迭代都会生成一棵树。增加此数字可使模型更具表现力，从而提高训练数据的准确性，但是如果太大则可能会降低测试阶段的精度。
 
@@ -892,7 +896,7 @@ TreeEnsembleModel regressor with 3 trees
 
 ## 9.4 分类和回归
 
-spark.mllib包支持二元分类、多类分类和回归分析的各种方法，下表列出了每类问题所支持的算法。
+本节按问题类型整理分类与回归算法。对于Spark 4.x新项目，优先关注`spark.ml`中基于DataFrame的实现；`spark.mllib`相关内容主要用于兼容旧工程或帮助理解算法演进。下表先给出常见问题类型与算法索引。
 
 | 问题类型 | 支持方法                                                                                                                       |
 | ---- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -900,7 +904,7 @@ spark.mllib包支持二元分类、多类分类和回归分析的各种方法，
 | 多元分类 | Logistic Regression, Decision Trees, Random Forests, Naive Bayes                                                           |
 | 回归   | Linear Least Squares, Lasso, Ridge Regression, Decision Trees, Random Forests, Gradient-Boosted Trees, Isotonic Regression |
 
-表格 ‑8问题类型和支持方法
+表格 9‑8问题类型和支持方法
 
 ### 9.4.1 线性方法
 
@@ -911,7 +915,7 @@ $$
 \quad \alpha \in [0,1],\ \lambda \ge 0
 $$
 
-公式 4‑1
+公式 9‑1
 
 为了更直观地理解上式：
 - $\mathbf{w}$ 是模型要学习的权重向量；权重越大，表示该特征对预测的影响通常越大。
@@ -928,7 +932,7 @@ $$
 f(\mathbf{w}) = \lambda R(\mathbf{w}) + \frac{1}{n}\sum_{i=1}^{n} L(\mathbf{w};\mathbf{x}_{i}, y_{i})
 $$
 
-公式 4‑2
+公式 9‑2
 
 其中：
 - $\mathbf{w}\in\mathbb{R}^{d}$ 是模型参数（权重）， $d$ 是特征维度（可理解为特征个数）。
@@ -937,9 +941,9 @@ $$
 - $R(\mathbf{w})$ 是正则化项，用来惩罚过大的权重，让模型更简单，从而降低过拟合风险。
 - $\lambda\ge 0$ 是正则化强度（在代码中通常对应 `regParam`），用于权衡“更贴合训练数据”和“模型更简单”这两个目标。
 
-如果损失函数 $L(\mathbf{w};\mathbf{x},y)$ 只通过线性打分 $\mathbf{w}^{T}\mathbf{x}$（再结合标签 $y$）来定义，Spark 就称这类方法为线性的；`spark.mllib` 中若干分类与回归算法属于这一类。
+如果损失函数 $L(\mathbf{w};\mathbf{x},y)$ 只通过线性打分 $\mathbf{w}^{T}\mathbf{x}$（再结合标签 $y$）来定义，Spark 就称这类方法为线性的。新项目更常直接接触 `spark.ml` 中的逻辑回归和线性回归估算器；下面两张表保留，是为了帮助读者理解历史 `spark.mllib` 线性方法背后的损失函数与正则化写法。
 
-目标函数 $f$ 有两个部分：控制模型复杂度的正则化器和测量训练数据模型误差的损失。损失函数 $L(\mathbf{w};\mathbf{x},y)$ 通常是关于 $\mathbf{w}$ 的一个凸函数。固定正则化参数 $\lambda \geq 0$（在代码中为 `regParam`）定义了最小化损失（即训练误差）和最小化模型复杂性（即避免过拟合）这两个目标之间的折衷。下表总结了spark.mllib支持的损失函数及其梯度或子梯度：
+目标函数 $f$ 有两个部分：控制模型复杂度的正则化器和测量训练数据模型误差的损失。损失函数 $L(\mathbf{w};\mathbf{x},y)$ 通常是关于 $\mathbf{w}$ 的一个凸函数。固定正则化参数 $\lambda \geq 0$（在代码中为 `regParam`）定义了最小化损失（即训练误差）和最小化模型复杂性（即避免过拟合）这两个目标之间的折衷。下表总结了历史 `spark.mllib` 线性方法常见的损失函数及其梯度或子梯度：
 
 |      | 损失函数 $\ L(\mathbf{w};\mathbf{x},y)$                               | 渐变或次渐变                                                                                                                          |
 | ---- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -947,9 +951,9 @@ $$
 | 逻辑损失 | $log(1 + exp( - y\mathbf{w}^{T}\mathbf{x})),y \in \{ - 1, + 1\}$ | $- y(1 - \frac{1}{1 + exp( - y\mathbf{w}^{T}\mathbf{x})}) \cdot \mathbf{x}$                                                   |
 | 平方损失 | $\frac{1}{2}(\mathbf{w}^{T}\mathbf{x} - y)^{2},y \in \mathbb{R}$ | $(\mathbf{w}^{T}\mathbf{x} - y) \cdot \mathbf{x}$                                                                             |
 
-表格 4‑9spark.mllib支持的方法损失函数及其梯度或子梯度
+表格 9‑9spark.mllib支持的方法损失函数及其梯度或子梯度
 
-请注意，在上面的数学公式中，二元标签 $y$ 表示为 $+ 1$（正数）或 $- 1$（负数），便于公式化。但是在spark.mllib中负标签由 $0$ 表示而不是 $- 1$，以便与多类标签保持一致。正规化的目的是鼓励简单的模型，避免过度拟合。Spark在spark.mllib中支持以下正规化：
+请注意，在上面的数学公式中，二元标签 $y$ 表示为 $+ 1$（正数）或 $- 1$（负数），便于公式化。但是在 `spark.mllib` 的旧接口中，负标签通常由 $0$ 表示而不是 $- 1$，以便与多类标签保持一致。正则化的目的是鼓励简单模型、降低过拟合风险。下表保留 `spark.mllib` 的历史写法，便于与旧代码对照：
 
 |                     | 正则化 $R(\mathbf{w})$                                                          | 渐变或次渐变                                                |
 | ------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -958,33 +962,34 @@ $$
 | L1                  | $\lVert\mathbf{w}\rVert_{1}$                                                       | $\text{sign}(\mathbf{w})$                           |
 | 弹性网络                | $\alpha\lVert\mathbf{w}\rVert_{1} + (1 - \alpha)\frac{1}{2}\lVert\mathbf{w}\rVert_{2}^{2}$ | $\alpha\,\text{sign}(\mathbf{w}) + (1 - \alpha)\mathbf{w}$ |
 
-表格 4‑10spark.mllib中支持的正规化
+表格 9‑10spark.mllib中支持的正规化
 
 这里 $\text{sign}(\mathbf{w})$ 是向量，由 $\mathbf{w}$**的**所有条目的signs
 ($\pm 1$)组成。L2正则化问题比L1正则化更容易解决，然而L1正则化可以帮助提高权重的稀疏性，从而导致更小和更易解释的模型，后者可以用于特征选择。弹性网络是L1和L2正则化的组合。不建议在没有正规化的情况下对模型进行训练，尤其是在训练样例数量较少的情况下。
 
 ### 9.4.2 分类
 
+本节大多数示例已经采用 `spark.ml` 的 DataFrame API，可以自然地接入特征转换器、评估器和 Pipeline。阅读时建议优先关注“输入列/输出列/评估方式”这三件事，而不是死记单个算法类名。
+
 #### 9.4.2.1 逻辑回归 
 
-逻辑回归是预测分类响应的流行方法。广义线性模型的一个特例是预测结果的概率。在spark.ml中，逻辑回归可以通过使用二项逻辑回归用来预测一个二元结果，或者它可以通过多分类逻辑回归用来预测一个多分类结果。使用family参数在这两个算法之间进行选择，或者将其保留，Spark将推断出正确的变体，通过将family参数设置为“multinomial”，多项逻辑回归可用于二元分类，会产生两套系数和两个截距。当在具有恒定非零列的数据集上，不带截距拟合LogisticRegressionModel时，Spark
-MLlib为恒定的非零列输出零系数，这种行为与R语言中的glmnet相同，但与LIBSVM不同。
+逻辑回归是分类问题里最常见、也最适合做基线的一类模型。它本质上是广义线性模型在分类任务中的一个典型实例：先计算线性打分，再把这个打分映射为概率。在 `spark.ml` 中，逻辑回归既可以处理二元分类，也可以处理多分类；通常只要保留 `family` 为自动推断，Spark 就会根据标签情况选择合适的变体。
 
 ##### 9.4.2.1.1 二元逻辑回归 
 
-逻辑回归广泛用于预测二元响应。它是如上面方程公式 4‑24中所描述的线性方法，在logistic损失给出的公式中具有损失函数：
+逻辑回归广泛用于二元分类。它属于线性模型家族，使用 logistic 损失来学习参数：
 
 $$L(\mathbf{w};\mathbf{x},y): = \log(1 + \exp( - y\mathbf{w}^{T}\mathbf{x})).$$
 
-公式 4‑2
+公式 9‑2
 
-对于二元分类问题，算法输出一个二元逻辑回归模型。给定一个新的数据点，用xx表示，该模型通过应用逻辑函数做出预测
+对于二元分类问题，模型会先计算线性打分，再通过逻辑函数把它映射到 \([0,1]\) 区间：
 
 $$f(z) = \frac{1}{1 + e^{- z}}$$
 
-公式 4‑3
+公式 9‑3
 
-其中 $z = \mathbf{w}^{T}\mathbf{x}$。默认情况下，如果 $f(\mathbf{w}^{T}x) \gt 0.5$，则结果为正，否则为负，尽管与线性SVM不同，逻辑回归模型的原始输出 $f(z)$ 概率解释（即 $\mathbf{x}$ 为正的概率）。
+其中 $z = \mathbf{w}^{T}\mathbf{x}$。默认情况下，如果 $f(z) \gt 0.5$，则预测为正类，否则预测为负类。与线性 SVM 不同，逻辑回归的输出天然带有概率含义，因此在很多需要阈值调整、排序或概率解释的业务场景里更实用。
 
 二元逻辑回归可以推广到多项逻辑回归来训练和预测多类分类问题。例如，对于 $K$ 可能的结果，可以选择其中一个结果作为“支点”，其他 $K - 1$ 结果可以分别与枢纽结果进行回归。在spark.mllib中，第一类 $0$ 被选为“支点”类。对于多元分类问题，该算法将输出一个多项逻辑回归模型，其中包含对第一类进行回归的 $K - 1$ 二元逻辑回归模型。给定一个新的数据点， $\ K - 1$ 模型将被运行，最大概率的类被选择作为预测类。Spark实现了两种算法来解决逻辑回归：小批量梯度下降和L-BFGS。Spark推荐使用L-BFGS而优于小批量梯度下降，以加速收敛。下面的例子显示了如何训练的二项模型和为二元分类使用弹性净正则化的多项逻辑回归模型。elasticNetParam对应于 $\alpha$，regParam对应于 $\lambda$。
 
@@ -993,7 +998,7 @@ scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
 ```
 
-代码 4‑1
+代码 9‑1
 
   - 加载训练数据
 
@@ -1009,7 +1014,7 @@ logreg_8f4d315ead25
 scala>
 ```
 
-代码 4‑2
+代码 9‑2
 
   - 拟合模型
 
@@ -1019,7 +1024,7 @@ lrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
 logreg_8f4d315ead25
 ```
 
-代码 4‑3
+代码 9‑3
 
   - 打印逻辑回归的系数和截距
 
@@ -1031,7 +1036,7 @@ Coefficients:
 Intercept: 0.22456315961250325
 ```
 
-代码 4‑4
+代码 9‑4
 
   - 为二元分类设置family为multinomial
 
@@ -1045,7 +1050,7 @@ mlrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
 logreg_2c2e16eac30e
 ```
 
-代码 4‑5
+代码 9‑5
 
   - 打印逻辑回归的系数和截距
 
@@ -1076,7 +1081,7 @@ scala> println(s"Multinomial intercepts: ${mlrModel.interceptVector}")
 Multinomial intercepts: [-0.12065879445860686,0.12065879445860686]
 ```
 
-代码 4‑6
+代码 9‑6
 
 逻辑回归的spark.ml实现也支持在训练集上提取模型的摘要。请注意，预测和度量被保存为在BinaryLogisticRegressionSummary中的DataFrame，被标注为@transient，因此仅在驱动程序上可用。
 
@@ -1091,7 +1096,7 @@ org.apache.spark.ml.classification.{BinaryLogisticRegressionSummary,
 LogisticRegression}
 ```
 
-代码 4‑7
+代码 9‑7
 
   - 从上例训练的LogisticRegressionModel抽取摘要
 
@@ -1102,7 +1107,7 @@ org.apache.spark.ml.classification.LogisticRegressionTrainingSummary =
 <org.apache.spark.ml.classification.BinaryLogisticRegressionTrainingSummary@305a362a>
 ```
 
-代码 4‑8
+代码 9‑8
 
   - 获得每个迭代的目标
 
@@ -1129,7 +1134,7 @@ scala> objectiveHistory.foreach(loss => println(loss))
 0.5882187775729587
 ```
 
-代码 ‑9
+代码 9‑9
 
   - 获得度量用来在测试数据上判断性能，转换总结为BinaryLogisticRegressionSummary
 
@@ -1176,7 +1181,7 @@ scala> println(s"areaUnderROC: ${binarySummary.areaUnderROC}")
 areaUnderROC: 1.0
 ```
 
-代码 4‑10
+代码 9‑10
 
   - 设置模型阈值最大化F-Measure
 
@@ -1194,7 +1199,7 @@ scala> lrModel.setThreshold(bestThreshold)
 res7: lrModel.type = logreg_8f4d315ead25
 ```
 
-代码 4‑11
+代码 9‑11
 
 ##### 9.4.2.1.2 多项逻辑回归 
 
@@ -1209,7 +1214,7 @@ P(Y=k\mid \mathbf{X},\mathbf{\beta}_{k},\beta_{0k})
 {\sum_{j=0}^{K-1}\exp(\mathbf{\beta}_{j}\cdot\mathbf{X}+\beta_{0j})}
 $$
 
-公式 4‑4
+公式 9‑4
 
 Spark使用多项式响应模型将加权负对数似然最小化，并使用弹性网络（elastic-net）惩罚来控制过拟合。
 
@@ -1220,7 +1225,7 @@ $$
 \right]
 $$
 
-公式 4‑5
+公式 9‑5
 
 下面的例子展示了如何训练具有弹性网络正则化的多类逻辑回归模型。
 
@@ -1229,7 +1234,7 @@ scala> import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.classification.LogisticRegression
 ```
 
-代码 4‑12
+代码 9‑12
 
   - 加载训练数据
 
@@ -1244,7 +1249,7 @@ lr: org.apache.spark.ml.classification.LogisticRegression =
 logreg_45c92230da22
 ```
 
-代码 ‑13
+代码 9‑13
 
   - 拟合模型
 
@@ -1254,7 +1259,7 @@ lrModel: org.apache.spark.ml.classification.LogisticRegressionModel =
 logreg_45c92230da22
 ```
 
-代码 ‑14
+代码 9‑14
 
   - 打印多元逻辑回归系数和截距
 
@@ -1270,7 +1275,7 @@ Intercepts:
 [0.05165231659832854,-0.12391224990853622,0.07225993331020768]
 ```
 
-代码 4‑15
+代码 9‑15
 
 #### 9.4.2.2 决策树分类器 
 
@@ -1294,7 +1299,7 @@ import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
 ```
 
-代码 4‑16
+代码 9‑16
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
@@ -1305,7 +1310,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 ‑17
+代码 9‑17
 
   - 索引标签，增加元数据到标签列，拟合整个数据集在索引中包含所有标签
 
@@ -1316,7 +1321,7 @@ labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
 strIdx_d251401baba6
 ```
 
-代码 4‑18
+代码 9‑18
 
   - 自动识别分类特征和索引，具有\>4个不同值的特征被作为连续值处理
 
@@ -1327,7 +1332,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_0d7150e8751b
 ```
 
-代码 ‑19
+代码 9‑19
 
   - 分割数据为训练和测试（30%为测试数据）
 
@@ -1340,7 +1345,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑20
+代码 9‑20
 
   - 训练决策树模型
 
@@ -1351,7 +1356,7 @@ dt: org.apache.spark.ml.classification.DecisionTreeClassifier =
 dtc_e50420acd179
 ```
 
-代码 4‑21
+代码 9‑21
 
   - 将索引标签转换成原始标签
 
@@ -1362,7 +1367,7 @@ labelConverter: org.apache.spark.ml.feature.IndexToString =
 idxToStr_c466772ec170
 ```
 
-代码 ‑22
+代码 9‑22
 
   - 链接索引和树到一个管道中
 
@@ -1372,7 +1377,7 @@ featureIndexer, dt, labelConverter))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_44d35fa1ad84
 ```
 
-代码 4‑23
+代码 9‑23
 
   - 训练模型
 
@@ -1381,7 +1386,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_44d35fa1ad84
 ```
 
-代码 4‑24
+代码 9‑24
 
   - 进行预测
 
@@ -1391,7 +1396,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 6 more fields]
 ```
 
-代码 4‑25
+代码 9‑25
 
   - 选择示例行显示
 
@@ -1410,7 +1415,7 @@ scala> predictions.select("predictedLabel", "label",
 only showing top 5 rows
 ```
 
-代码 4‑26
+代码 9‑26
 
   - 选择预测和真标签，计算测试错误
 
@@ -1444,7 +1449,7 @@ Else (feature 406 > 20.0)
 Predict: 0.0
 ```
 
-代码 4‑27
+代码 9‑27
 
 #### 9.4.2.3 随机森林分类器 
 
@@ -1468,7 +1473,7 @@ import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
 ```
 
-代码 4‑28
+代码 9‑28
 
   - 加载和解析数据文件，将其转换为DataFrame
 
@@ -1479,7 +1484,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑29
+代码 9‑29
 
   - 索引标签，增加元数据到标签列中，拟合所有数据集，在索引中包含所有标签
 
@@ -1490,7 +1495,7 @@ labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
 strIdx_551d33dd5566
 ```
 
-代码 4‑30
+代码 9‑30
 
   - 自动识别分类特征和索引，设置maxCategories，具有\>4个不同值的特征被作为连续值处理
 
@@ -1501,7 +1506,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_8e95643a494d
 ```
 
-代码 ‑31
+代码 9‑31
 
   - 分割数据为训练和测试（30%为测试数据）
 
@@ -1514,7 +1519,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑32
+代码 9‑32
 
   - 训练RandomForest模型.
 
@@ -1525,7 +1530,7 @@ rf: org.apache.spark.ml.classification.RandomForestClassifier =
 rfc_319e21d14e79
 ```
 
-代码 4‑33
+代码 9‑33
 
   - 将索引标签转换成原始标签
 
@@ -1536,7 +1541,7 @@ labelConverter: org.apache.spark.ml.feature.IndexToString =
 idxToStr_b8fdfba32f0e
 ```
 
-代码 4‑34
+代码 9‑34
 
   - 链接索引和树到一个管道中
 
@@ -1546,7 +1551,7 @@ featureIndexer, rf, labelConverter))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_745f2ee48c2b
 ```
 
-代码 4‑35
+代码 9‑35
 
   - 训练模型
 
@@ -1555,7 +1560,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_745f2ee48c2b
 ```
 
-代码 4‑36
+代码 9‑36
 
   - 进行预测
 
@@ -1565,7 +1570,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 6 more fields]
 ```
 
-代码 4‑37
+代码 9‑37
 
   - 选择示例行显示
 
@@ -1584,7 +1589,7 @@ scala> predictions.select("predictedLabel", "label",
 only showing top 5 rows
 ```
 
-代码 ‑38
+代码 9‑38
 
   - 选择预测和真标签，计算测试错误
 
@@ -1632,7 +1637,7 @@ Predict: 0.0
 ……
 ```
 
-代码 4‑39
+代码 9‑39
 
 #### 9.4.2.4 梯度提升树分类 
 
@@ -1657,7 +1662,7 @@ import org.apache.spark.ml.feature.{IndexToString, StringIndexer,
 VectorIndexer}
 ```
 
-代码 ‑40
+代码 9‑40
 
   - 加载和解析数据文件
 
@@ -1668,7 +1673,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 ‑41
+代码 9‑41
 
   - 索引标签，增加元数据到标签列，拟合整个数据集，在索引中包含所有的标签
 
@@ -1679,7 +1684,7 @@ labelIndexer: org.apache.spark.ml.feature.StringIndexerModel =
 strIdx_4d85d1d41d81
 ```
 
-代码 4‑42
+代码 9‑42
 
   - 自动识别分类特征和索引，设置maxCategories，具有\>4个不同值的特征被作为连续值处理
 
@@ -1690,7 +1695,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_31283371a256
 ```
 
-代码 ‑43
+代码 9‑43
 
   - 分割数据为训练和测试（30%为测试数据）
 
@@ -1703,7 +1708,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑44
+代码 9‑44
 
   - 训练GBT模型
 
@@ -1714,7 +1719,7 @@ gbt: org.apache.spark.ml.classification.GBTClassifier =
 gbtc_928d4fc65752
 ```
 
-代码 4‑45
+代码 9‑45
 
   - 将索引标签转换成原始标签
 
@@ -1725,7 +1730,7 @@ labelConverter: org.apache.spark.ml.feature.IndexToString =
 idxToStr_0c8538c39ade
 ```
 
-代码 ‑46
+代码 9‑46
 
   - 连接索引和GBT到管道中
 
@@ -1735,7 +1740,7 @@ featureIndexer, gbt, labelConverter))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_014b373f021b
 ```
 
-代码 4‑47
+代码 9‑47
 
   - 训练模型
 
@@ -1744,7 +1749,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_014b373f021b
 ```
 
-代码 4‑48
+代码 9‑48
 
   - 进行预测
 
@@ -1754,7 +1759,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 6 more fields]
 ```
 
-代码 4‑49
+代码 9‑49
 
   - 选择示例行显示
 
@@ -1773,7 +1778,7 @@ scala> predictions.select("predictedLabel", "label",
 only showing top 5 rows
 ```
 
-代码 4‑50
+代码 9‑50
 
   - 选择预测和真标签，计算测试错误
 
@@ -1817,7 +1822,7 @@ Predict: -0.4768116880884712
 ……
 ```
 
-代码 4‑51
+代码 9‑51
 
 #### 9.4.2.5 多层感知分类 
 
@@ -1826,19 +1831,19 @@ Classifier，MLPC）是基于前馈神经网络上的分类器的。MLPC由节�
 
 $$y(\mathbf{x}) = f_{K}(...f_{2}(\mathbf{w}_{2}^{T}f_{1}(\mathbf{w}_{1}^{T}\mathbf{x} + b_{1}) + b_{2})... + b_{K})$$
 
-公式 4‑6
+公式 9‑6
 
 在中间层节点使用sigmoid(logistic)函数：
 
 $$f(z_{i}) = \frac{1}{1 + e^{- z_{i}}}$$
 
-公式 4‑7
+公式 9‑7
 
 节点在输出层使用softmax功能：
 
 $$f(z_{i}) = \frac{e^{z_{i}}}{\sum_{k = 1}^{N}e^{z_{k}}}$$
 
-公式 4‑8
+公式 9‑8
 
 $N$ 节点的数量在输出层中对应于类的数量。
 
@@ -1853,7 +1858,7 @@ org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 ```
 
-代码 4‑52
+代码 9‑52
 
   - 加载和解析数据文件
 
@@ -1864,7 +1869,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑53
+代码 9‑53
 
   - 分割数据为训练和测试
 
@@ -1882,7 +1887,7 @@ test: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑54
+代码 9‑54
 
   - 指定神经网络层，大小为4的输入层，两个大小为5和4的中间层，大小为3的输出层
 
@@ -1891,7 +1896,7 @@ scala> val layers = Array[Int](4, 5, 4, 3)
 layers: Array[Int] = Array(4, 5, 4, 3)
 ```
 
-代码 4‑55
+代码 9‑55
 
   - 创建训练器，设置参数
 
@@ -1903,7 +1908,7 @@ org.apache.spark.ml.classification.MultilayerPerceptronClassifier =
 mlpc_66690265bc2c
 ```
 
-代码 4‑56
+代码 9‑56
 
   - 训练模型
 
@@ -1914,7 +1919,7 @@ org.apache.spark.ml.classification.MultilayerPerceptronClassificationModel
 = mlpc_66690265bc2c
 ```
 
-代码 4‑57
+代码 9‑57
 
   - 在测试集上计算精度
 
@@ -1935,19 +1940,18 @@ evaluator.evaluate(predictionAndLabels))
 Test set accuracy = 0.8627450980392157
 ```
 
-代码 4‑58
+代码 9‑58
 
 #### 9.4.2.6 线性支持向量机
 
-支持向量机在高维或无限维空间中构建一个超平面或超平面集合，该空间可用于分类、回归或其他任务。直观地，一个良好的分离是由超平面完成，其具有到任何类的最接近训练数据点的最大距离，所谓的功能余量。因为通常余量越大，分类器的泛化误差越低。LinearSVC在Spark
-ML中支持具有线性支持向量机的二元分类，使用OWLQN优化器优化了铰链损耗。
+支持向量机在高维或无限维空间中构建一个超平面或超平面集合，该空间可用于分类、回归或其他任务。直观地，一个良好的分离由“最大间隔”超平面完成，因此它常被用于高维稀疏特征的二元分类。对 Spark 4.x 新项目来说，`LinearSVC` 是线性二分类的主线接口；如果还需要概率输出，通常更适合优先尝试逻辑回归。
 
 ```scala
 scala> import org.apache.spark.ml.classification.LinearSVC
 import org.apache.spark.ml.classification.LinearSVC
 ```
 
-代码 ‑59
+代码 9‑59
 
   - 加载训练数据
 
@@ -1961,7 +1965,7 @@ lsvc: org.apache.spark.ml.classification.LinearSVC =
 linearsvc_3534f59606d8
 ```
 
-代码 ‑60
+代码 9‑60
 
   - 拟合模型
 
@@ -1971,7 +1975,7 @@ lsvcModel: org.apache.spark.ml.classification.LinearSVCModel =
 linearsvc_3534f59606d8
 ```
 
-代码 4‑61
+代码 9‑61
 
   - 打印线性SVC的系数和截距
 
@@ -1982,7 +1986,7 @@ Coefficients:
 [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-5.170630317473439E-4,-1.172288654973735E-4,-8.882754836918948E-5,8.522360710187464E-5,0.0,0.0,-1.3436361263314267E-5,3.729569801338091E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,8.888949552633658E-4,2.9864059761812683E-4,3.793378816193159E-4,-1.762328898254081E-4,0.0,1.5028489269747836E-6,1.8056041144946687E-6,1.8028763260398597E-6,-3.3843713506473646E-6,-4.041580184807502E-6,2.0965017727015125E-6,8.536111642989494E-5,2.2064177429604464E-4,2.1677599940575452E-4,-5.472401396558763E-4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,9.21415502407147E-4,3.1351066886882195E-4,2.481984318412822E-4,0.0,-4.147738197636148E-5,-3.6832150384497175E-5,0.0,-3.9652366184583814E-6,-5.1569169804965594E-5,-6.624697287084958E-5,-2.182148650424713E-5,1.163442969067449E-5,-1.1535211416971104E-6,3.8138960488857075E-5,1.5823711634321492E-6,-4.784013432336632E-5,-9.386493224111833E-5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,4.3174897827077767E-4,1.7055492867397665E-4,0.0,-2.7978204136148868E-5,-5.88745220385208E-5,-4.1858794529775E-5,-3.740692964881002E-5,-3.9787939304887E-5,-5.545881895011037E-5,-4.505015598421474E-5,-3.214002494749943E-6,-1.6561868808274739E-6,-4.416063987619447E-6,-7.9986183315327E-6,-4.729962112535003E-5,-2.516595625914463E-5,-3……
 ```
 
-代码 4‑62
+代码 9‑62
 
 #### 9.4.2.7 One-vs-Rest分类（又名One-vs-All）
 
@@ -1998,7 +2002,7 @@ org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 ```
 
-代码 4‑63
+代码 9‑63
 
   - 加载数据文件
 
@@ -2009,7 +2013,7 @@ inputData: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑64
+代码 9‑64
 
   - 产生训练和测试数据
 
@@ -2021,7 +2025,7 @@ test: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑65
+代码 9‑65
 
   - 初始化基本分类器
 
@@ -2032,7 +2036,7 @@ classifier: org.apache.spark.ml.classification.LogisticRegression =
 logreg_4ab3ec576ece
 ```
 
-代码 4‑66
+代码 9‑66
 
   - 初始化One Vs Rest分类器
 
@@ -2042,7 +2046,7 @@ ovr: org.apache.spark.ml.classification.OneVsRest =
 oneVsRest_18cdbd6163d0
 ```
 
-代码 4‑67
+代码 9‑67
 
   - 训练多分类模型
 
@@ -2060,7 +2064,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 1 more field]
 ```
 
-代码 4‑68
+代码 9‑68
 
   - 获得评估器
 
@@ -2072,7 +2076,7 @@ org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator =
 mcEval_d0b6ab78ccdb
 ```
 
-代码 4‑69
+代码 9‑69
 
   - 在测试数据上计算分类错误
 
@@ -2083,7 +2087,7 @@ scala> println(s"Test Error = ${1 - accuracy}")
 Test Error = 0.10344827586206895
 ```
 
-代码 4‑70
+代码 9‑70
 
 #### 9.4.2.8 朴素贝叶斯 
 
@@ -2097,7 +2101,7 @@ org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 ```
 
-代码 4‑71
+代码 9‑71
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
@@ -2108,7 +2112,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑72
+代码 9‑72
 
   - 分割数据为训练和测试（30%为测试数据）
 
@@ -2121,7 +2125,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑73
+代码 9‑73
 
   - 训练NaiveBayes模型
 
@@ -2131,7 +2135,7 @@ model: org.apache.spark.ml.classification.NaiveBayesModel =
 NaiveBayesModel (uid=nb_cce70f29bc75) with 2 classes
 ```
 
-代码 4‑74
+代码 9‑74
 
   - 选择示例行显示
 
@@ -2177,20 +2181,22 @@ scala> println("Test set accuracy = " + accuracy)
 Test set accuracy = 1.0
 ```
 
-代码 4‑75
+代码 9‑75
 
 ### 9.4.3 回归
 
+回归部分同样建议优先采用 `spark.ml` 的 DataFrame/Pipeline 写法。在线性回归、树模型和保序回归之间做选择时，先看目标变量形态、是否需要可解释性，以及是否存在明显非线性关系。
+
 #### 9.4.3.1 线性回归 
 
-使用线性回归模型和模型总结工作的接口类似于逻辑回归的情况，下面的例子演示了训练弹性网络正规化线性回归模型，提取模型汇总统计。
+线性回归通常是回归任务的第一条基线。它训练快、解释性强，也最适合先检查特征工程、异常值和评价指标是否合理。下面的例子演示如何训练带弹性网络正则化的线性回归模型，并提取模型汇总统计。
 
 ```scala
 scala> import org.apache.spark.ml.regression.LinearRegression
 import org.apache.spark.ml.regression.LinearRegression
 ```
 
-代码 4‑76
+代码 9‑76
 
   - 加载训练数据
 
@@ -2205,7 +2211,7 @@ lr: org.apache.spark.ml.regression.LinearRegression =
 linReg_d95b427bfd2c
 ```
 
-代码 4‑77
+代码 9‑77
 
   - 拟合模型
 
@@ -2215,7 +2221,7 @@ lrModel: org.apache.spark.ml.regression.LinearRegressionModel =
 linReg_d95b427bfd2c
 ```
 
-代码 4‑78
+代码 9‑78
 
   - 输出线性回归的系数和截距
 
@@ -2227,7 +2233,7 @@ Coefficients:
 Intercept: 0.1598936844239736
 ```
 
-代码 4‑79
+代码 9‑79
 
   - 在训练集合上总结模型，输出一些度量
 
@@ -2274,7 +2280,7 @@ scala> println(s"r2: ${trainingSummary.r2}")
 r2: 0.022861466913958184
 ```
 
-代码 4‑80
+代码 9‑80
 
 #### 9.4.3.2 广义线性回归 
 
@@ -2284,7 +2290,7 @@ $$
 f_{Y}(y|\theta,\tau) = h(y,\tau)\exp\!\left(\frac{\theta \cdot y - A(\theta)}{d(\tau)}\right)
 $$
 
-公式 4‑9
+公式 9‑9
 
 其中 $\theta$ 是需要估算的参数， $\tau$ 是离散参数。在广义线性模型中，响应变量 $Y_{i}$ 被假定为从自然指数族分布中得出：
 
@@ -2292,7 +2298,7 @@ $$
 Y_i \sim f(\cdot \mid \theta_i,\tau)
 $$
 
-公式 4‑10
+公式 9‑10
 
 其中估算参数 $\theta_{i}$ 与响应变量 $\mu_{i}$ 的期望值相关
 
@@ -2300,7 +2306,7 @@ $$
 \mu_i = A'(\theta_i)
 $$
 
-公式 4‑11
+公式 9‑11
 
 这里， $A'(\theta_i)$ 由所选分布的形式定义。广义线性模型还允许规定一个链接函数，该函数定义了响应变量 $\mu_i$ 的期望值和所谓的线性预测器 $\eta_i$ 之间的关系：
 
@@ -2308,7 +2314,7 @@ $$
 g(\mu_i)=\eta_i=\mathbf{x}_i^T\boldsymbol{\beta}
 $$
 
-公式 4‑12
+公式 9‑12
 
 通常，链接函数被选择为使得 $A' = g^{-1}$，其产生感兴趣参数 $\theta$ 与线性预测器 $\eta$ 之间的简化关系。在这种情况下，链接函数 $g(\mu)$ 被认为是“规范”链接函数。
 
@@ -2316,7 +2322,7 @@ $$
 \theta_i = A'^{-1}(\mu_i) = g\!\left(g^{-1}(\eta_i)\right)=\eta_i
 $$
 
-公式 4‑13
+公式 9‑13
 
 广义线性模型找到回归系数 $\overset{\rightarrow}{\beta}$ 最大似然函数。
 
@@ -2325,7 +2331,7 @@ $$
 = \prod_{i=1}^{N} h(y_i,\tau)\exp\!\left(\frac{y_i\theta_i - A(\theta_i)}{d(\tau)}\right)
 $$
 
-公式 4‑14
+公式 9‑14
 
 其中估算参数 $\theta_{i}$ 与回归系数 $\overset{\rightarrow}{\beta}$ 有关
 
@@ -2333,7 +2339,7 @@ $$
 \theta_i = A'^{-1}\!\left(g^{-1}(\mathbf{x}_i \cdot \boldsymbol{\beta})\right)
 $$
 
-公式 4‑15
+公式 9‑15
 
 Spark的广义线性回归接口还提供了汇总统计诊断广义线性模型模型拟合，包括残差、p值、偏差、赤池信息量准则（Akaike Information
 Criterion）和其他。
@@ -2349,7 +2355,7 @@ Criterion）和其他。
 | Tweedie  | Zero-inflated continuous | Power link function      |
 |          |                          |                          |
 
-表格 4‑9可用系列
+表格 9‑9可用系列
 
 下面的例子演示了训练广义线性模型与高斯响应，标识链接功能和提取模型汇总统计。
 
@@ -2359,7 +2365,7 @@ org.apache.spark.ml.regression.GeneralizedLinearRegression
 import org.apache.spark.ml.regression.GeneralizedLinearRegression
 ```
 
-代码 4‑81
+代码 9‑81
 
   - 加载训练数据
 
@@ -2374,7 +2380,7 @@ glr: org.apache.spark.ml.regression.GeneralizedLinearRegression =
 glm_57277c689abf
 ```
 
-代码 4‑82
+代码 9‑82
 
   - 拟合模型
 
@@ -2384,7 +2390,7 @@ model: org.apache.spark.ml.regression.GeneralizedLinearRegressionModel =
 glm_57277c689abf
 ```
 
-代码 4‑83
+代码 9‑83
 
   - 输出广义线性回归的系数和截距
 
@@ -2396,7 +2402,7 @@ scala> println(s"Intercept: ${model.intercept}")
 Intercept: 0.14592176145232041
 ```
 
-代码 4‑84
+代码 9‑84
 
   - 在训练集上总结模型和输出一些度量
 
@@ -2460,7 +2466,7 @@ scala> summary.residuals().show()
 only showing top 20 rows
 ```
 
-代码 4‑85
+代码 9‑85
 
   - 赤池信息量准则
 
@@ -2484,7 +2490,7 @@ scala> import org.apache.spark.ml.regression.DecisionTreeRegressor
 import org.apache.spark.ml.regression.DecisionTreeRegressor
 ```
 
-代码 4‑86
+代码 9‑86
 
   - 加载格式为LIBSVM的数据到DataFrame中
 
@@ -2495,7 +2501,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑87
+代码 9‑87
 
   - 自动识别分类特征和索引
 
@@ -2508,7 +2514,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_22ea6e264a28
 ```
 
-代码 4‑88
+代码 9‑88
 
   - 分割数据为训练和测试（30%为测试数据）
 
@@ -2521,7 +2527,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑89
+代码 9‑89
 
   - 训练DecisionTree模型
 
@@ -2532,7 +2538,7 @@ dt: org.apache.spark.ml.regression.DecisionTreeRegressor =
 dtr_d8e21b9502e1
 ```
 
-代码 4‑90
+代码 9‑90
 
   - 链接索引和树到一个管道中
 
@@ -2542,7 +2548,7 @@ dt))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_c396dbb1f2f7
 ```
 
-代码 4‑91
+代码 9‑91
 
   - 训练模型，运行索引
 
@@ -2551,7 +2557,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_c396dbb1f2f7
 ```
 
-代码 4‑92
+代码 9‑92
 
   - 进行预测
 
@@ -2561,7 +2567,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 2 more fields]
 ```
 
-代码 4‑93
+代码 9‑93
 
   - 选择示例行显示
 
@@ -2579,7 +2585,7 @@ scala> predictions.select("prediction", "label", "features").show(5)
 only showing top 5 rows
 ```
 
-代码 4‑94
+代码 9‑94
 
   - 选择预测和真标签，计算测试错误
 
@@ -2608,7 +2614,7 @@ Else (feature 434 > 0.0)
 Predict: 1.0
 ```
 
-代码 4‑95
+代码 9‑95
 
 #### 9.4.3.4 随机森林回归 
 
@@ -2628,7 +2634,7 @@ import org.apache.spark.ml.regression.{RandomForestRegressionModel,
 RandomForestRegressor}
 ```
 
-代码 4‑96
+代码 9‑96
 
   - 加载和解析数据文件，将其转换为DataFrame
 
@@ -2639,7 +2645,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑97
+代码 9‑97
 
   - 自动识别分类特征，并且索引，设置maxCategories，将具有\>4不同值的特征作为连续的
 
@@ -2650,7 +2656,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_8686fd13bc82
 ```
 
-代码 4‑98
+代码 9‑98
 
   - 分割数据到训练和测试集(30% 留存为测试)
 
@@ -2663,7 +2669,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑99
+代码 9‑99
 
   - 训练RandomForest模型
 
@@ -2674,7 +2680,7 @@ rf: org.apache.spark.ml.regression.RandomForestRegressor =
 rfr_8b3d97e58278
 ```
 
-代码 4‑100
+代码 9‑100
 
   - 链接索引和树到一个管道中
 
@@ -2691,7 +2697,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_a2a6e45d0f75
 ```
 
-代码 4‑101
+代码 9‑101
 
   - 进行预测
 
@@ -2701,7 +2707,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 2 more fields]
 ```
 
-代码 4‑102
+代码 9‑102
 
   - 选择示例行显示
 
@@ -2719,7 +2725,7 @@ scala> predictions.select("prediction", "label", "features").show(5)
 only showing top 5 rows
 ```
 
-代码 4‑103
+代码 9‑103
 
   - 选择预测和真标签，计算测试错误
 
@@ -2760,7 +2766,7 @@ Else (feature 290 > 0.0)
 ……
 ```
 
-代码 4‑104
+代码 9‑104
 
 #### 9.4.3.5 梯度推进树回归 
 
@@ -2778,7 +2784,7 @@ GBTRegressor}
 import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor}
 ```
 
-代码 4‑105
+代码 9‑105
 
   - 加载和解析数据文件，将其转换为DataFrame
 
@@ -2789,7 +2795,7 @@ data: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑106
+代码 9‑106
 
   - 自动识别分类特征，并且索引，设置maxCategories，将具有\>4不同值的特征作为连续的
 
@@ -2800,7 +2806,7 @@ featureIndexer: org.apache.spark.ml.feature.VectorIndexerModel =
 vecIdx_2dc5f8c212c1
 ```
 
-代码 4‑107
+代码 9‑107
 
   - 分割数据到训练和测试集(30% 留存为测试).
 
@@ -2813,7 +2819,7 @@ testData: org.apache.spark.sql.Dataset[org.apache.spark.sql.Row] =
 [label: double, features: vector]
 ```
 
-代码 4‑108
+代码 9‑108
 
   - 训练梯度提升树模型
 
@@ -2823,7 +2829,7 @@ GBTRegressor().setLabelCol("label").setFeaturesCol("indexedFeatures").setMaxIter
 gbt: org.apache.spark.ml.regression.GBTRegressor = gbtr_307ad34e9fcd
 ```
 
-代码 4‑109
+代码 9‑109
 
   - 在管道中链接索引器和梯度提升树
 
@@ -2833,7 +2839,7 @@ gbt))
 pipeline: org.apache.spark.ml.Pipeline = pipeline_9462b17b4b09
 ```
 
-代码 4‑110
+代码 9‑110
 
   - 训练模型，运行索引器
 
@@ -2842,7 +2848,7 @@ scala> val model = pipeline.fit(trainingData)
 model: org.apache.spark.ml.PipelineModel = pipeline_9462b17b4b09
 ```
 
-代码 4‑111
+代码 9‑111
 
   - 进行预测
 
@@ -2852,7 +2858,7 @@ predictions: org.apache.spark.sql.DataFrame = [label: double, features:
 vector ... 2 more fields]
 ```
 
-代码 4‑112
+代码 9‑112
 
   - 选择示例行显示
 
@@ -2870,7 +2876,7 @@ scala> predictions.select("prediction", "label", "features").show(5)
 only showing top 5 rows
 ```
 
-代码 4‑113
+代码 9‑113
 
   - 选择预测和真标签，计算测试错误
 
@@ -2919,7 +2925,7 @@ Tree 9 (weight 0.1):
 Predict: 0.0
 ```
 
-代码 4‑114
+代码 9‑114
 
 #### 9.4.3.6 生存回归 
 
@@ -2933,7 +2939,7 @@ L(\beta,\sigma)=\prod_{i=1}^{n}
 S_0\!\left(\frac{\log t_i-\mathbf{x}_i^T\beta}{\sigma}\right)^{1-\delta_i}
 $$
 
-公式 4‑16
+公式 9‑16
 
 其中 $\delta_i$ 是发生事件的指标（未删失）。使用 $\epsilon_i=\frac{\log t_i-\mathbf{x}_i^T\beta}{\sigma}$，对数似然函数为：
 
@@ -2942,7 +2948,7 @@ $$
 \left[-\delta_i\log\sigma+\delta_i\log f_0(\epsilon_i)+(1-\delta_i)\log S_0(\epsilon_i)\right]
 $$
 
-公式 4‑17
+公式 9‑17
 
 其中 $S_{0}(\epsilon_{i})$ 是基线幸存函数， $f_{0}(\epsilon_{i})$ 是相应的密度函数。
 
@@ -2950,13 +2956,13 @@ $$
 
 $$S_{0}(\epsilon_{i}) = \exp( - e^{\epsilon_{i}})$$
 
-公式 4‑18
+公式 9‑18
 
 $f_{0}(\epsilon_{i})$ 函数是：
 
 $$f_{0}(\epsilon_{i}) = e^{\epsilon_{i}}\exp( - e^{\epsilon_{i}})$$
 
-公式 4‑19
+公式 9‑19
 
 具有威布尔寿命分布的AFT模型的对数似然函数为：
 
@@ -2964,7 +2970,7 @@ $$
 \iota(\beta,\sigma)=- \sum_{i=1}^{n}\left[\delta_i\log\sigma - \delta_i\epsilon_i + e^{\epsilon_i}\right]
 $$
 
-公式 4‑20
+公式 9‑20
 
 由于最小化等价于最大后验概率的负对数似然度，Spark用来优化的损失函数是 $- \iota(\beta,\sigma)$。 $\beta$ 和 $\log\sigma$ 的梯度函数分别为：
 
@@ -2973,14 +2979,14 @@ $$
 =\sum_{i=1}^{n}\left[\delta_i - e^{\epsilon_i}\right]\frac{\mathbf{x}_i}{\sigma}
 $$
 
-公式 4‑21
+公式 9‑21
 
 $$
 \frac{\partial(-\iota)}{\partial(\log\sigma)}
 =\sum_{i=1}^{n}\left[\delta_i + (\delta_i - e^{\epsilon_i})\epsilon_i\right]
 $$
 
-公式 4‑22
+公式 9‑22
 
 AFT模型可以被表述为凸优化问题，即根据系数向量 $\beta$ 和尺度参数对数 $\log\sigma$ 寻找凸函数 $- \iota(\beta,\sigma)$ 最小值的任务。底层实现的优化算法是L-BFGS。该实现与R的生存函数survreg的结果相匹配。
 
@@ -3032,7 +3038,7 @@ scala> model.transform(training).show(false)
 +-----+------+--------------+------------------+---------------------------------------+
 ```
 
-代码 4‑115
+代码 9‑115
 
 #### 9.4.3.7 保序回归 
 
@@ -3042,7 +3048,7 @@ $$
 f(x)=\sum_{i=1}^{n} w_i (y_i-x_i)^2
 $$
 
-公式 4‑23
+公式 9‑23
 
 相对于完全顺序受试者 $x_{1} \leq x_{2} \leq ... \leq x_{n}$， $w_{i}$ 是正权重。生成的函数被称为保序回归，它是独一无二的。它可以根据顺序限制被视为最小二乘问题。从本质上讲保序回归是一个单调函数，其最佳拟合原始数据点。
 
@@ -3061,7 +3067,7 @@ scala> import org.apache.spark.ml.regression.IsotonicRegression
 import org.apache.spark.ml.regression.IsotonicRegression
 ```
 
-代码 4‑116
+代码 9‑116
 
   - 加载数据
 
@@ -3072,7 +3078,7 @@ dataset: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑117
+代码 9‑117
 
   - 训练保序回归模型
 
@@ -3093,7 +3099,7 @@ Predictions associated with the boundaries:
 [0.15715271294117644,0.15715271294117644,0.189138196,0.189138196,0.20040796,0.29576747,0.43396226,0.5081591025000001,0.5081591025000001,0.54156043,0.5504844466666667,0.5504844466666667,0.563929967,0.563929967,0.5660377366666667,0.5660377366666667,0.56603774,0.57929628,0.64762876,0.66241713,0.67210607,0.67210607,0.674655785,0.674655785,0.73890872,0.73992861,0.84242733,0.89673636,0.89673636,0.90719021,0.9272055075,0.9272055075]
 ```
 
-代码 4‑118
+代码 9‑118
 
   - 进行预测
 
@@ -3126,30 +3132,31 @@ scala> model.transform(dataset).show()
 only showing top 20 rows
 ```
 
-代码 4‑119
+代码 9‑119
 
-## 9.5 聚集
+## 9.5 聚类
+
+聚类任务在Spark 4.x中同样优先采用`spark.ml` API。本节以K均值、LDA、二分K均值和高斯混合模型为代表，重点说明适用场景、输入输出列和最小示例。
 
 ### 9.5.1 K均值
 
-K均值（k-means）是最常用的聚类算法之一，它将数据点聚类成预定数量的聚类。MLlib实现包含一个名为kmeans||的k-means
-++方法并行处理的变体。KMeans作为估算器实现，并生成KMeansModel作为基础模型。
+K均值（k-means）是最常用的聚类算法之一，它将数据点划分到预定数量的簇中。Spark 的 `KMeans` 估算器使用适合分布式训练的初始化策略，并生成 `KMeansModel` 作为结果模型。在工程实践中，它通常适合作为无监督学习的第一条基线。
 
 #### 9.5.1.1 输入列
 
 | 参数名称        | 类型     | 默认         | 描述   |
 | ----------- | ------ | ---------- | ---- |
-| featuresCol | Vector | "features" | 特这向量 |
+| featuresCol | Vector | "features" | 特征向量 |
 
-表格 4‑10输入列
+表格 9‑10输入列
 
 #### 9.5.1.2 输出列
 
 | 参数名称          | 类型  | 默认           | 描述     |
 | ------------- | --- | ------------ | ------ |
-| predictionCol | Int | "prediction" | 预测聚集中心 |
+| predictionCol | Int | "prediction" | 预测聚类中心 |
 
-表格 4‑11输出列
+表格 9‑11输出列
 
 代码如下：
 
@@ -3158,7 +3165,7 @@ scala> import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.clustering.KMeans
 ```
 
-代码 4‑120
+代码 9‑120
 
   - 加载数据
 
@@ -3178,9 +3185,9 @@ scala> val model = kmeans.fit(dataset)
 model: org.apache.spark.ml.clustering.KMeansModel = kmeans_1e6e4f712555
 ```
 
-代码 4‑121
+代码 9‑121
 
-  - 通过在平方误差的集合中计算评估聚类
+  - 通过平方误差和评估聚类
 
 ```scala
 scala> val WSSSE = model.computeCost(dataset)
@@ -3189,7 +3196,7 @@ scala> println(s"Within Set Sum of Squared Errors = $WSSSE")
 Within Set Sum of Squared Errors = 0.11999999999994547
 ```
 
-代码 4‑122
+代码 9‑122
 
   - 显示结果
 
@@ -3201,7 +3208,7 @@ scala> model.clusterCenters.foreach(println)
 [9.1,9.1,9.1]
 ```
 
-代码 4‑123
+代码 9‑123
 
 ### 9.5.2 潜在狄利克雷分配（LDA） 
 
@@ -3212,7 +3219,7 @@ scala> import org.apache.spark.ml.clustering.LDA
 import org.apache.spark.ml.clustering.LDA
 ```
 
-代码 4‑124
+代码 9‑124
 
   - 加载数据
 
@@ -3223,7 +3230,7 @@ dataset: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑125
+代码 9‑125
 
   - 训练LDA模型
 
@@ -3244,7 +3251,7 @@ scala> println(s"The upper bound on perplexity: $lp")
 The upper bound on perplexity: 3.2385774464305963
 ```
 
-代码 4‑126
+代码 9‑126
 
   - 描述主题
 
@@ -3282,7 +3289,7 @@ scala> topics.show(false)
 scala>
 ```
 
-代码 4‑127
+代码 9‑127
 
   - 显示结果
 
@@ -3303,7 +3310,7 @@ scala> transformed.show(false)
 ……
 ```
 
-代码 4‑128
+代码 9‑128
 
   - LDA文档主题生成模型
 
@@ -3317,14 +3324,14 @@ words）的方法，这种方法将每一篇文档视为一个词频向量，从
 
 ### 9.5.3 二分k均值
 
-二分k均值是一种使用分裂（或“自上而下”）方法的分层聚类：所有观测都在一个聚类中开始，当一个分层向下移动时，分裂被递归地执行。二分k均值通常比常规K均值要快得多，但通常会产生不同的聚类。BisectingKMeans是作为估算器实现的，并生成一个BisectingKMeansModel作为基础模型。
+二分k均值是一种使用分裂（或“自上而下”）方法的分层聚类：所有观测都先落在一个簇中，然后递归地继续拆分。它通常比常规 K 均值更适合层次化理解聚类结构，但得到的结果与普通 K 均值并不完全相同。`BisectingKMeans` 作为估算器实现，并生成 `BisectingKMeansModel` 作为基础模型。
 
 ```scala
 scala> import org.apache.spark.ml.clustering.BisectingKMeans
 import org.apache.spark.ml.clustering.BisectingKMeans
 ```
 
-代码 4‑129
+代码 9‑129
 
   - 加载数据
 
@@ -3335,7 +3342,7 @@ dataset: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑130
+代码 9‑130
 
   - 训练二分k均值模型
 
@@ -3348,9 +3355,9 @@ model: org.apache.spark.ml.clustering.BisectingKMeansModel =
 bisecting-kmeans_bf550173fc8c
 ```
 
-代码 4‑131
+代码 9‑131
 
-  - 评估聚集
+  - 评估聚类
 
 ```scala
 scala> val cost = model.computeCost(dataset)
@@ -3359,7 +3366,7 @@ scala> println(s"Within Set Sum of Squared Errors = $cost")
 Within Set Sum of Squared Errors = 0.11999999999994547
 ```
 
-代码 4‑132
+代码 9‑132
 
   - 显示结果
 
@@ -3374,11 +3381,11 @@ scala> centers.foreach(println)
 [9.1,9.1,9.1]
 ```
 
-代码 4‑133
+代码 9‑133
 
 ### 9.5.4 高斯混合模型
 
-高斯混合模型表示复合分布，由此从k个高斯子分布中的一个绘制点，每个高斯子分布具有其自身的概率。spark.ml实现使用期望最大化算法在给定一组样本的情况下引发最大似然模型。GaussianMixture作为估算器实现，并生成一个GaussianMixtureModel作为基础模型。
+高斯混合模型把数据看成由多个高斯子分布混合而成，每个子分布都有自己的均值、协方差和权重。`spark.ml` 使用 EM 算法在给定样本上估计这一模型。相比 K 均值，它更适合描述“簇是椭球形且重叠”的场景。
 
 #### 9.5.4.1 输入列 
 
@@ -3386,16 +3393,16 @@ scala> centers.foreach(println)
 | ----------- | ------ | ---------- | ---- |
 | featuresCol | Vector | "features" | 特征向量 |
 
-表格 4‑12输入列
+表格 9‑12输入列
 
 #### 9.5.4.2 输出列 
 
 | 参数名称           | 类型     | 默认            | **描述**  |
 | -------------- | ------ | ------------- | ------- |
-| predictionCol  | Int    | "prediction"  | 预测的聚集中心 |
-| probabilityCol | Vector | "probability" | 每个群集的概率 |
+| predictionCol  | Int    | "prediction"  | 预测的聚类中心 |
+| probabilityCol | Vector | "probability" | 每个聚类的概率 |
 
-表格 4‑13输出列
+表格 9‑13输出列
 
 代码如下：
 
@@ -3404,7 +3411,7 @@ scala> import org.apache.spark.ml.clustering.GaussianMixture
 import org.apache.spark.ml.clustering.GaussianMixture
 ```
 
-代码 4‑134
+代码 9‑134
 
   - 加载数据
 
@@ -3415,7 +3422,7 @@ dataset: org.apache.spark.sql.DataFrame = [label: double, features:
 vector]
 ```
 
-代码 4‑135
+代码 9‑135
 
   - 训练模型
 
@@ -3432,7 +3439,7 @@ model: org.apache.spark.ml.clustering.GaussianMixtureModel =
 GaussianMixture_2c319d8bb00b
 ```
 
-代码 4‑136
+代码 9‑136
 
   - 混合模型的输出参数
 
@@ -3458,10 +3465,11 @@ sigma=
 0.006666666666812185 0.006666666666812185 0.006666666666812185
 ```
 
-代码 4‑137
+代码 9‑137
 
 ## 9.6 小结
 
-Spark MLlib是Spark Core上的一个分布式机器学习框架，在很大程度上由于基于分布式内存的Spark架构，其速度是Apache
-Mahout使用基于磁盘实现速度的9倍，根据基准测试由MLlib开发人员针对交替最小二乘（ALS）实现完成，在Mahout本身获得Spark接口之前。并且比Vowpal
-Wabbit具有更好地扩展。许多常见的机器学习和统计算法已经实现并随MLlib一起提供，这简化了大规模机器学习的流水线，其中包括：支持向量机，逻辑回归，线性回归，决策树，朴素贝叶斯分类，等等
+本章更适合作为“算法目录”和“选型速查表”来使用，而不是从头到尾顺序阅读。对Spark 4.x的主线实践，应优先掌握`spark.ml`提供的DataFrame/Dataset API，以及特征处理、模型训练、评估和调参组成的Pipeline流程。
+
+文中保留的“基于RDD”小节主要用于理解Spark机器学习接口的历史演进、阅读旧项目代码，以及在存量系统中做迁移判断。真正进入工程实现时，建议先从问题类型、评价指标、数据规模和特征形态出发，选一个简单可靠的基线模型，再逐步比较更复杂的算法。
+

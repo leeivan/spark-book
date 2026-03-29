@@ -45,8 +45,7 @@ scala> pairRDD.collect().foreach(println)
 (10,technology)
 ```
 
-代码 4.1
-
+代码 3.1
 上面的代码创建了键值对RDD，每一行为一个元组，其中键是长度，值是单词。它们被包裹在一对括号内。一旦以这种方式排列了每一行，我们就可以通过按键分组轻松发现长度相同的单词。以下各节将介绍如何创建键值对RDD，以及如何使用关联的转换和操作。
 
 ### 3.3.1 创建
@@ -61,14 +60,12 @@ Scala元组结合件多个固定数量的项目在一起，使它们可以被作
 
 val t = (1, "hello", Console)
 
-代码 4.3
-
+代码 3.2
 这是语法方糖，是下面代码的简写方式：
 
 val t = new Tuple3(1, "hello", Console)
 
-代码 4.4
-
+代码 3.3
 一个元组的实际类型取决于它包含的元素和这些元素的类型和数目。因此该类型 (99, "Luftballons") 是 Tuple2\[Int,
 String\]；而('u', 'r', "the", 1, 4, "me") 的类型是 Tuple6\[Char, Char, String,
 Int, Int,
@@ -77,14 +74,12 @@ N \<= 22，Scala定义了许多元素的访问方法。假定定义一个元组t
 
 val t = (4,3,2,1)
 
-代码 4.5
-
+代码 3.4
 要访问的元组t的元素，可以使用的方法t.\_1访问的第一个元素，t.\_2进入第二个，依此类推。例如，下面的表达式计算t的所有元素的总和：
 
 val sum = t.\_1 + t.\_2 + t.\_3 + t.\_4
 
-代码 4.6
-
+代码 3.5
 存在许多格式的数据可以直接加载为键值对，例如sequenceFile文件是Hadoop用来存储二进制形式的键值对\[Key,Value\]对而设计的一种平面文件。在此示例中，SequenceFile由键值对(Category,1)组成，当加载到Spark中时会产生键值对RDD，代码如下：
 
 ```scala
@@ -95,8 +90,7 @@ ParallelCollectionRDD[16] at parallelize at <console>:24
 scala> data.saveAsSequenceFile("/data/seq-output")
 ```
 
-代码 4.9
-
+代码 3.6
 SequenceFile可以用于解决大量小文件问题，SequenceFile是Hadoop
 API提供的一种二进制文件支持，直接将键值对序列化到文件中，一般对小文件可以使用这种文件合并，即将文件名作为键，文件内容作为值序列化到大文件中，如下的代码是怎样读取SequenceFile：
 
@@ -112,8 +106,7 @@ scala> result.collect
 res11: Array[(String, Int)] = Array((key1,1), (Kay2,2), (Key3,2))
 ```
 
-代码 4.10
-
+代码 3.7
   - def sequenceFile\[K, V\](path: String, keyClass: Class\[K\],
     valueClass: Class\[V\]): RDD\[(K, V)\]
 
@@ -125,7 +118,7 @@ res11: Array[(String, Int)] = Array((key1,1), (Kay2,2), (Key3,2))
 
   - > valueClass为与SequenceFileInputFormat关联的值类
 
-可以说，键值对RDD在许多程序中起着非常有用的构建块的作用。基本上，一些操作允许我们并行操作每个键，通过这一点可以在整个网络上重新组合数据。reduceByKey()方法分别为每个键聚合数据，而join()方法通过将具有相同键的元素分组来将两个RDD合并在一起。我们可以从RDD中提取字段，例如客户ID、事件时间或其他标识符，然后将这些字段用作键值对RDD中的键。
+键值对 RDD 是 Spark 中非常重要的一类数据组织方式。只要你的任务需要“按某个键分组、聚合、关联或重分布数据”，通常就会落到 `(key, value)` 这种结构上。比如把客户 ID、事件时间窗口、商品编号或省份代码抽出来作为键，就可以继续使用 `reduceByKey()` 做聚合，或者使用 `join()` 把多份数据按同一键连接起来。本章讨论的很多性能特征，也都和“键如何分布、数据如何围绕键移动”直接相关。
 
   - Scala模式匹配
 
@@ -141,8 +134,7 @@ val langs = Seq(
 
 ("Lisp", "John", "McCarthy"))
 
-代码 4.11
-
+代码 3.8
 定义langs序列（Seq）变量，其中包含三个三维元组。
 
 for (tuple \<- langs) {
@@ -159,8 +151,7 @@ println(s"Found other language: $lang ($first, $last)")
 
 }
 
-代码 4.12
-
+代码 3.9
 在for循环中，定义了case模式匹配。第一个case匹配一个三元素元组，其中第一个元素是字符串“Scala”，忽略第二个和第三个参数；第二个case匹配任何三元素元组，元素可以是任何类型，但是由于输入langs，它们被推断为字符串。将元素提取为变量lang、first和last，输出结果为：
 
 Found Scala
@@ -169,8 +160,7 @@ Found other language: Clojure (Rich, Hickey)
 
 Found other language: Lisp (John, McCarthy)
 
-代码 4.13
-
+代码 3.10
 在上面的代码中，一个元组可以分解成其组成元素。可以匹配元组中的字面值，在任何想要的位置，可以忽略不关心的元素。
 
 使用Scala和Python语言，可以使用SparkContext.parallelize方法从的内存集合创建一键值对，代码如下：
@@ -188,8 +178,7 @@ res29: Array[(String, Int)] = Array((INGLESIDE,1), (SOUTHERN,1),
 (PARK,1), (NORTHERN,1))
 ```
 
-代码 4.14
-
+代码 3.11
 在这个例子中，首先这是在内存中创建键值对集合dist1，然后通过SparkContext.parallelize方法应用于dist1来创建键值对dist1RDD。另外，在一组小文本文件上运行sc.wholetextFiles将创建键值对，其中键是文件的名称，而值为文件中的内容。
 
 ### 3.3.2 转换
@@ -206,8 +195,7 @@ rdd: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[15] at parallelize at <console>:24
 ```
 
-代码 4.15
-
+代码 3.12
   - reduceByKey(func: (V, V) ⇒ V, numPartitions: Int): RDD\[(K, V)\]
 
 调用包含(K, V)的数据集，返回的结果也为(K, V)。数据集中的每个键对应的所有值被聚集，使用给定的汇总功能func，其类型必须为(V,
@@ -218,8 +206,7 @@ scala> rdd.reduceByKey((x, y) => x + y).collect
 res5: Array[(Int, Int)] = Array((1,2), (3,10))
 ```
 
-代码 4.16
-
+代码 3.13
   - groupByKey(numPartitions: Int): RDD\[(K, Iterable\[V\])\]
 
 调用包含(K, V)的数据集，返回(K,
@@ -231,8 +218,7 @@ res6: Array[(Int, Iterable[Int])] = Array((1,CompactBuffer(2)),
 (3,CompactBuffer(4, 6)))
 ```
 
-代码 4.17
-
+代码 3.14
   - combineByKey\[C\](createCombiner: (V) ⇒ C, mergeValue: (C, V) ⇒ C,
     mergeCombiners: (C, C) ⇒ C): RDD\[(K, C)\]
 
@@ -247,8 +233,7 @@ scala> rdd.mapValues(x => x+1).collect
 res11: Array[(Int, Int)] = Array((1,3), (3,5), (3,7))
 ```
 
-代码 4.18
-
+代码 3.15
   - flatMapValues\[U\](f: (V) ⇒ TraversableOnce\[U\]): RDD\[(K, U)\]
 
 与mapValues相似，将键值对中每个值传递给函数f而不改变键，不同的是将数据的内在结构扁平化。
@@ -259,8 +244,7 @@ res13: Array[(Int, Int)] = Array((1,2), (1,3), (1,4), (1,5), (3,4),
 (3,5))
 ```
 
-代码 4.19
-
+代码 3.16
   - keys: RDD\[K\]
 
 将键值对RDD中每个元组的键返回，产生一个RDD。
@@ -270,8 +254,7 @@ scala> rdd.keys.collect
 res15: Array[Int] = Array(1, 3, 3)
 ```
 
-代码 4.20
-
+代码 3.17
   - values: RDD\[V\]
 
 将键值对RDD中每个元组的值返回，产生一个RDD。
@@ -281,8 +264,7 @@ scala> rdd.values.collect
 res20: Array[Int] = Array(2, 4, 6)
 ```
 
-代码 4.21
-
+代码 3.18
   - sortByKey(ascending: Boolean = true, numPartitions: Int =
     self.partitions.length): RDD\[(K, V)\]
 
@@ -293,8 +275,7 @@ scala> rdd.sortByKey().collect
 res25: Array[(Int, Int)] = Array((1,2), (3,4), (3,6))
 ```
 
-代码 4.22
-
+代码 3.19
   - aggregateByKey\[U\](zeroValue: U)(seqOp: (U, V) ⇒ U, combOp: (U, U)
     ⇒ U)(implicit arg0: ClassTag\[U\]): RDD\[(K, U)\]
 
@@ -320,8 +301,7 @@ scala> pairRDD.aggregateByKey(100)(math.max(_, _), _ + _).collect
 res2: Array[(String, Int)] = Array((dog,100), (cat,200), (mouse,200))
 ```
 
-代码 4.23
-
+代码 3.20
 上面的代码中，通过定义myfunc函数，分别打印出RDD分区中内容。
 
   - 基于两个键值对RDD的转换
@@ -337,8 +317,7 @@ other: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[43] at parallelize at <console>:24
 ```
 
-代码 4.24
-
+代码 3.21
   - subtractByKey
 
 从rdd中删除other中存在的键元素。
@@ -348,8 +327,7 @@ scala> rdd.subtractByKey(other).collect
 res27: Array[(Int, Int)] = Array((1,2))
 ```
 
-代码 4.25
-
+代码 3.22
   - join(otherDataset, \[numTasks\])
 
 在两个RDD之间执行内部连接。
@@ -359,8 +337,7 @@ scala> rdd.join(other).collect
 res28: Array[(Int, (Int, Int))] = Array((3,(4,9)), (3,(6,9)))
 ```
 
-代码 4.26
-
+代码 3.23
   - rightOuterJoin
 
 在两个RDD之间执行连接，其中键必须存在于第一个RDD中。
@@ -371,8 +348,7 @@ res30: Array[(Int, (Option[Int], Int))] = Array((3,(Some(4),9)),
 (3,(Some(6),9)))
 ```
 
-代码 4.27
-
+代码 3.24
   - leftOuterJoin
 
 在两个RDD之间执行连接，其中键必须存在于另一个RDD中。
@@ -383,8 +359,7 @@ res31: Array[(Int, (Int, Option[Int]))] = Array((1,(2,None)),
 (3,(4,Some(9))), (3,(6,Some(9))))
 ```
 
-代码 4.28
-
+代码 3.25
   - cogroup(otherDataset, \[numTasks\])
 
 将两个RDD具有相同键的值组合在一起。
@@ -396,8 +371,7 @@ Array((1,(CompactBuffer(2),CompactBuffer())), (3,(CompactBuffer(4,
 6),CompactBuffer(9))))
 ```
 
-代码 4.29
-
+代码 3.26
 #### 3.3.2.1 聚合
 
 当使用键值对来描述数据集时，通常需要在具有相同键的所有元素上统计数据。对于基本的RDD的fold、combine和reduce操作，在键值对RDD上也有基于键的类似操作，这些操作基于相同的键进行汇集。 这些操作是转换而不是动作。
@@ -412,7 +386,7 @@ Array((1,(CompactBuffer(2),CompactBuffer())), (3,(CompactBuffer(4,
 
 \[2 \times \left( 3 \times 4 \right) = \left( 2 \times 3 \right) \times 4 = 24\]
 
-公式 4‑1
+公式 3‑1
 
 关联性让我们可以按顺序并行使用相同的函数。reduceByKey使用该属性计算RDD的结果，RDD是由分区组成的分布式集合。直观地说，这个函数在重复应用于具有多个分区的同一组RDD数据时会产生相同的结果，而不管元素的顺序如何。此外，它首先使用Reduce函数在本地执行合并，然后在分区之间发送记录以准备最终结果，通过下面的代码看一看reduceByKey的执行过程：
 
@@ -426,11 +400,10 @@ scala> x.reduceByKey(_ + _).collect()
 res3: Array[(String, Int)] = Array((a,6), (b,6))
 ```
 
-代码 4.30
-
+代码 3.27
 ![https://camo.githubusercontent.com/516114b94193cddf7e59bdd5368d6756d30dc8b4/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f313836363838325f6f7269672e706e67](media/03_pair_rdd_and_partitioning/media/image1.png)
 
-图例 4‑1 ReduceByKey运行示意图
+图例 3‑1 ReduceByKey运行示意图
 
 在上图中，可以看到RDD具有多个键值对元素，如(a,1)和(b,1)，以及3个分区。在对整个分区之间的数据洗牌之前，先在每个本地分区中进行相同的聚合。可以使用reduceByKey与mapValues一起计算每个键的平均值，代码和图示如下：
 
@@ -447,7 +420,7 @@ res38: Array[(String, (Int, Int))] = Array((panda,(1,2)),
 
 ![nsp 0402](media/03_pair_rdd_and_partitioning/media/image2.png)
 
-图例 4‑2每键平均值计算的数据流
+图例 3‑2每键平均值计算的数据流
 
 实际上，reduceByKey是aggregateByKey的一个特列。aggregateByKey有两个函数参数：一个应用于每个分区的聚合，另一个应用于分区之间聚合。reduceByKey在上述两种情况下都使用相同的关联函数，在每个分区上执行一遍，然后在分区间执行一遍，将第一遍的结果合并为最终结果。
 
@@ -476,8 +449,7 @@ scala> averageByKey.foreach(println)
 (B,8.333333)
 ```
 
-代码 4.31
-
+代码 3.28
 参考上面的代码，combineByKey需要三个函数分别为：createCombiner、mergeValue和mergeCombiner：
 
   - createCombiner
@@ -546,13 +518,12 @@ scala> x.groupByKey().map(t => (t._1, t._2.sum)).collect
 res4: Array[(String, Int)] = Array((a,6), (b,6))
 ```
 
-代码 4.32
-
+代码 3.29
 得到的结果与上面的代码一致，但是数据的计算过程不一样。另一方面，当调用groupByKey时所有的键值对都在Shuffle，在网络中传输的大量不必要的数据。当在一个执行器上有更多的数据在内存中进行Shuffle时，Spark将内存数据溢出到磁盘中。但是，一次只会将一个键数据刷新到磁盘上，因此如果单个键的值超过了内存容量，则会发生内存不足异常。这种情况在Spark的后续版本中可以更加优雅地处理，因此作业仍然可以继续，但仍然应该避免。当Spark需要溢出到磁盘时，性能会受到严重影响。
 
 ![https://camo.githubusercontent.com/ed75baabdaee2198d3fc1390e04a5d20bcd2e484/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f333030393135315f6f7269672e706e67](media/03_pair_rdd_and_partitioning/media/image3.png)
 
-图例 4‑3 GroupByKey运行示意图
+图例 3‑3 GroupByKey运行示意图
 
 可以尝试的一种优化方法是合并或组合值，因此最终只发送较少的键值对。另外，较少的键值对意味着Reduce不会有太多的工作要做，从而带来额外的性能提升。groupByKey()调用不会尝试进行合并或组合值，因此这是一项昂贵的操作。对于一个更大的数据集，洗牌数据量的差异在reduceByKey()和groupByKey()之间会变得更加夸张和不同。以下是比groupByKey更优化的方法：
 
@@ -583,12 +554,10 @@ Array((34,(Clerical,Robinson)), (34,(Clerical,Smith)),
 (31,(Sales,Rafferty)))
 ```
 
-代码 4.33
+代码 3.30
+有些场景下，我们并不要求结果中的键同时出现在两个输入RDD中。例如，把“客户信息”和“推荐结果”做关联时，即使某个客户暂时没有推荐结果，通常也不希望把客户记录直接丢掉。leftOuterJoin(other)和rightOuterJoin(other)就是为这类场景准备的：它们都会按键连接两个键值对RDD，但会保留其中一侧RDD中的全部键。
 
-有时候，并不需要结果键值对RDD中的键同时出现在两个输入键值对RDD中。例如，如果通过建议加入客户信息，如果没有任何建议，可能不想删除客户信息。leftOuterJoin(other)和rightOuterJoin(other)都通过键将两个输入键值对RDD连接在一起，其中一个RDD可能丢失掉无法匹配的键，而另一个保存了所有的键。
-
-使用leftOuterJoin，结果RDD将保留所有源RDD中的每个键。在结果RDD中，与每个键相关联的值是一个元组，由输入键值对源RDD的值以及来自另一输入键值对RDD的值Option组成。在Python中，如果不存在值，则使用None；并且如果值存在，则使用不带任何包装器的常规值。与join类似，每个键可以有多个条目；当这种情况发生时，得到两个值列表之间的笛卡尔乘积。rightOuterJoin与rightOuterJoin几乎相同，除了键必须存在于另一个RDD中，并且生成的元组中具有Option的为源输入键值对RDD而不是另一个。使用代码
-4.33中的两个输入键值对departments和employees来演示leftOuterJoin和rightOuterJoin的用法：
+对于leftOuterJoin，结果RDD会保留左侧RDD中的所有键。结果中每个键对应的值是一个元组：第一部分来自左侧RDD，第二部分来自右侧RDD，并用Option包裹以表示“可能有值，也可能没有值”。与普通join一样，如果某个键在一侧或两侧都出现了多个值，结果仍然会形成对应值集合之间的笛卡尔组合。rightOuterJoin的规则与之对称，只是它保留的是右侧RDD中的所有键。下面继续使用代码 3.30中的departments和employees演示这两个操作：
 
 ```scala
 scala> departments.leftOuterJoin(employees).collect
@@ -603,12 +572,10 @@ Array((34,(Some(Clerical),Robinson)), (34,(Some(Clerical),Smith)),
 (33,(Some(Engineering),Heisenberg)), (31,(Some(Sales),Rafferty)))
 ```
 
-代码 4.34
-
+代码 3.31
   - Option、Some和None
 
-强大的Scala语言可以使用Option类，定义函数返回值，其值可能为null。简单地说，如果函数成功时返回一个对象，而在失败时返回null，那么可以定义函数返回的返回值为一个Option实例，其中Option对象是Some类的实例或None类的实例。因为Some和None都是Option的子项，所以的函数签名只是声明返回一个包含某种类型的Option（如下面显示的Int类型）。至少，这让的函数用户知道发生了什么巨大的好处。以下是使用Scala
-Option语法的示例。
+在Scala里，Option常用来表达“这个结果可能存在，也可能不存在”。如果一个函数在成功时返回对象、失败时原本会返回null，那么更推荐把返回类型定义为Option。这样一来，调用者在函数签名层面就能明确知道：这里需要处理“有值”和“无值”两种情况。Option最常见的两个子类型是Some和None。下面是一个简单示例：
 
 def toInt(in: String): Option\[Int\] = {
 
@@ -624,8 +591,7 @@ case e: NumberFormatException =\> None
 
 }
 
-代码 4.35
-
+代码 3.32
 以下是这个toInt函数的工作原理：它需要一个String作为参数。如果它可以将String转换为Int，那么它返回为Some（Int）；如果String不能转换为Int，则返回None。如果是调用此函数的代码将如下所示：
 
 toInt(someString) match {
@@ -636,8 +602,7 @@ case None =\> println("That didn't work.")
 
 }
 
-代码 4.36
-
+代码 3.33
 #### 3.3.2.4 排序
 
 对数据进行排序在很多情况下非常有用，特别是在产生后续的输出时。可以使用键值对RDD进行排序，前提是在键上定义了一个排序。一旦对数据进行了排序，对排序后的数据进行后续调用collect()或save()操作，将导致有序的数据。
@@ -665,14 +630,12 @@ res11: Array[(String, Int)] = Array((397090770,4), (com,3),
 (iteblog,2), (test,5), (wyp,1))
 ```
 
-代码 4.37
-
+代码 3.34
 上面对键进行了排序，sortBy()函数中可以对排序方式进行重写，sortByKey()也有这样的功能，通过在OrderedRDDFunctions类中有个变量ordering，它是隐式的：
 
 private val ordering = implicitly\[Ordering\[K\]\]
 
-代码 4.38
-
+代码 3.35
 这就是默认的排序规则，可以对它进行重写，如下：
 
 ```scala
@@ -695,8 +658,7 @@ res17: Array[(Int, String)] = Array((1,iteblog), (12,397090770),
 (3,wyp), (4,test), (9,com))
 ```
 
-代码 4.39
-
+代码 3.36
 例子中的sortIntegersByString就是修改了默认的排序规则。这样将默认按照Int大小排序改成了对字符串的排序，所以12会排序在3之前。
 
 ### 3.3.3 动作
@@ -709,16 +671,14 @@ rdd: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[15] at parallelize at <console>:24
 ```
 
-代码 4.40
-
+代码 3.37
   - countByKey(): Map\[K, Long\]
 
 对每个键进行计数，只有当返回的结果Map预计很小时，才应该使用此方法，因为整个内容都会加载到驱动程序的内存中。要处理非常大的结果，可以考虑使用：
 
 rdd.mapValues（\_ =\> 1L）.reduceByKey（\_ + \_）
 
-代码 4.41
-
+代码 3.38
 其将返回RDD \[T，Long\]而不是Map。
 
 ```scala
@@ -726,8 +686,7 @@ scala> rdd.countByKey()
 res74: scala.collection.Map[Int,Long] = Map(1 -> 1, 3 -> 2)
 ```
 
-代码 4.42
-
+代码 3.39
   - collectAsMap(): Map\[K, V\]
 
 与collect()类似，但对关键值RDD起作用并将其转换为Scala
@@ -738,8 +697,7 @@ scala> rdd.collectAsMap()
 res80: scala.collection.Map[Int,Int] = Map(1 -> 2, 3 -> 6)
 ```
 
-代码 4.43
-
+代码 3.40
   - lookup(key: K): Seq\[V\]
 
 返回与提供键相关联的所有值。如果RDD具有已知的分区程序，则只需搜索该键映射到的分区即可高效地执行此操作。
@@ -749,15 +707,12 @@ scala> rdd.lookup(3)
 res91: Seq[Int] = WrappedArray(4, 6)
 ```
 
-代码 4.44
-
+代码 3.41
 ## 3.4 分区和洗牌
 
-我们已经了解Apache
-Spark如何比Hadoop更好地处理分布式计算，还看到了内部工作原理主要是称为弹性分布式数据集的基本数据结构。RDD是代表数据集的不可变集合，并具有可靠性和故障恢复的内在能力。实际上，RDD对数据的操作不是基于整个数据块，数据是分布于整个群集的分区中，通过RDD的抽象层进行管理和操作数据。因此，数据分区的概念对于Apache
-Spark 作业的正常运行至关重要，并且会对性能产生很大影响，决定了资源的利用情况。
+前面几章已经说明了 RDD 是按分区组织、按依赖链执行的分布式数据抽象。到了这一节，需要再往前走一步：理解“分区如何影响性能”，以及“什么时候会因为跨分区移动数据而产生 Shuffle”。这两个概念几乎决定了键值对 RDD 程序的资源消耗形态。
 
-RDD由数据分区组成，基于RDD的所有操作都在数据分区上执行，诸如转换之类的几种操作是在执行器上运行的函数，特定的数据分区也此执行器上。但是并非所有操作过程都可以仅由所在的执行器所包含的数据分区孤立完成，像聚合这样的操作要求将数据跨阶段移到整个集群中。在本节中，我们将深入研究分区和洗牌的概念，通过执行以下代码来研究简单的整数RDD。SparkContext的parallelize()函数根据整数序列创建RDD，然后使用getNumPartitions()函数可以获得该RDD的分区数：
+可以先抓住一个原则：Spark 的很多计算都能在单个分区内部独立完成，但一旦任务需要把相同键的数据重新汇集、重新排序或重新分布，数据就必须跨分区流动。也正因为如此，分区数、分区器和 Shuffle 边界会直接影响并行度、内存压力、网络传输和磁盘 I/O。下面先从一个简单的整数 RDD 开始，观察分区是如何体现出来的：
 
 ```scala
 scala> val rdd_one = sc.parallelize(Seq(1,2,3))
@@ -767,7 +722,7 @@ scala> rdd_one.getNumPartitions
 res0: Int = 24
 ```
 
-分区的数量很重要，因为该数量直接影响将要运行RDD转换的任务数量。如果分区的数量太少，那么大量数据可能仅使用几个CPU核，从而降低性能，并使群集利用率不足。另一方面，如果分区的数量太大，那么将使用比实际需要更多的资源，并且在多用户的环境中，可能导致正在运行的其他作业的资源匮乏。如果要查看CPU的核数可以使用下面的命令：
+分区的数量很重要，因为该数量直接影响将要运行RDD转换的任务数量。如果分区的数量太少，那么大量数据可能仅使用几个CPU核，从而降低性能，并使集群利用率不足。另一方面，如果分区的数量太大，那么将使用比实际需要更多的资源，并且在多用户的环境中，可能导致正在运行的其他作业的资源匮乏。如果要查看CPU的核数可以使用下面的命令：
 
 root@bb8bf6efccc9:\~\# lscpu | egrep 'CPU\\(s\\)'
 
@@ -783,7 +738,7 @@ NUMA node1 CPU(s): 12-23
 
 Spark的分区是存储在集群中节点上的原始数据块，即逻辑划分。RDD是这种分区的集合，通过RDD的抽象概念隐藏了正在处理的分段数据。这种分区结构可帮助Spark实现并行化分布式数据处理，并以最小的网络流量在执行程序之间发送数据。
 
-分区的数量对于一个良好的集群性能来说非常重要。如果有很少的分区，那么将不能充分利用集群中内存和CPU资源，因为某些资源可能处于空闲状态，例如假设有一个Spark集群具有10个CPU内核，一般来说一个CPU内核负责一个分区的计算，在这种情况下如果有少于10个分区，那么一些CPU内核将处于空闲状态，所以会产生资源浪费。此外，由于更少分区，每个分区中就会有更多的数据，这样会造成集群中某些节点内存增加的压力。另一方面，如果有太多的分区那么每个分区可能具有太少的数据或根本没有数据，也可能会降低性能，因为集群中的数据分区可能是跨节点的，从多个节点上汇总分区中的数据需要更多的计算和传输时间。因此根据Spark集群配置情况设置合适的分区是非常重要的。Spark只能一次为RDD的每个分区分配运行一个并发任务，一次最多的并发任务为集群中的最大CPU核心数。所以如果有一个10核CPU的集群，那么至少要为的RDD定义10个分区，分区总数一般来说为内核的2-4倍。默认情况下，Spark会创建等于集群中CPU核心数的分区数，也可以随时更改分区数，来看下面的例子来创建具有指定分区数的RDD
+分区数量会直接影响Spark作业的并行度和资源利用率。如果分区太少，CPU和内存资源可能无法被充分利用，而且单个分区承载的数据会更多，容易给某些节点带来较大的内存压力；如果分区太多，则会增加任务调度、管理和跨节点通信的开销。因此，分区数并不是越大越好，而是要结合集群规模和数据量做权衡。一个常见经验是：至少要保证并行任务数能够覆盖可用CPU核心数，很多场景下可以把分区总数设为核心数的2到4倍。默认分区数受当前运行环境影响，也可以在创建RDD时显式指定。下面通过一个例子来观察分区数量：
 
 ```scala
 scala> val names = Seq("Steve","Andrew","Bob","John","Quinton")
@@ -797,23 +752,19 @@ scala> val regularRDD = sc.parallelize(names,48)
 regularRDD: org.apache.spark.rdd.RDD[String] =
 ParallelCollectionRDD[116] at parallelize at <console>:27
 scala> regularRDD.partitions.size
-res100: Int = 28
+res100: Int = 48
 ```
 
-代码 4.42
+代码 3.42
+从示例输出可以看出，默认分区数会受到当前运行环境影响；而在`sc.parallelize(names, 48)`中传入第二个参数后，分区数就被显式设置为48。一个分区不会跨越多台机器，同一分区中的数据总是在同一个执行位置上处理。集群中的每个工作节点都可以持有一个或多个分区，因此合理设置分区数，本质上是在平衡并行度、单任务负载和调度开销。
 
-正如代码中看到的，regularRDD的默认分区数量等于2，这是由于当前环境是通过本地模式启动的spark-shell，本地模式是在具有24核CPU的Docker虚拟实验环境中。如果在创建RDD时指定了分区数48，regularRDD的分区就变成了48。在创建RDD时，第二个参数定义要为该RDD创建的分区数。一个分区从不跨越多台机器，即同一分区中的所有元组都保证在同一台机器上。群集中的每个工作节点都可以包含一个或多个RDD的分区。分区总数是可配置的，默认情况下它等于所有执行器节点上的核心总数。
-
-Spark提供了两个内置分区器，分别是哈希分区器和范围分区器。创建RDD时，可以通过两种方式指定特定的分区器：一种方式是通过在RDD上调用partitionBy()方法来提供显式指定的分区器；另一种方式是通过转换操作返回新创建的RDD，其使用转换操作特定的分区器。带有分区器的转换操作有：join()、leftOuterJoin()、rightOuterJoin()、groupByKey()、reduceByKey()、cogroup()、foldByKey()、combineByKey()、sort()、partitionBy()、groupWith()；另外mapValues()、flatMapValues()和filter()的分区方式与父级RDD有关。而像map()这样的操作会导致新创建的RDD忘记父分区信息，因为像这样的操作理论上可以修改每个记录的键，所以在这种情况下如果操作在结果RDD中保留了分区器，则不再有任何意义，因为现在的键都是不同的。所以spark提供像mapValues()和flatMapValues()这样的操作，如果不想改变键可以使用这些操作，从而保留分区器。partitionBy()是一个转化操作，因此它的返回值总是一个新的RDD，但它不会改变原来的RDD。RDD一旦创建就无法修改，因此应该对partitionBy()的结果进行持久化。如果没有将partitionBy()
-转化操作的结果持久化，那么后面每次用到这个RDD 时都会重复地对数据进行分区操作。不进行持久化会导致整个RDD
-谱系图重新求值。那样的话，partitionBy()
-带来的好处就会被抵消，导致重复对数据进行分区以及跨节点的混洗，和没有指定分区方式时发生的情况十分相似。
+Spark内置了两种常见分区器：哈希分区器和范围分区器。创建RDD时，既可以显式调用partitionBy()指定分区器，也可能通过某些转换操作自动得到带分区器信息的新RDD。常见会保留或设置分区器的操作包括join()、leftOuterJoin()、rightOuterJoin()、groupByKey()、reduceByKey()、cogroup()、foldByKey()、combineByKey()、sort()、partitionBy()和groupWith()。另一方面，mapValues()、flatMapValues()和filter()通常会沿用父RDD的分区信息；而map()这类可能改变键的操作，则不会保留原有分区器，因为结果RDD中的键空间已经可能完全不同了。也正因为如此，Spark专门提供了mapValues()和flatMapValues()这类“只改值、不改键”的操作，方便在保留分区信息的前提下继续处理数据。partitionBy()本身是一次转换，因此它总会返回新的RDD，而不会修改原始RDD。由于RDD不可变，如果后续会多次复用重分区后的结果，通常应该及时持久化；否则每次使用时都可能重新执行分区和Shuffle，抵消partitionBy()带来的收益。
 
 哈希分区是Spark中的默认分区程序，通过计算RDD元组中每个键哈希值来工作，具有相同哈希码的所有元素最终都位于相同的分区中，如以下代码片段所示：
 
 partitionIndex = hashcode(key) % numPartitions
 
-如果键相同则其hashCode的结果相同，其对应的值保存在相同的分区上。哈希分区是Spark的默认分区器。如果没有提到任何分区器，那么Spark将使用哈希分区器对数据进行分区。来看下面的例子以便更好的理解
+如果两个键相同，它们的hashCode结果就相同，因此会被分配到同一个分区。哈希分区器也是Spark中最常见的默认分区方式。若没有显式指定其他分区器，很多按键组织数据的操作都会采用这种策略。下面通过一个简单例子来看它的效果：
 
 ```scala
 scala> val data = Seq((1,1),(2,4),(4,16),(2,8),(4,64))
@@ -829,8 +780,7 @@ res0: Array[Array[(Int, Int)]] = Array(Array((4,16), (4,64)),
 Array((1,1)), Array((2,4), (2,8)), Array())
 ```
 
-代码 4.46
-
+代码 3.43
   - def glom(): RDD\[Array\[T\]\]
 
 glom()方法将分区中的数据封装为数组，并将这些分区数组嵌入到一个数组中。每个返回的数组都包含一个分区的内容，(4,16)和(4,64)的键都是4，所以在同一个分区中；(1,1)和(2,4)的键分别为1和2，所以在不同的分区中。
@@ -856,8 +806,7 @@ res3: Array[Array[(Int, Int)]] = Array(Array((1,1), (2,4), (2,8)),
 Array((4,16), (4,64)))
 ```
 
-代码 4.47
-
+代码 3.44
 哈希分区器已经能够满足绝大部分的情况了，但是由于键的数量分布可能不均匀，所以也会造成分区中的数据分布不均。如果键可以进行排序的化可以采用范围分区器，能保证各个分区之间的键是有序的，并且各个分区之间数据量差不多，但是不保证单个分区内键的有序性。范围分区器会将键切分成一段段的范围，每段范围对应一个分区，简单的说就是将一定范围内的键映射到某一个分区内，划分各个分区键的范围采用的方法为水塘抽样算法。
 
 虽然Spark 提供的哈希分区器与范围分区已经能够满足大多数用例，但Spark 还是允许通过提供一个自定义的分区对象来控制RDD
@@ -937,8 +886,7 @@ res1: Array[Array[(Int, Int)]] = Array(Array((2,4), (2,8)),
 Array((1,1), (4,16), (4,64)))
 ```
 
-代码 4.48
-
+代码 3.45
 在这个自定义分区器MyPartitioner中，简单的将键为2的数据放到分区编号为0的分区中，其他放到分区ID为1中。这个自定义分区器可以与哈希分区器和范围分区器相同的方式使用，只需要创建一个对象，并将其传递给partitionBy()方法。下面是作用在分区上的其他方法：
 
   - def mapPartitions\[U\](f: (Iterator\[T\]) ⇒ Iterator\[U\],
@@ -973,8 +921,7 @@ res15: Array[Array[(Int, Int)]] = Array(Array((2,3), (1,2)),
 Array((5,6), (4,5)), Array((8,9), (7,8)))
 ```
 
-代码 4.49
-
+代码 3.46
 myfunc函数的作用是将分区中数据作为输入，例如分区(1, 2, 3)，然后按顺序进行配对输出(2, 3)和(1,
 2)，由于myfunc函数以分区数据作为输入，所以最终的输出结果中缺少元组(3, 4)和(6,
 7)，如果查看a的分区数据，3和6分别为两个分区中最后一个值，所以无法产生(3, 4)和(6,
@@ -1001,8 +948,7 @@ res17: Array[Array[String]] = Array(Array(0-1, 0-2, 0-3), Array(1-4,
 1-5, 1-6), Array(2-7, 2-8, 2-9, 2-10))
 ```
 
-代码 4.50
-
+代码 3.47
   - foreachPartition(f: (Iterator\[(K, C)\]) <sup>⇒</sup> Unit): Unit
 
 为每个分区执行f函数，通过(Iterator\[(K, C)\])参数提供分区中的数据项，f函数没有返回值。
@@ -1017,17 +963,16 @@ scala> b.foreachPartition(x => println(x.reduce(_ + _)))
 24
 ```
 
-代码 4.51
-
+代码 3.48
 foreachPartition()方法属于动作操作，而mapPartitions()是转换操作，此外在应用场景上区别是mapPartitions()可以获取返回值，可以继续在返回的RDD上做其他的操作，而foreachPartition因为没有返回值并且是动作操作，所以一般都是用于将数据保存到存储系统中。
 
 ### 3.4.2 洗牌
 
-Spark中的某些操作会触发一个称为洗牌事件，也称为Shuffle，这是Spark重新分配数据的机制，以便在不同分区之间进行数据分组。分布式系统的数据查找和交换非常占用系统的计算和带宽资源，所以合理对数据进行布局可以最小化网络流量来大大提高性能。如果数据是键值对，则分区变得非常必要，因为在RDD的转换中，整个网络中数据的洗牌是相当大的。如果相同的键或键范围存储在相同的分区中，则可以将洗牌最小化，并且处理实质上会变得快。这可能会导致洗牌的操作包括重新分区，例如repartition()和coalesce()；带有“ByKey”的操作，比如groupByKey()和reduceByKey()，但是不包括countByKey()；以及连接操作，如cogroup()和join()。
+Spark 中的 Shuffle，可以简单理解为“为了满足后续计算要求，对数据做一次跨分区重组”。只要某个操作需要把相同键的数据拉到一起、重新切分分区边界，或者为下一步计算重新组织布局，就可能触发 Shuffle。常见例子包括 `repartition()`、`groupByKey()`、`reduceByKey()`、`cogroup()`、`join()` 等。
 
-实际上，洗牌是消耗资源的操作，因为它涉及的磁盘的读写、数据序列化和网络传输。为了组织数据，Spark生成一组任务，映射任务以组织数据，以及一组聚合任务来汇总数据。在内部机制来说，来自单个映射任务的结果会保存在内存中，直到内存不足为止。然后这些将根据目标分区进行排序并写入单个文件中，而聚合任务读取相关的排序块。这通常涉及在执行器和机器之间复制数据，使得洗牌成为复杂而耗费系统资源的操作。为了理解在洗牌过程中会发生什么，可以考虑执行一个reduceByKey()方法的操作过程。reduceByKey()操作需要生成一个新的RDD，其中的数据是进行了聚合操作的键值对元组，其中的值是将每个键对应的所有值进行聚合计算产生的结果。这个过程所面临的挑战是：并非每个键的所有值都同时位于同一个分区，甚至是不在同一台计算机上，而这种分布可能是随机的，但必须在整个Spark集群中收集所有这些值然后进行聚合计算。所以洗牌的作用就是将原来随机存储在分区中数据根据聚合的要求进行重新存放，可以保证在聚合计算时具有相同键的元组可以在同一分区，减少聚合计算时查找和传输元组需要的计算成本和带宽。
+之所以总强调要谨慎对待 Shuffle，是因为它往往同时牵涉网络传输、序列化、排序、磁盘溢写和额外的任务调度。以 `reduceByKey()` 为例，问题的难点不在“怎么把值相加”，而在“同一个键对应的值原本可能散落在许多分区、甚至许多机器上”。在真正聚合之前，Spark 必须先把这些值重新汇集到合适的位置；这个“围绕键重新搬运数据”的过程，就是 Shuffle 的本质。
 
-在Spark中，通常不会因为特定操作将数据跨分区分布在一个指定的位置。在计算过程中，Spark需要执行全部操作并且将其分成多个任务，单个任务将在单个分区上运行，因此Spark要负责组织reduceByKey()执行单个聚合任务的所有数据，必须从所有分区中读取以找到键对应的所有值，然后将各分区中的值汇总以计算每个键的最终聚合结果，这个移动数据的过程称为洗牌。虽然执行新的洗牌后，每个分区中的元素集合都是确定性的，而且分区本身的排序也是确定性的。但是分区中的元素排序是不确定的，如果希望在洗牌后数据可以按照预设的顺序排序，那么可以使用mapPartitions()对每个分区进行排序，例如使用.sorted；使用repartitionAndSortWithinPartitions()在进行重新分区的同时有效地对分区进行分类；或者使用sortBy()对全局RDD进行排序。
+Shuffle 之后，每个分区中包含哪些键通常是确定的，但分区内部元素顺序未必满足你想要的业务顺序。如果后续逻辑依赖排序，可以在洗牌后进一步使用 `mapPartitions()` 自行排序、使用 `repartitionAndSortWithinPartitions()` 在重分区时顺带排序，或者直接对整个 RDD 使用 `sortBy()`。
 
 ```scala
 scala> import org.apache.spark.HashPartitioner
@@ -1063,7 +1008,7 @@ repartitionAndSortWithinPartitions()主要是通过给定的分区器，将相�
 
 广播变量是所有执行程序之间的共享变量，是在驱动程序中创建的，然后在执行程序上是只读的。广播变量使Spark的操作可以在每台计算机上保留一个只读变量，而不用将其副本与任务一起发送，可以使用它们以有效的方式为每个节点提供大型输入数据集的副本。
 
-可以在Spark集群中广播整个数据集，以便执行器可以访问广播的数据。执行器中运行的所有任务都可以访问广播变量。广播使用各种优化的方法使广播数据可供所有执行器访问。因为广播的数据集的尺寸可能很大，这是要解决的重要挑战。执行器通过HTTP连接和最新的组件提取数据，类似于BitTorrent，数据集本身像洪流一样快速地分布到群集中。这使扩展性更强的方法可以将广播变量分发给所有执行程序，而不是让每个执行器一个接一个地从驱动程序中提取数据，当我们有很多执行器时，这可能会导致驱动程序发生故障。
+可以在Spark集群中广播整个数据集，以便执行器可以访问广播的数据。执行器中运行的所有任务都可以访问广播变量。广播使用各种优化的方法使广播数据可供所有执行器访问。因为广播的数据集的尺寸可能很大，这是要解决的重要挑战。执行器通过HTTP连接和最新的组件提取数据，类似于BitTorrent，数据集本身像洪流一样快速地分布到集群中。这使扩展性更强的方法可以将广播变量分发给所有执行程序，而不是让每个执行器一个接一个地从驱动程序中提取数据，当我们有很多执行器时，这可能会导致驱动程序发生故障。
 
 Spark的动作是通过一组阶段执行的，这些阶段被分布式洗牌操作分割。Spark自动广播每个阶段中任务所需的通用数据。以这种方式广播的数据以序列化形式缓存，并在运行每个任务之前反序列化。这意味着仅当跨多个阶段的任务需要相同数据，或以反序列化形式缓存数据非常重要时，显式创建广播变量才有用。广播变量是通过调用SparkContext.broadcast(v)方法，从变量v创建的。广播变量是变量v的包装，可以通过调用value方法来访问其值。让我们看看如何广播一个Integer变量，然后在执行器上执行的转换操作中使用广播变量：
 
@@ -1881,8 +1826,7 @@ func(11)
 
 ## 3.7 案例分析
 
-表格
-4‑1显示/data/sfpd.csv文件中的字段和说明，并且示范了保存在字段中的数据。该数据集是从2013年1月至2015年7月期间某市警察局的报案记录信息。本节将探讨分析这些数据回答诸如哪个区域的报案记录最多，以及哪个报案类别数量最多。
+表格 3‑1显示/data/sfpd.csv文件中的字段和说明，并且示范了保存在字段中的数据。该数据集是从2013年1月至2015年7月期间某市警察局的报案记录信息。本节将探讨分析这些数据回答诸如哪个区域的报案记录最多，以及哪个报案类别数量最多。
 
 | 列名          | 描述      | 值例                             |
 | ----------- | ------- | ------------------------------ |
@@ -1899,13 +1843,13 @@ func(11)
 | Y           | 位置Y坐标   | 37.76119777                    |
 | PdID        | 部门ID    | 15056163704013                 |
 
-表格 4‑1案例数据项说明
+表格 3‑1案例数据项说明
 
 通过案例分析，熟悉怎样使用Spark键值对RDD的操作，Spark为键值对的RDD提供特殊操作。键值对RDD在许多程序中是一个有用的构建块，因为它们允许并行地对每个键执行操作，或者通过网络重新组合数据。例如，键值对RDD具有reduceByKey()方法，可以分别为每个键聚合汇总数据，以及用一个join()方法可以通过使用相同的键对元素进行分组来将两个RDD合并在一起。我们可以从原始数据中提取，例如事件时间，客户ID或其他标识符，作为键值对RDD中的键。
 
 ### 3.7.1 检查事件数据
 
-首先，会快速的回顾上一章所讲的内容，使用Spark交互界面加载数据，创建RDD并应用转换和操作。首先通过定义变量映射输入字段：
+下面先快速回顾上一章用过的基本流程：在Spark交互环境中加载数据、创建RDD，并在其上执行转换和动作。首先定义几个变量，用来映射输入数据中的字段位置：
 
 val IncidntNum = 0
 
@@ -1931,8 +1875,7 @@ val Y = 10
 
 val PdId = 11
 
-代码 4.52
-
+代码 3.49
 使用SparkContext的textFile()方法加载CSV文件，应用map()进行转换，同时使用split()分割每行数据中的字段。
 
 ```scala
@@ -1942,8 +1885,7 @@ sfpd: org.apache.spark.rdd.RDD[Array[String]] =
 MapPartitionsRDD[5] at map at <console>:24
 ```
 
-代码 4.53
-
+代码 3.50
 使用上一章学到的方法，检查一下sfpd中的数据：
 
   - sfpd的数据是什么样子的？
@@ -1956,8 +1898,7 @@ ARREST/BOOKED, JACKSON_ST/POWELL_ST, -122.4099006, 37.79561712,
 15059900000000)
 ```
 
-代码 4.54
-
+代码 3.51
   - 报案记录总数是多少？
 
 ```scala
@@ -1965,8 +1906,7 @@ scala> sfpd.count
 res3: Long = 383775
 ```
 
-代码 4.55
-
+代码 3.52
   - 报案记录的类别是什么？
 
 ```scala
@@ -1983,8 +1923,7 @@ SEX_OFFENSES/FORCIBLE, FORGERY/COUNTERFEITING, TRESPASS, ASSAULT,
 LOITERING, STOLEN_PROPERTY)
 ```
 
-代码 4.56
-
+代码 3.53
 在下面的操作中，定义代码来创建bayviewRDD，直到添加一个动作才会计算出来。filter转换用于过滤sfpd中包含“BAYVIEW”字符的所有元素。转换的其他示例包括map()、filter()和distinct()。
 
 ```scala
@@ -1994,8 +1933,7 @@ bayviewRDD: org.apache.spark.rdd.RDD[Array[String]] =
 MapPartitionsRDD[22] at filter at <console>:26
 ```
 
-代码 4.57
-
+代码 3.54
   - 语法说明
 
 contains()方法返回true或false，判断集合中是否包含输入参数
@@ -2009,8 +1947,7 @@ scala> println(animals.contains("fish"))
 true
 ```
 
-代码 4.58
-
+代码 3.55
 当运行一个动作命令时，Spark将加载数据创建输入RDD，然后计算任何其他定义RDD的转换和动作。在这个例子中，调用count()动作将导致数据被加载到sfpd中，应用filter()转换，然后计数。
 
 ```scala
@@ -2019,8 +1956,7 @@ sfpd.filter(incident=>incident.contains("TENDERLOIN")).count
 numTenderloin: Long = 30174
 ```
 
-代码 4.59
-
+代码 3.56
 ### 3.7.2 reduceByKey和groupByKey
 
 从现有常规RDD创建键值对RDD有许多方法，最常见的方法是使用map()转换。创建键值对RDD的方式在不同的语言中是不同的。在Python和Scala中，需要返回一个包含元组的RDD。
@@ -2033,8 +1969,7 @@ scala> incByCat.first
 res9: (String, Int) = (OTHER_OFFENSES,1)
 ```
 
-代码 4.60
-
+代码 3.57
 在这个例子中，通过应用map()操作将sfpd转变一个名为incByCat的键值对RDD，得到的RDD包含如上面代码所示的元组。现在，可以使用sfpd数据集得到一些问题的答案。
 
   - 哪三个地区（或类别或地址）的报案记录数量最多？
@@ -2047,8 +1982,7 @@ top3Dists: org.apache.spark.rdd.RDD[(String, Int)] =
 MapPartitionsRDD[27] at map at <console>:28
 ```
 
-代码 4.61
-
+代码 3.58
 如上，可以通过在sfpd上应用map()转换来实现。map()转换导致sfpd变换成为由(PdDistrict,
 1)元组组成的键值对RDD，其中每个元素表示在一个地区发生的一个报案记录。当创建一个键值对RDD时，Spark会自动添加一些特定用于键值对RDD的其他方法，如reduceByKey()、groupByKey()和combineByKey()等，这些转换最常见特征是分布式洗牌操作，需要按键进行分组或聚合。另外还可以在键值对RDD之间进行的转换，如join()、cogroup()和subtractByKey()等。键值对RDD也是一种RDD，因此也支持与其他RDD相同的操作，如filter()和map()。
 
@@ -2061,8 +1995,7 @@ top3Dists: org.apache.spark.rdd.RDD[(String, Int)] = ShuffledRDD[29]
 at reduceByKey at <console>:32
 ```
 
-代码 4.62
-
+代码 3.59
 在上面的代码中，reduceByKey()转换在由元组(PdDistrict, 1)组成的键值对RDD上应用了一个简单的求和操作(x,y)
 =\>x+y，它返回一个新的RDD，其包含每个区域和这个区域报案记录总和。可以在键值对RDD进行排序，前提条件是在键值对RDD上定义了一个排序操作sortByKey()，表示按照键排序。一旦在键值对RDD上进行排序，任何将来在其上的collect()或save()动作调用将导致对数据进行排序。sortByKey()函数接受一个名为ascending的参数，如果其值为true（默认值），表示结果按升序排列。
 
@@ -2074,10 +2007,8 @@ top3Dists: Array[(Int, String)] = Array((73308,SOUTHERN),
 (50164,MISSION), (46877,NORTHERN))
 ```
 
-代码 4.63
-
-在代码
-4.63的示例中，将reduceByKey()的结果应用到另一个map(x=\>(x.\_2,x.\_1))操作。这个map()操作是切换每个元组中元素之间的前后顺序，即互换地区和事件总和放置顺序，得到一个元组包含总计和地区(sum,
+代码 3.60
+在代码 3.60的示例中，将reduceByKey()的结果应用到另一个map(x=\>(x.\_2,x.\_1))操作。这个map()操作是切换每个元组中元素之间的前后顺序，即互换地区和事件总和放置顺序，得到一个元组包含总计和地区(sum,
 district)的数据集，然后将sortByKey()应用于此数据集对每个区域的报案记录数量进行排序。由于想要前3名，需要的结果是降序。将值false传递给sortByKey()的ascending参数，要返回前三个元素使用take(3)，这将给前3个元素。也可以使用另外一种实现方法：
 
 ```scala
@@ -2088,8 +2019,7 @@ top3Dists: Array[(String, Int)] = Array((SOUTHERN,73308),
 (MISSION,50164), (NORTHERN,46877))
 ```
 
-代码 4.64
-
+代码 3.61
 在RDD上使用top()方法。top()方法的第一个参数为3，表示前3各元素；二个参数为隐式参数，定义按照元组第二个值进行排序。Ordering.by(\_.\_2)表示使用元组中第二个元素排序。
 
   - def top(num: Int)(implicit ord: Ordering\[T\]): Array\[T\]
@@ -2115,8 +2045,7 @@ scala> pairs
 res18: Array[(String, Int, Int)] = Array((c,3,1), (a,5,2), (b,1,3))
 ```
 
-代码 4.65
-
+代码 3.62
 在Ordering.by\[(String, Int, Int), Int\](\_.\_2)中，\[(String, Int, Int),
 Int\]分别表示三元组的类型(String, Int,
 Int)和返回值的类型为Int；(\_.\_2)表示使用第二个值进行排序。在Ordering\[(Int,
@@ -2157,8 +2086,7 @@ pddists: Array[(Int, String)] = Array((73308,SOUTHERN),
 (50164,MISSION), (46877,NORTHERN))
 ```
 
-代码 4.66
-
+代码 3.63
 上面代码将groupByKey()应用于由元组(PdDistrict,
 1)组成的数据集上，然后map()转换应用于groupByKey()转换结果的每个元素上，并返回区域键和迭代列表的长度。也可以使用如下代码完成相同的功能：
 
@@ -2169,8 +2097,7 @@ pddists: Array[(String, Int)] = Array((SOUTHERN,73308),
 (MISSION,50164), (NORTHERN,46877))
 ```
 
-代码 4.67
-
+代码 3.64
 同时使用groupByKey()和reduceByKey()实现了相同的功能，但是它们的内部实现是有区别的，接下来将看到使用groupByKey()和使用reduceByKey()的区别。在上面代码中，第一个map转换结果是一个键值对RDD，由(PdDistrict,
 1)组成。groupByKey()将具有相同键的所有值组合成列表，从而产生一个新的键值对，每个元素由键和列表组成。实际上，groupByKey()将具有相同键的所有对应值分组到Spark集群上的同一各节点上。在处理大型数据集时，groupByKey()这种分组操作会导致网络上大量不必要的数据传输。当被分组到单个工作节点上的数据不能全部装载到此节点的内存中时，Spark会将数据传输到磁盘上。但是Spark只能一次处理一个键的数据，因此如果单个键对应的数据大大超出了内存容量，则将存在内存不足的异常。
 
@@ -2193,8 +2120,7 @@ wordsCountWithReduce: Array[(String, Int)] = Array((two,2), (one,1),
 (three,3))
 ```
 
-代码 4.68
-
+代码 3.65
 虽然两个函数都能得出正确的结果， 但reduceByKey()函数更适合使用在大数据集上。。
 
 ### 3.7.3 三种连接转换
@@ -2204,7 +2130,7 @@ RIGHT OUTER）、交叉连接（CROSS）和内连接（INNER）。
 
 ![](media/03_pair_rdd_and_partitioning/media/image4.png)
 
-图例 4‑4几种join转换
+图例 3‑4几种join转换
 
 join是内连接，表示在两个键值对RDD中同时存在的键才会出现在输出结果中。leftOuterJoin是左连接，输出结果中的每个键来自于源键值对RDD，即连接操作的左边部分；rightOuterJoin类似于leftOuterJoin是右连接，输出结果中的每个键来自于连接操作的右边部分。在这个例子中，PdDists是键值对RDD，其中键为PdDistrict，值为Address。
 
@@ -2214,8 +2140,7 @@ PdDists: org.apache.spark.rdd.RDD[(String, String)] =
 MapPartitionsRDD[84] at map at <console>:40
 ```
 
-代码 4.69
-
+代码 3.66
 CatRes是另一键值对RDD，其中键为PdDistrict，值为由Category和Resolution组成的元组。
 
 ```scala
@@ -2225,8 +2150,7 @@ CatRes: org.apache.spark.rdd.RDD[(String, (String, String))] =
 MapPartitionsRDD[86] at map at <console>:42
 ```
 
-代码 4.70
-
+代码 3.67
 由于键PdDistrict存在于两个RDD中，join转换的输出格式如下所示，其输出结果也是一个键值对RDD，由(PdDistrict,
 (Address, (Category, Resolution)))组成。
 
@@ -2236,8 +2160,7 @@ res0: (String, (String, (String, String))) =
 (INGLESIDE,(DELTA_ST/RAYMOND_AV,(ASSAULT,ARREST/BOOKED)))
 ```
 
-代码 4.71
-
+代码 3.68
 leftOuterJoin返回另一个键值对RDD，其中的键是全部来自PdDists。
 
 ```scala
@@ -2246,8 +2169,7 @@ res2: (String, (String, Option[(String, String)])) =
 (INGLESIDE,(DELTA_ST/RAYMOND_AV,Some((ASSAULT,ARREST/BOOKED))))
 ```
 
-代码 4.72
-
+代码 3.69
 rightOuterJoin返回另一个键值对RDD，其中的键是全部来自CatRes。
 
 ```scala
@@ -2256,8 +2178,7 @@ res2: (String, (Option[String], (String, String))) =
 (INGLESIDE,(Some(DELTA_ST/RAYMOND_AV),(ASSAULT,ARREST/BOOKED)))
 ```
 
-代码 4.73
-
+代码 3.70
 正如可以看到的，除了表示方式上，这三种情况下的结果是相同的，因为PdDists 和CatRes
 具有相同的键集合。在另一示例中，PdDists保持不变，定义另一键值对IncCatRes，是以IncidntNum作为键，值是由Category、Descript和Resolution组成的元组。
 
@@ -2268,8 +2189,7 @@ IncCatRes: org.apache.spark.rdd.RDD[(String, (String, String,
 String))] = MapPartitionsRDD[12] at map at <console>:34
 ```
 
-代码 4.74
-
+代码 3.71
 使用join转换的结果是返回一个空集合，因为两个键值对没有任何共同的键。
 
 ```scala
@@ -2285,8 +2205,7 @@ at org.apache.spark.rdd.RDD.first(RDD.scala:1367)
 ... 48 elided
 ```
 
-代码 4.75
-
+代码 3.72
 ### 3.7.4 执行几个动作
 
 所有动作都可用于键值对RDD，但是以下几个动作仅适用于键值对RDD：
@@ -2315,14 +2234,12 @@ TARAVAL -> 27470, RICHMOND -> 21221, NORTHERN -> 46877, PARK ->
 23377, CENTRAL -> 41914, BAYVIEW -> 36111)
 ```
 
-代码 4.76
-
+代码 3.73
 仅当结果数据集大小足够小以适应内存时，才能使用此操作。
 
 ### 3.7.5 跨节点分区
 
-在本节中，我们将使用RDD的分区学习如何控制跨节点的数据洗牌。在分布式环境中，如何布置数据会影响性能。最小化网络流量的数据布局可以显着提高性能。Spark
-RDD中的数据分为几个分区。可以在Spark程序中控制RDD的分区，以提高性能。分区在所有应用程序中不一定有帮助。如果有多次重复使用的数据集则分区是有用的，但是如果数据集只是被扫描一次，则不需要对数据集的分区进行特别的设置。创建具有特定分区的RDD有两种方法：
+这一节的重点，是理解怎样通过分区策略减少不必要的跨节点数据移动。分区并不是越“精细控制”越好，它真正有价值的场景通常是：同一份数据会被重复使用，或者后续多步计算都围绕同一组键展开。如果数据只被线性扫描一次，过早地手工设计分区往往收益有限。常见的做法大体有两种：
 
 （1）在RDD上调用partitionBy()，提供一个显式的分区器，
 
@@ -2345,8 +2262,7 @@ partrdd1: org.apache.spark.rdd.RDD[(String, (String, String))] =
 ShuffledRDD[31] at partitionBy at <console>:37
 ```
 
-代码 4.77
-
+代码 3.74
 HashPartitioner需要传递一个定义分区数的参数
 
 ```scala
@@ -2360,9 +2276,8 @@ partrdd2: org.apache.spark.rdd.RDD[(String, (String, String))] =
 ShuffledRDD[32] at partitionBy at <console>:38
 ```
 
-代码 4.78
-
-使用键的哈希值将用于分配分区。如果相同的键比较多，其哈希值相同则数据会大量集中在某个分区中，会出现数据分布不均匀的现象，可能会遇到部分群集空闲的情况。使用哈希分区的键值对必须可以是哈希的。使用分区时，会创建一个洗牌作业，应该保留partitionBy()的结果，以防止每次使用分区RDD时进行重新安排。
+代码 3.75
+使用键的哈希值将用于分配分区。如果相同的键比较多，其哈希值相同则数据会大量集中在某个分区中，会出现数据分布不均匀的现象，可能会遇到部分集群空闲的情况。使用哈希分区的键值对必须可以是哈希的。使用分区时，会创建一个洗牌作业，应该保留partitionBy()的结果，以防止每次使用分区RDD时进行重新安排。
 
 在键值对RDD上的大量操作上一般会接受附加分区参数，例如分区数、类型或分区。RDD上的一些操作自动导致具有已知分区器的RDD。例如，默认情况下当使用sortByKey时，使用RangePartitioner，并且groupByKey使用的默认分区器是HashPartitioner。要在聚合和分组操作之外更改分区，可以使用repartition()或coalesce()函数。
 
@@ -2406,15 +2321,14 @@ res9: Option[org.apache.spark.Partitioner] =
 Some(<org.apache.spark.HashPartitioner@64>)
 ```
 
-代码 4.79
+代码 3.76
+很多键值对操作的性能差异，最后都落到“是否发生了额外 Shuffle”上。如果数据已经按后续计算所需的键空间做过合理分区，那么像 `reduceByKey()` 这样的操作就更容易在本地先完成部分聚合，再把较小的中间结果发往下游；而两个键值对 RDD 如果共享兼容的分区器，`join()` 一类操作也更有机会减少额外的数据重分布。
 
-由于对RDD上的许多操作需要通过网络传输数据，按键进行洗牌操作，因此分区可以对许多操作可以提高性能。对于诸如reduceByKey()的操作，当进行预分区时这些值将在本地节点上进行计算，然后将每个节点的最终结果发送回驱动程序。如果对两个键值对RDD进行操作，当进行预分区时至少有一个RDD带有已知分区器不会被重新洗牌，如果两个RDD都具有相同的分区器，则不会在网络上进行洗牌操作。为输出RDD设置分区器的操作包括cogroup()、groupWith()、join()、leftOuterJoin()、rightOuterJoin()、groupByKey()、reduceByKey()、combineByKey()、partitionBy()、sort()，而所有其他操作将产生没有分区器的结果。如果父RDD具有分区器，则mapValues()、flatMapValues()和filter()等操作将导致在输出RDD上设置分区器。如果的分区数量太少，即太少的并行性，Spark将使资源闲置。如果分区太多或并行性太高，则可能会影响性能，因为每个分区的开销可以相加产生总开销。使用repartition()来随机地将现有的RDD进行洗牌以重新分区，可以使用coalesce()代替repartition()来完成减少分区数量的作业，因为其可以避免洗牌。对于coalesce(N)，如果N大于当前分区，则需要传递shuffle
-= true给coalesce()；如果N小于当前的分区（即缩小分区），则不要设置shuffle = true，否则会导致额外的不必要的洗牌。
+但分区不是越多越好。分区太少，会让并行度不足、单分区负担过重；分区太多，则会把任务调度、元数据管理和 Shuffle 开销一并放大。`repartition()` 适合在需要重新均匀分布数据时显式触发一次 Shuffle；`coalesce()` 更适合在减少分区数量时尽量避免额外洗牌。实际选择时，关键仍然是结合数据量、键分布和后续算子来判断，而不是机械套用固定数字。
 
 ## 3.8 小结
 
-在Apache
-Spark中，可以使用RDD存储键值对，在很多程序中键值对RDD扮演非常有用的角色。基本上，一些操作允许对每个键并行执行操作，而且可以重新整理网络上的数据。例如，reduceByKey()方法分别为每个键集合数据。而join()方法则通过用相同的键对元素进行分组来合并两个RDD。本章重点讲解了键值对RDD功能，学习如何创建键值对RDD和进行键值对RDD的相关操作，如RDD中的转换和动作。
-这里的转换操作包括groupByKey()、reduceByKey()、join()、leftOuterJoin()和rightOuterJoin()等，而countByKey()等是针对键值对RDD的动作。
+这一章的核心，不只是学会几个键值对 API 的名字，而是建立两个判断标准：什么时候应该把数据组织成 `(key, value)` 形式，什么时候应该主动关注分区与 Shuffle。`reduceByKey()`、`join()`、`leftOuterJoin()`、`rightOuterJoin()` 这类操作之所以重要，正是因为它们直接决定了数据如何围绕键聚合、关联和移动。
 
-在本章中还讨论Spark中的分区，可以将其定义为大数据集的划分，并将它们作为整个群集中的多个部分存储。Spark根据数据局部性原理工作。工作节点需要处理更接近它们的数据。通过执行分区网络，I/O将会减少，从而可以更快地处理数据。在Spark中像cogroup()、groupBy()、groupByKey()等等的操作将需要大量的I/O操作。在这种情况下，应用分区可以快速减少I/O操作的数量，以便加速数据处理。
+如果说上一章解决的是“Spark 怎么执行”，那么这一章更多解决的是“数据为什么会这样移动”。理解键值对 RDD、分区器和 Shuffle 之后，读者就能更清楚地判断哪些操作容易产生网络开销、哪些场景值得预分区、以及为什么 `groupByKey()` 和 `reduceByKey()` 在代价上会有明显差异。这些判断，会直接影响后面做性能分析和工程设计时的选择。
+

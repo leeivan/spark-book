@@ -2,45 +2,52 @@
 
 
 ## 12.1 使用建议
-- 先看 Spark 官方文档，再看社区文章。
-- 遇到版本差异时，以本书版本基线和官方 release note 为准。
-- 对关键结论尽量交叉验证两个以上来源。
+- 以 Apache Spark 官方文档和发布说明作为一手依据。
+- 遇到 API、参数或行为差异时，优先核对对应版本文档。
+- 社区文章只用于补充实践经验，不作为版本事实的唯一来源。
 
 > **版本基线（更新于 2026-02-13）**
 > 本书默认适配 Apache Spark 4.1.1（稳定版），并兼容 4.0.2 维护分支。
 > 推荐环境：JDK 17+（建议 JDK 21）、Scala 2.13、Python 3.10+。
-1.  http://spark.apache.org/
 
-2.  <https://mapr.com/>
+## 12.2 官方资料
 
-3.  <https://www.cloudera.com/>
+1. Apache Spark 官方首页：<https://spark.apache.org/>
 
-4.  <https://hortonworks.com/>
+2. 官方文档入口（latest）：<https://spark.apache.org/docs/latest/>
 
-5.  <https://www.wikipedia.org/>
+3. Spark 发布与版本说明：<https://spark.apache.org/releases/>
 
-6.  <https://baike.baidu.com/>
+4. Structured Streaming Programming Guide：<https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html>
 
-7.  Learning Spark: Lightning-Fast Big Data Analysis, By Holden Karau,
-    Andy Konwinski, Patrick Wendell, Matei Zaharia
+5. Spark SQL, DataFrames and Datasets Guide：<https://spark.apache.org/docs/latest/sql-programming-guide.html>
 
-8.  Apache Spark Graph Processing, By Rindra Ramamonjison
+6. Submitting Applications：<https://spark.apache.org/docs/latest/submitting-applications.html>
 
-9.  Beginning Apache Spark 2, By Hien Luu
+7. Tuning Spark：<https://spark.apache.org/docs/latest/tuning.html>
 
-10. Stream Processing with Apache Spark, By Gerard Maas and François
-    Garillots
+8. Monitoring and Instrumentation：<https://spark.apache.org/docs/latest/monitoring.html>
 
-11. <http://dblab.xmu.edu.cn/>
+9. MLlib / spark.ml Guide：<https://spark.apache.org/docs/latest/ml-guide.html>
 
-12. [https://0x0fff.com](https://0x0fff.com/spark-memory-management/)
+10. GraphX Programming Guide：<https://spark.apache.org/docs/latest/graphx-programming-guide.html>
 
-13. <https://legacy.gitbook.com/book/umbertogriffo/apache-spark-best-practices-and-tuning/details>
+11. PySpark API Reference：<https://spark.apache.org/docs/latest/api/python/>
 
-14. <https://sparkour.urizone.net/recipes/building-sbt/>
+12. Scala API Reference：<https://spark.apache.org/docs/latest/api/scala/>
 
-15. <https://data-flair.training/blogs/category/spark/>
+## 12.3 图书与系统性资料
 
-16. <http://bigdatatn.blogspot.com/2017/05/spark-performance-optimization-shuffle.html>
+1. Learning Spark, 2nd Edition, Holden Karau, Andy Konwinski, Patrick Wendell, Matei Zaharia.
 
-17. https://legacy.gitbook.com/@jaceklaskowski
+2. Spark: The Definitive Guide, Bill Chambers, Matei Zaharia.
+
+3. Stream Processing with Apache Spark, Gerard Maas, François Garillot.
+
+4. High Performance Spark, Holden Karau, Rachel Warren.
+
+## 12.4 使用这些资料时的原则
+
+- 查“能不能用、参数怎么配、版本是否支持”，优先看官方文档。
+- 查“为什么这样设计、适用什么场景”，再看书籍和高质量长文。
+- 书中若与官方文档冲突，以本书版本基线对应的官方文档为准。
