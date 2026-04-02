@@ -1,22 +1,22 @@
 # 4.3 Spark SQL概述
 
-Spark SQL 是 Spark 的结构化数据处理模块。与基本RDD API相比，它额外掌握了列名、数据类型、Schema和表达式语义，因此优化器可以做投影裁剪、过滤下推、Join 策略选择、统计信息利用以及代码生成等优化。用户既可以写 SQL，也可以写 DataFrame / Dataset API；它们最终都会汇聚到同一套执行引擎上。
+Spark SQL 是 Spark 4.x 最核心的结构化数据处理模块。与基本的 RDD API 相比，它额外掌握了列名、数据类型、Schema 和表达式语义，因此优化器可以做投影裁剪、过滤下推、Join 策略选择、统计信息利用以及代码生成等优化。用户既可以写 SQL，也可以写 DataFrame / Dataset API；它们最终都会汇聚到同一套执行引擎上。
 
-在工程实践里，可以把 Spark SQL 理解为“结构化数据入口层”。它既能读取 Hive 表、Parquet、ORC、JSON、CSV 和外部数据库，也能把结果以 DataFrame 或 Dataset 形式继续向下传递到应用代码中。DataFrame 面向所有主流语言，是最通用、也是最推荐的主线抽象；Dataset 在 Scala / Java 中提供额外的类型安全能力，适合那些需要类型化映射和编译期检查的场景。
+在工程实践里，可以把 Spark SQL 理解为“结构化数据入口层”。它既能读取 Hive 表、Parquet、ORC、JSON、CSV 和外部数据库，也能把结果以 DataFrame 或 Dataset 形式继续向下传递到应用代码中。DataFrame 面向所有主流语言，是最通用、也是最推荐的主线抽象；Dataset 在 Scala / Java 中提供额外的类型安全能力，适合那些确实需要类型化映射和编译期检查的场景。
 
 ### 4.3.1 Catalyst优化器
 
-Catalyst 是 Spark SQL 的查询优化框架。无论用户写的是 SQL、DataFrame 还是 Dataset API，Spark 最终都会先把这些操作表示成查询计划，再经历解析、分析、优化和物理规划等阶段。下图展示了从高级结构化API到最终执行代码的大致转换过程：
+Catalyst 是 Spark SQL 的查询优化框架。无论用户写的是 SQL、DataFrame 还是 Dataset API，Spark 最终都会先把这些操作表示成查询计划，再经历解析、分析、优化和物理规划等阶段。下图展示了从高级结构化 API 到最终执行代码的大致转换过程：
 
 ![](../media/04_structured_data/media/image2.png)
 
-可以把这个过程概括为四步：先生成逻辑计划，再结合Catalog与Schema解析列和表，随后利用规则与统计信息优化计划，最后从多个候选物理计划中选择一个执行。对于使用者来说，真正需要记住的是：一旦把数据处理写成结构化表达式，Spark 就有机会自动做过滤下推、投影裁剪、常量折叠、广播 Join 选择以及代码生成等优化。
+可以把这个过程概括为四步：先生成逻辑计划，再结合 Catalog 与 Schema 解析列和表，随后利用规则与统计信息优化计划，最后从多个候选物理计划中选择一个执行。对于使用者来说，真正需要记住的是：一旦把数据处理写成结构化表达式，Spark 就有机会自动做过滤下推、投影裁剪、常量折叠、广播 Join 选择以及代码生成等优化。
 
 这也是为什么 DataFrame 往往比手写RDD流程更容易得到稳定性能。DataFrame / Dataset 暴露了列、类型和表达式语义，Catalyst 与 Tungsten 才能在这些信息上工作。调试时可以用 `explain()` 查看逻辑计划和物理计划，从而判断过滤是否被下推、Join 是否被广播、是否发生了额外的 Exchange 或 Shuffle。
 
 ### 4.3.2 DataFrame与Dataset
 
-Spark里常见的三种数据抽象分别是RDD、DataFrame和Dataset。三者都建立在分布式执行模型之上，但面向的开发层级不同：RDD更底层、更自由；DataFrame更结构化、更适合优化；Dataset则是在DataFrame之上增加类型信息的 Scala / Java 版本。对于大多数 Spark 4.x 应用，推荐顺序很清楚：默认优先 DataFrame，确有类型安全诉求时再选 Dataset，只有在结构化 API 难以表达需求时才回退到 RDD。
+Spark 里常见的三种数据抽象分别是 RDD、DataFrame 和 Dataset。三者都建立在分布式执行模型之上，但面向的开发层级不同：RDD 更底层、更自由；DataFrame 更结构化、更适合优化；Dataset 则是在 DataFrame 之上增加类型信息的 Scala / Java 版本。对于大多数 Spark 4.x 应用，推荐顺序很清楚：默认优先 DataFrame，确有类型安全诉求时再选 Dataset，只有在结构化 API 难以表达需求时才回退到 RDD。
 
 DataFrame可以看作“带Schema的分布式表”，它最接近关系型思维，也是 Spark SQL 的默认主线。它支持过滤、投影、聚合、窗口、Join 等常见操作，能够直接受益于 Catalyst 和 Tungsten 的优化，因此通常比手写RDD转换更简洁，也更容易获得稳定性能。Dataset则是在 DataFrame 基础上引入 Encoder 与类型化对象映射，适合 Scala / Java 程序中那些希望保留领域对象类型的场景。
 

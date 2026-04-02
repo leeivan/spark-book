@@ -1,14 +1,14 @@
 # 10.3 SparkContext与SparkSession
 
-在Spark 4.x中，应用程序应优先以SparkSession作为统一入口。SparkSession封装了创建与访问SQL、DataFrame/Dataset、Structured Streaming所需的核心上下文，能够显著简化工程代码结构。
+在 Spark 4.x 中，应用程序应优先以 SparkSession 作为统一入口。它把结构化数据、SQL、Structured Streaming 以及底层执行上下文组织在同一个对象里，能让应用代码保持更一致的初始化方式。
 
-历史上（Spark 2.0之前）常见SQLContext/HiveContext写法仅用于理解演进，不再建议作为新项目模板。
+历史上常见的 SQLContext、HiveContext 等写法，现在更适合作为演进背景来理解，而不再适合作为新项目模板。
 
   - 注意
 
-SparkSession已将SQLContext和HiveContext在Spark 2.0之后统一为单一入口对象。
+SparkSession 在 Spark 2.0 之后已经把 SQLContext 和 HiveContext 统一为单一入口对象。
 
-可以使用SparkSession.builder方法创建SparkSession的实例。
+可以使用 `SparkSession.builder` 创建或获取 SparkSession 实例。
 
 import org.apache.spark.sql.SparkSession
 
@@ -28,8 +28,7 @@ val spark = SparkSession
 spark.stop
 
 代码 10.2
-正如在以前的Spark版本，spark-shell创建了一个SparkContext，变量名为sc。在Spark
-2.0之后，spark-shell会创建一个SparkSession，变量名为spark。在这个spark-shell中，可以看到spark已经存在，并且可以查看它的所有属性。
+早期 Spark 版本的 `spark-shell` 默认暴露的是 `sc`；在 Spark 2.0 之后，交互环境会直接创建名为 `spark` 的 SparkSession，同时仍然保留底层的 `sc` 以便访问 SparkContext。也就是说，今天读者在 shell 里通常先接触到的是统一入口 `spark`，而不是多个并列上下文对象。
 
 root@3997e0349ac9:\~\# spark-shell
 
@@ -68,7 +67,7 @@ res2: org.apache.spark.SparkContext =
 ```
 
 代码 10.3
-SparkSession封装了SparkContext。首先简单理解一下SparkContext的功能。
+SparkSession 内部封装了 SparkContext。为了理解提交、调度与资源协作关系，下面先简单看一下 SparkContext 在运行时中的位置。
 
 ![Fig 7. SparkContext as it relates to Driver and Cluster
 Manager](../media/10_running_applications/media/image1.png)
@@ -78,7 +77,7 @@ Manager](../media/10_running_applications/media/image1.png)
 如图所示（图例 10‑1），SparkContext是底层执行上下文；每个JVM通常只有一个SparkContext。Spark驱动程序（Driver
 Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并提交作业。业务层代码建议通过SparkSession访问能力，在需要底层控制时再使用`spark.sparkContext`。
 
-在Spark 4.x中，SparkSession已经是统一入口点：既可处理DataFrame/Dataset与SQL，也可衔接流处理与底层执行上下文。这样可以减少上下文对象切换带来的复杂度，降低出错概率。下面继续介绍SparkSession的类和实例方法。
+在 Spark 4.x 中，SparkSession 已经是统一入口点: 既可处理 DataFrame、Dataset 与 SQL，也能衔接流处理与底层执行上下文。这样可以减少上下文对象切换带来的复杂度，降低工程代码里初始化和配置分散的风险。下面继续介绍 SparkSession 常见的类方法与实例方法。
 
   - builder(): Builder
 
