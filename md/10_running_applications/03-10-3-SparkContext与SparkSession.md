@@ -72,7 +72,7 @@ SparkSession 内部封装了 SparkContext。为了理解提交、调度与资源
 ![Fig 7. SparkContext as it relates to Driver and Cluster
 Manager](../media/10_running_applications/media/image1.png)
 
-图例 10‑1SparkContext 与Driver和Cluster Manager的关系
+图例 10‑1 SparkContext 与 Driver 和 Cluster Manager 的关系
 
 如图所示（图例 10‑1），SparkContext是底层执行上下文；每个JVM通常只有一个SparkContext。Spark驱动程序（Driver
 Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并提交作业。业务层代码建议通过SparkSession访问能力，在需要底层控制时再使用`spark.sparkContext`。
@@ -81,7 +81,7 @@ Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并�
 
   - builder(): Builder
 
-> `builder()` 用来创建一个 Builder，再通过它获取或创建 SparkSession 实例。下面的示例适用于 Scala 应用程序；在 `spark-shell` 中，SparkSession 通常已经由系统自动创建。
+> `builder()` 用来创建一个 Builder，再通过它获取或创建 SparkSession 实例。下面这段代码适用于 Scala 应用程序；在 `spark-shell` 中，SparkSession 通常已经由系统自动创建。
 
 import org.apache.spark.sql.SparkSession
 

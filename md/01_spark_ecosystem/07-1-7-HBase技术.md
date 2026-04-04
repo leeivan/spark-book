@@ -8,7 +8,7 @@
 
 ![Base Flow](../media/01_spark_ecosystem/media/image8.jpeg)
 
-图例 1‑8Hbase读写访问
+图例 1‑8 HBase 读写访问
 
 | HDFS                    | HBase                                            |
 | ----------------------- | ------------------------------------------------ |
@@ -25,12 +25,11 @@ HBase 的架构可以先抓住四个关键词：`HMaster`、`HRegionServer`、`R
 
 ![](../media/01_spark_ecosystem/media/image9.png)
 
-图例 1‑9HBase的系统架构
+图例 1‑9 HBase 的系统架构
 
 HMaster 是 HBase 的管理节点进程，负责区域分配、故障转移和元数据维护。一个 HBase 集群通常会配置多个 HMaster，其中一个处于活动状态，其余作为备份节点。需要注意的是，HMaster 本身并不直接承担读写流量；真正处理数据请求的是 RegionServer。因此，即使 HMaster 暂时失效，已在线的数据读写在很多情况下仍可继续，只是表结构变更和部分元数据操作会受到影响。
 
-另一方面，HRegionServer作用包括：维护HMaster分配区域，处理对这些区域的读写请求；负责切分正在运行过程中变的过大的区域。可以看到，客户端访问HBase上的数据并不需要HMaster参与，HMaster仅仅维护表和区域的元数据信息，表的元数据信息保存在zookeeper上，所以负载很低。HMaster上存放的元数据是区域的存储位置信息，但是在用户读写数据时，都是先写到区域服务器的WAL日志中，之后由区域服务负责将其刷新到HFile中，即区域中。所以，用户并不直接接触区域，无需知道区域的位置，所以其并不从HMaster处获得什么位置元数据，而只需要从zookeeper中获取区域服务器的位置元数据，之后便直接和区域服务器通信。HRegionServer存取一个子表时，会创建一个HRegion对象，然后对表的每个列族创建一个Store实例，每个Store都会有一个MemStore和0个或多个StoreFile与之对应，每个StoreFile都会对应一个HFile，
-HFile就是实际的存储文件。因此，一个HRegion有多少个列族就有多少个Store。一个HRegionServer会有多个HRegion和一个HLog。区域服务器在HDFS数据节点上运行，其组件包括：块缓存是读取缓存，最常读取的数据存储在读取缓存中，并且只要块缓存已满，就会驱逐最近使用的数据；MemStore是写缓存，用于存储尚未写入磁盘的新数据，一个区域中的每个列族都有一个MemStore；预写日志（WAL）是一个文件，用于存储未持久保存到磁盘中的新数据；HFile是实际的存储文件，将行作为已排序的键值存储在磁盘上。Hbase已经无缝集成了HDFS，其中所有的数据最终都会通过DFS客户端API持久化到HDFS中。
+RegionServer 才是 HBase 的一线数据服务进程。它负责承接读写请求、托管 HMaster 分配下来的 Region，并在 Region 过大时触发切分。对客户端来说，访问路径通常是“先通过 ZooKeeper 和元数据定位到目标 RegionServer，再直接与对应 RegionServer 通信”，而不是每次都经过 HMaster。写入数据时，RegionServer 会先把变更追加到 `WAL`，再写入各列族对应的 `MemStore`；当 MemStore 达到阈值或触发刷盘时，数据再落成 `HFile`。也就是说，一个 Region 下每个列族都会对应一个 `Store`，而每个 `Store` 内部会管理自己的 `MemStore` 与一组 `HFile`。从 Spark 读者的角度，记住这条路径就够了：`客户端 -> RegionServer -> WAL/MemStore -> HFile/HDFS`。
 
 HBase 使用 ZooKeeper 进行区域分配、服务发现和分布式协调。当某个区域服务器失效时，系统会基于 ZooKeeper 中维护的注册与状态信息完成故障感知和区域重新分配。客户端在访问数据前，通常也需要借助 ZooKeeper 了解元数据位置，再进一步与对应的区域服务器通信。
 
@@ -42,7 +41,7 @@ HBase 使用 ZooKeeper 进行区域分配、服务发现和分布式协调。当
 
 ![base 1](../media/01_spark_ecosystem/media/image10.png)
 
-图例 1‑10面向列的数据库与面向行的数据库
+图例 1‑10 面向列的数据库与面向行的数据库
 
   - 面向行的数据存储
 
@@ -145,9 +144,7 @@ HFile 中，如果没有满的话那么就是先写进 MemStore 中，然后再�
 
   - > truncate: 禁用、删除和重新创建一个指定的表。
 
-首先使用start-hbase.sh命令启动HBase服务，然后使用“hbase
-shell”命令来启动HBase的交互shell。如果已成功在系统中安装HBase，那么它会给出
-HBase shell 提示符，如下图所示。
+可以先启动 HBase 服务，再进入交互式 `hbase shell` 熟悉最基础的表操作。如果本地环境已经正确安装并启动 HBase，终端通常会显示下面这样的提示信息：
 
 root@spark:\~\# start-hbase.sh
 
@@ -178,9 +175,7 @@ hbase(main):001:0\>
 
 代码 1‑12
 
-要退出交互命令，在任何时候键入 exit 或使用\<Ctrl + C\>。进一步处理检查shell功能之前，使用 list
-命令用于列出所有可用命令。list是用来获取所有HBase
-表的列表。首先，验证安装HBase在系统中使用list命令，当输入这个命令，它给出下面的输出。
+在交互式 shell 中，可以随时输入 `exit` 或使用 `<Ctrl + C>` 退出。继续之前，先用 `list` 看看当前实例里有哪些表；这也是验证 HBase 是否已经正常工作的最直接方式之一。一个最小示例如下：
 
 hbase(main):001:0\> list
 
@@ -198,8 +193,7 @@ hbase(main):002:0\>
 
 #### 1.7.3.1 创建表
 
-可以使用命令创建一个表，在这里必须指定表名和列族名。在HBase
-shell中创建表使用create命令。下面给出的是一个表名为Order的样本模式，有两个列族：Customer和Sales。
+在 HBase shell 中创建表时，至少要指定表名和列族名。下面用一个名为 `Order` 的示例表演示最小建表方式，其中包含 `Customer` 和 `Sales` 两个列族。
 
 | **Row Key** | **Customer** | **Sales** |         |          |
 | ----------- | ------------ | --------- | ------- | -------- |
@@ -221,7 +215,7 @@ hbase(main):001:0\> create 'order', 'Customer', 'Sales'
 
 命令 1.31
 
-可以验证是否已经创建，使用 list 命令如下所示。在这里可以看到创建的order表：
+建表完成后，可以再次执行 `list` 确认结果；如果成功，输出中就能看到刚创建的 `order` 表：
 
 hbase(main):012:0\> list
 
@@ -259,7 +253,7 @@ ERROR: order is disabled.
 
 命令 1.34
 
-is\_disabled这个命令是用来查看表是否被禁用。下面的例子验证表名为order是否被禁用。如果禁用，它会返回true，如果没有，它会返回false。
+`is_disabled` 用来检查表是否处于禁用状态。下面这组命令用 `order` 表做演示：如果表已经禁用，会返回 `true`；否则返回 `false`。
 
 hbase(main):005:0\> is\_disabled 'order'
 
@@ -444,7 +438,7 @@ ROW COLUMN+CELL
 
 命令 1.43
 
-get命令用于从HBase表中读取数据。使用 get 命令，可以同时获取一行数据，下面的例子说明如何使用get命令扫描order表的101行。
+`get` 命令用于按 Row Key 读取单行数据。下面用 `order` 表中键为 `101` 的记录演示最基本的读取方式。
 
 hbase(main):040:0\> get 'order', '101'
 
@@ -578,7 +572,7 @@ Took 0.1444 seconds
 
 命令 1.49
 
-alter用于更改现有表的命令，使用此命令，您可以更改列族的最大单元数，设置和删除表范围运算符，以及从表中删除列族。在下面的例子中单元的最大数目设置为5。
+`alter` 用于修改现有表的结构或属性，例如调整列族的最大版本数、设置表级参数，或者删除列族。下面这组命令先演示把单元版本数上限设置为 `5`。
 
 hbase(main):044:0\> alter 'order', NAME =\> 'Customer', VERSIONS =\> 5
 
@@ -592,7 +586,7 @@ Took 2.0384 seconds
 
 命令 1.50
 
-使用alter可以设置和删除表范围运算符，例如MAX\_FILESIZE、READONLY、MEMSTORE\_FLUSHSIZE、DEFERRED\_LOG\_FLUSH等。在下面的例子中设置表order为只读。
+`alter` 也可以设置或删除表级选项，例如 `MAX_FILESIZE`、`READONLY`、`MEMSTORE_FLUSHSIZE`、`DEFERRED_LOG_FLUSH` 等。下面的命令把 `order` 表设置为只读。
 
 hbase(main):045:0\> alter 'order', READONLY
 
@@ -660,7 +654,7 @@ Took 0.0092 seconds
 
 命令 1.54
 
-可以使用exists命令验证表的存在，下面的示例演示了如何使用这个命令。
+可以使用 `exists` 检查表是否存在，下面给出最小示例。
 
 hbase(main):024:0\> exists 'order'
 

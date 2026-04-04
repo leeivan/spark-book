@@ -14,16 +14,13 @@
 
   - 物联网传感器
 
-Spark Streaming将数据流划分为每X秒的批次，称为DStream，它在内部是一系列RDD。Spark应用程序使用Spark
-API处理RDD，并且批处理返回RDD操作的处理结果。
+早期 Spark Streaming 会把连续到达的数据按固定时间间隔切成一批批小 RDD，这种抽象就叫 DStream。对开发者来说，它的编程体验很像“持续不断地处理一串按时间到达的 RDD”；每个批次里仍然使用熟悉的 Spark Core API，而微批调度负责把这些批次串起来持续执行。
 
 ![https://www.mapr.com/sites/default/files/blogimages/sparkstream2-blog.png](../media/05_stream_processing/media/image14.jpeg)
 
 图例 5‑14 将数据流划分为X秒的批次
 
-Spark
-Streaming支持HDFS目录、TCP套接字、Kafka、Flume等数据源。数据流可以使用Spark的核心API，DataFrames
-SQL或机器学习API进行处理，并且可以保存到文件系统、HDFS、数据库或提供Hadoop OutputFormat的任何数据源。
+Spark Streaming 可以接入 HDFS 目录、TCP 套接字、Kafka、Flume 等输入源，再把结果写到文件系统、HDFS、数据库，或任何支持 Hadoop OutputFormat 的外部系统。理解这一点有助于读懂下面的历史案例：它本质上就是“以微批方式接入日志，再通过 RDD 转换和 `foreachRDD` 把结果落到外部存储”。
 
 下面这个历史案例继续沿用 DStream + HBase 的组合，目的是说明一个典型微批流式应用怎样从输入流一路走到外部存储。示例背景是油井监控：钻井平台传感器持续产生日志数据，Spark Streaming 负责实时处理，再把结果写入 HBase，供后续分析和报表使用。
 
@@ -31,23 +28,21 @@ SQL或机器学习API进行处理，并且可以保存到文件系统、HDFS、�
 
 图例 5‑15 流数据处理阶段
 
-要在HBase中存储数据流中的每一个事件，还需要筛选和存储报警信息，以及每天的汇总统计信息。Spark
-Streaming示例流程首先读取传感器产生的日志信息，然后处理流数据，并将处理后的数据写入到
-HBase表。Spark Streaming示例代码执行以下操作：
+这个案例除了把每条原始事件写入 HBase，还会额外筛选告警数据，并计算按天汇总的统计信息。整体处理链路并不复杂：先读入传感器日志，再在每个微批上做过滤、转换和写出，最后把明细与汇总分别落到 HBase。
 
   - 读取日志信息。
 
   - 处理流数据。
 
-  - 将处理后的数据写入HBase表。
+  - 将处理后的数据写入 HBase 表。
 
-汇总统计的代码执行以下操作：
+汇总统计部分则继续围绕同一批输入数据做两类附加处理：
 
-  - 读取写入HBase的数据
+  - 读取已写入 HBase 的数据
 
   - 计算每日摘要统计信息
 
-  - 写汇总统计到 HBase表
+  - 把汇总统计写回 HBase 表
 
 ### 5.9.1 探索数据
 
@@ -200,7 +195,7 @@ only showing top 5 rows
 
 ![https://www.mapr.com/sites/default/files/blogimages/sparkstream5-blog.png](../media/05_stream_processing/media/image16.jpeg)
 
-图例 5‑16数据格式
+图例 5‑16 数据格式
 
 创建HBase表：
 
@@ -235,12 +230,9 @@ Took 0.1649 seconds
 
 ### 5.9.2 创建数据流
 
-传感器数据来自逗号分隔的CSV文件，将其保存到一个目录中，Spark
-Streaming将监视目录并处理添加到该目录中的任何文件。如前所述，Spark
-数据流支持不同的流式数据源，为简单起见此示例将使用CSV文件。
+传感器数据来自逗号分隔的 CSV 文件，并持续写入某个目录。Spark Streaming 会监视这个目录，并在发现新文件时把它们纳入后续微批处理。如前所述，流式应用当然可以接入多种数据源，但为了把历史 DStream 链路讲清楚，这里仍然使用目录中的 CSV 文件作为输入。
 
-下面的函数将Sensor对象转换为HBase Put对象，该对象用于将行插入到HBase中。可以使用Spark
-的TableOutputFormat类写入HBase表，这与从MapReduce写入HBase表的方式类似。下面使用TableOutputFormat类设置写入HBase的配置，将通过示例应用程序代码完成这些步骤。首先使用Scala案例类定义与传感器数据CSV文件对应的Sensor模式：
+下面先定义两个最基础的部件：一是与 CSV 记录对应的 `Sensor` 案例类，二是把 `Sensor` 转成 HBase `Put` 的辅助函数。这里继续使用 `TableOutputFormat` 写入 HBase，风格上和早期 MapReduce/HBase 集成方式很接近，也正好能说明这类历史系统通常怎么组织输出链路。
 
 case class Sensor(resid: String, date: String, time: String, hz: Double,
 disp: Double, flo: Double, sedPPM: Double, psi: Double, chlPPM: Double)
@@ -248,7 +240,7 @@ extends Serializable
 
 代码 5‑35
 
-parseSensor方法解析CSV文件，根据逗号分隔符提取出数值，用其定义Sensor类。
+`parseSensor` 方法负责解析 CSV 记录，并把逗号分隔的字段装配成 `Sensor` 对象。
 
 def parseSensor(str: String): Sensor = {
 
@@ -265,15 +257,15 @@ p(6).toDouble, p(7).toDouble, p(8).toDouble)
 
 这一部分对应历史案例里的“创建输入流”步骤，代码链路本身并不复杂，核心可以概括为三步：
 
-  - 首先初始化一个Spark的StreamingContext 对象。
+  - 初始化 `StreamingContext`，它是 DStream 编程模型的入口。
 
-  - 使用StreamingContext对象创建一个离散流，用来表示为输入数据流，在DStream对象上应用转换和输出操作。
+  - 用 `StreamingContext` 创建输入 DStream，并在其上声明转换和输出操作。
 
-  - 然后可以开始接收数据，并使用StreamingContext.start()处理它。
+  - 调用 `start()` 开始接收和处理微批数据。
 
-  - 最后等待使用streamingContext.awaitTermination()停止处理
+  - 调用 `awaitTermination()` 让驱动进程持续等待流任务运行。
 
-通过下面的代码显示这些步骤，Spark数据流应用的最佳运行方案是通过使用Maven或SBT构建独立的应用程序。第一步是建立一个StreamingContext，这是用于流功能的主入口点，在这个例子中将使用2秒批次时间间隔。
+下面的代码把这几个步骤串起来。和前面章节里的建议一致，这类流式任务更适合作为独立应用通过 Maven 或 SBT 打包提交；这里的 `StreamingContext` 使用 2 秒批次间隔，目的是让微批边界更容易观察。
 
 val sparkConf = new SparkConf().setAppName("HBaseStream")
 
@@ -285,17 +277,13 @@ val sensorDStream = linesDStream.map(Sensor.parseSensor)
 
 代码 5‑37
 
-可以创建表示源数据的离散流linesDStream。在这个例子中，使用的StreamingContext.textFileStream()方法来创建输入流，来监视与Hadoop兼容文件系统的新文件，并处理在该目录中创建的任何文件。
+这段代码里，`linesDStream` 表示源数据流。`StreamingContext.textFileStream()` 会持续监视兼容 Hadoop 的文件系统目录，并在检测到新文件时把它们纳入后续批次处理。
 
 ![](../media/05_stream_processing/media/image17.jpeg)
 
-图例 5‑17创建输入流
+图例 5‑17 创建输入流
 
-这种摄取类型支持将新文件写入目录的工作流程，并使用Spark
-Streaming检测它们，提取并处理数据，这种摄取类型只能将文件移动或复制到目录中使用。linesDStream表示传入的数据流，其中每个记录是一行文本流。一个离散流的内部是RDD的序列，每个RDD之间时间间隔2秒。接下来，将解析数据行为Sensor对象，使用linesDStream.map()操作，map()操作在RDD上应用parseSensor()方法，产生包含Sensor对象的RDD。
-
-施加在离散流上的任何操作，被转移为对底层RDD的操作，对linesDStream上每个RDD的map()操作，将产生sensorDStream中的每个RDD，接下来使用Dstream.foreachRDD()方法来应用处理在离散流上的RDD。对低PSI的传感器对象进行过滤，以创建一个警报传感器对象的RDD，然后使用convertToPut()和convertToPutAlert()将Sensor数据转换给HBase
-Put对象。
+这种摄取方式适合“不断把新文件移动或复制到目录里”的工作流。`linesDStream` 中的每条记录都是一行文本，而 DStream 内部则是一串按 2 秒间隔切分的 RDD。随后通过 `map(parseSensor)` 把文本转换成 `Sensor` 对象，再用 `foreachRDD()` 在每个批次上执行真正的处理逻辑：筛选低 PSI 告警、把普通数据与告警数据分别转换成 HBase `Put`，并写入外部表。
 
 sensorDStream.foreachRDD { rdd =\>
 
@@ -319,7 +307,7 @@ saveAsHadoopDataset(jobConfig)
 
 代码 5‑38
 
-要开始接收数据时，必须明确地调用StreamingContext.start()方法，然后调用awaitTermination()方法，等待流计算完成。
+当输入流、转换和输出逻辑都定义好之后，还需要显式调用 `StreamingContext.start()` 才会真正开始接收数据；随后再用 `awaitTermination()` 让驱动进程持续等待流计算运行。
 
 println("start streaming")
 
@@ -365,7 +353,7 @@ return (new ImmutableBytesWritable(Bytes.toBytes(rowkey)), put)
 
 ![处输入图片的描述](../media/05_stream_processing/media/image18.jpeg)
 
-图例 5‑18使用 saveAsHadoopDataset 方法写入到HBase中
+图例 5‑18 使用 `saveAsHadoopDataset` 方法写入到 HBase 中
 
 这将使用该存储系统的Hadoop Configuration对象将RDD输出到任何Hadoop支持的存储系统上，将sensorRDD
 对象转换为Put对象，然后使用
@@ -603,11 +591,11 @@ ANDOUILLE\_3/10/14 column=stats:dispmin,
 
 ### 5.9.3 转换操作
 
-本节将学习如何在离散流上应用操作，现在有了输入数据流想回答一些问题，例如：
+有了输入数据流之后，就可以在每个微批上继续做关联和分析。本节关注的一个代表性问题是：
 
   - 产生低压警报传感器的生产厂家和维护信息是什么？
 
-为了回答这些问题，将在刚刚创建的离散流滤警报数据，并与供应商和维护信息进行连接操作，这些信息在产生数据流之前被读入并缓存。每个RDD被转换成DataFrame，并注册为一个临时表，然后使用SQL查询，下面的查询回答的第一个问题。
+为回答这个问题，下面会先从离散流中过滤告警数据，再与提前读入并缓存的供应商信息、维护信息做连接。随后把每个 RDD 转成 DataFrame、注册成临时表，并通过 SQL 查询得到结果。下面这段查询首先回答“低压告警来自哪些厂家和维护记录”这一问题。
 
 val pumpRDD =
 sc.textFile("/root/data/sensorvendor.csv").map(parsePumpInfo)
@@ -637,10 +625,7 @@ alertPumpMaint.show()
 
 代码 5‑48
 
-Spark
-Streaming提供了一组关于离散流的转换，这些转换类似于RDD上的转换，包括map()、flatMap()、filter()、join()和reduceByKey()等等。Spark
-Streaming还提供诸如reduce()和count()等运算符，这些运算符返回由单一元素组成的离散流，但是在不同于RDD的reduce()和count()运算符，这些不触发离散流上的实际计算，他们不是动作，而是定义另一个离散流。有状态的转换可以跨越批次保持状态，使用数据或来自先前批的中间结果以计算当前批次的结果，包括基于滑动窗口的转换和跨越时间的跟踪状态。流式转换应用于在离散流中的每个RDD，依次施加转换到RDD的元素。动作是输出运算符，调用时在
-离散流上触发计算，他们包括：
+Spark Streaming 为 DStream 提供了一组与 RDD 很相似的转换，例如 `map()`、`flatMap()`、`filter()`、`join()` 和 `reduceByKey()`。它也提供 `reduce()`、`count()` 这类返回单元素 DStream 的运算符，但这些在流式语境里并不是立刻触发执行的动作，而是继续定义下一层 DStream。除此之外，还有一类更重要的有状态转换：它们可以跨批次保留中间结果，用来支持窗口统计、跨时间跟踪状态等任务。真正触发计算的仍然是输出操作，常见的包括：
 
 （1）print()将每个批次的前10个元素打印到控制台，通常用于调试和测试。
 
@@ -682,33 +667,32 @@ only showing top 1 row
 
 ### 5.9.4 窗口操作
 
-通过窗口操作，可以在数据的滑动窗口上应用转换，可以多批次合并结果，在StreamingContext中指定的时间间隔进行计算。
+窗口操作的意义，在于把多个连续微批合并成一个“按时间滚动观察”的结果视图。这样就可以回答“过去 6 秒内发生了什么”“每隔 2 秒重新统计一次最近窗口”这一类问题，而不必只盯着单个批次。
 
 ![](../media/05_stream_processing/media/image19.jpeg)
 
-图例 5‑19数据的滑动窗口
+图例 5‑19 数据的滑动窗口
 
-在图例 5‑19中，Original DStream以一秒的间隔进入。滑动窗口的长度由window
-length指定，在这种情况下为3个单位，窗口在离散流上按照指定的滑动间隔进行滑动，在这种情况下是2个单元。窗口长度和滑动间隔必须是离散流批次间隔的倍数，当前为1秒。当窗口在离散流上滑动时，所有落在该窗口中RDD被组合，该操作被应用于组合的RDD上，产生了窗口流中的RDD，所有窗口操作都需要两个参数：
+在图例 5‑19 中，原始 DStream 以 1 秒间隔到达。窗口长度由 `windowLength` 指定，这里是 3 个时间单位；窗口每隔 2 个单位向前滑动一次。需要记住的约束只有一个：窗口长度和滑动间隔都必须是批次间隔的整数倍。每当窗口滑动时，落入该窗口范围内的多个 RDD 会被合并视作一个新的窗口 RDD，并在其上执行后续操作。因而，窗口操作通常只需要两个参数：
 
-  - 窗口长度是指窗口的持续时间，在此示例中窗口长度为3个单位。
+  - 窗口长度：窗口覆盖的持续时间，本例中为 3 个单位。
 
-  - 滑动间隔是指操作窗口执行的间隔，在此例子中滑动间隔是2个单位。
+  - 滑动间隔：窗口重新计算的频率，本例中为 2 个单位。
 
-再次，这两个参数必须是离散流的批次间隔的倍数。例如要每4秒生成单词计数，并且持续6秒的数据，应用reduceByKey操作在键值对离散流上，使用reduceByKeyAndWindow窗口操作设置窗口长度为6，滑动间隔为4：
+再次强调，这两个参数都必须是批次间隔的倍数。比如希望“每 4 秒输出一次最近 6 秒的单词计数”，就可以在键值对 DStream 上使用 `reduceByKeyAndWindow()`：
 
 val windowsWordCounts = pairs.reduceByKeyAndWindow(a:Int,b:Int)=\>(a+b),
 Seconds(6),Seconds(4))
 
 代码 5‑50
 
-使用窗口操作回答一下两个问题：
+在这个历史案例里，窗口操作主要用来回答两个问题：
 
   - 传感器事件计数是多少？
 
   - 什么是最大，最小和平均的psi？
 
-为了回答这些问题，将在窗口流上使用操作。每2秒的时间间隔使用持续6秒的窗口数据流回答上述的两个问题：
+下面这段代码演示的是“每 2 秒重新统计一次最近 6 秒数据”的窗口查询。它会把同一窗口里的传感器记录先转成 DataFrame，再用 SQL 分别计算事件数量和 PSI 的最大值、最小值、平均值：
 
 sensorDStream.window(Seconds(6), Seconds(2))
 
@@ -742,7 +726,7 @@ res2.show
 
 代码 5‑51
 
-在代码 5‑47中，通过res可以回答第一个问题，通过res2的结果回答了什么是最大、最小和平均的psi，使用相同的窗口操作在每个传感器RDD上收集psi数据。现在，让我们看一看代码运行步骤和输出结果。
+在这个查询里，`res` 回答的是“窗口内各传感器记录数”，`res2` 回答的是“窗口内 PSI 的最大值、最小值和平均值”。这正体现了 DStream 窗口操作的典型思路：先按时间把多个微批拼成一个更大的观察窗口，再在窗口上复用熟悉的聚合逻辑。
 
 root@48feaa001420:\~\# spark-submit --class SensorStreamWindow
 /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
@@ -838,4 +822,4 @@ only showing top 1 row
 
 代码 5‑52
 
-  - 当什么情况下窗口操作是非常有用的？
+  - 在什么情况下，窗口操作会特别有用？

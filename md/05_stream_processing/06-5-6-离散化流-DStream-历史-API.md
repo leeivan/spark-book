@@ -74,18 +74,13 @@ ssc.awaitTermination()
 
 代码 5‑1
 
-这个代码是一个简单的Spark应用程序，首先导入与Spark数据流相关的类，主要是SparkConf和StreamingContext。SparkConf用来设置启动Spark应用程序的参数，创建的应用的名称为NetworkWordCount，并带有两个执行线程（local\[2\]）的本地StreamingContext，批处理时间间隔为10秒。StreamingContext是所有完成Spark
-Streaming功能的主要入口点，使用ssc.socketTextStream可以创建一个离散流，代表一个来自TCP套接字源的流数据，通过参数传入，args(0)指定为主机名（例如localhost
-）和args(1)指定为端口（例如9999
-）。lines为离散流对象，表示将从NetCat数据服务器接收的数据流，此离散流中的每条记录都是一行文本。接下来，\_.split("
-")将包含空格字符的行分割成单词，flatMap()将包含多个单词的集合扁平化拆分成包含独立单词的离散流，通过从源离散流中的每条输入记录生成多个新记录来创建新的输出离散流。在这种情况下，每一行将被分割成多个单词并且创建words离散流。接下来，通过在words离散流上应用聚合操作统计这些单词的数量。首先，通过map()操作将words一对一转换成包含键值对(word,
-1)的离散流，然后通过reduceByKey()以获得每批数据中的单词统计离散流wordCounts。最后，wordCounts.print()将打印每秒输入的单词计数。请注意，当描述完这些操作过程后，这个单词计数的数据流应用程序仅定义了需要执行的计算过程，但是尚未开始实际处理。在所有转换操作设置完成后如果要开始处理，最终需要调用ssc.start。
+这段代码展示的是最经典的 DStream 版 `NetworkWordCount`。整体链路其实很简单：先用 `SparkConf` 和 `StreamingContext` 建立一个本地流式应用，`local[2]` 表示至少给接收数据和处理数据各留一个执行线程，批次间隔设为 10 秒；再用 `ssc.socketTextStream()` 从 TCP 套接字持续接收文本行，把每一行拆成单词，映射成 `(word, 1)` 形式的键值对，并在每个微批上用 `reduceByKey()` 统计词频。最后通过 `wordCounts.print()` 输出结果。需要特别记住的是：到这一步为止，程序仍然只是在定义计算链路，真正开始处理数据还要等 `ssc.start()` 被调用。
 
-在虚拟实验环境中已经编译和打包了上面的应用程序，我们需要通过spark-submit启动这个应用程序包。首先需要运行Netcat作为数据服务器，使用Docker
-exec 命令进入到容器中打开一个终端界面：
+在虚拟实验环境中，上面的应用已经完成编译和打包。为了复现实验，先启动 Netcat 作为文本输入源：
 
-root@48feaa001420:\~\# { while :; do echo "Hello Apache Spark"; sleep
-0.05; done; } | netcat -l -p 9999
+```bash
+{ while :; do echo "Hello Apache Spark"; sleep 0.05; done; } | netcat -l -p 9999
+```
 
 代码 5‑2
 
@@ -203,9 +198,7 @@ val ssc = new StreamingContext(conf, Seconds(1))
 
 代码 5‑4
 
-appName参数是应用程序在集群监控界面上显示的名称。master可以是Spark、Kubernetes或YARN集群URL，或者以本地模式运行的特殊字符串local
-\[\*\]。实际上，当在集群上运行时，不需要在应用程序中硬编码master，而是使用spark-submit启动应用程序并设置master参数。但是，对于本地测试和单元测试，可以通过local\[\*\]来运行Spark
-Streaming（检测本地系统中的核心数）。请注意，这在内部创建一个SparkContext（所有Spark功能的起始点），可以通过ssc.sparkContext进行访问。批处理间隔必须根据应用程序的延迟要求和可用的集群资源进行设置。
+`appName` 是应用在监控界面里显示的名称。`master` 可以是 Standalone、Kubernetes、YARN 的集群地址，也可以是本地模式字符串 `local[*]`。实际部署到集群时，通常不会把 `master` 硬编码在程序里，而是通过 `spark-submit` 在提交阶段传入；本地测试或单元测试时，`local[*]` 则更方便。创建 `StreamingContext` 时会连带创建底层 `SparkContext`，可通过 `ssc.sparkContext` 访问。批次间隔本身则需要结合延迟目标和集群资源来权衡设置。
 
 （2）如果通过spark-shell打开交互界面，StreamingContext对象也可以从现有的SparkContext对象创建。
 

@@ -2,7 +2,7 @@
 
 Spark SQL 是 Spark 4.x 最核心的结构化数据处理模块。与基本的 RDD API 相比，它额外掌握了列名、数据类型、Schema 和表达式语义，因此优化器可以做投影裁剪、过滤下推、Join 策略选择、统计信息利用以及代码生成等优化。用户既可以写 SQL，也可以写 DataFrame / Dataset API；它们最终都会汇聚到同一套执行引擎上。
 
-在工程实践里，可以把 Spark SQL 理解为“结构化数据入口层”。它既能读取 Hive 表、Parquet、ORC、JSON、CSV 和外部数据库，也能把结果以 DataFrame 或 Dataset 形式继续向下传递到应用代码中。DataFrame 面向所有主流语言，是最通用、也是最推荐的主线抽象；Dataset 在 Scala / Java 中提供额外的类型安全能力，适合那些确实需要类型化映射和编译期检查的场景。
+在工程实践里，可以把 Spark SQL 理解为“结构化数据入口层”。它既能读取 Hive 表、Parquet、ORC、JSON、CSV 和外部数据库，也能与 Catalog、元数据服务、湖仓表格式等平台能力协同工作，再把结果以 DataFrame 或 Dataset 形式继续向下传递到应用代码中。DataFrame 面向所有主流语言，是最通用、也是最推荐的主线抽象；Dataset 在 Scala / Java 中提供额外的类型安全能力，适合那些确实需要类型化映射和编译期检查的场景。
 
 ### 4.3.1 Catalyst优化器
 
@@ -88,7 +88,7 @@ scala> df.groupBy("age").count().show()
 ```
 
 代码 4‑2
-除了简单的列引用和表达式，DataFrame还具有丰富的函数库，包括字符串操作、日期算术、常用的数学运算等。SparkSession上的sql()函数使应用程序以编程方式运行SQL查询，并将结果创建新的DataFrame。
+除了简单的列引用和表达式，DataFrame 还拥有丰富的内置函数库，包括字符串处理、日期算术、窗口分析和常用数学运算等。与此同时，`SparkSession.sql()` 也提供了另一条常见入口：当查询逻辑本身更适合用关系表达式描述时，可以直接写 SQL，再把结果继续接回 DataFrame 流程。
 
 ```scala
 scala> df.createOrReplaceTempView("people")
@@ -105,9 +105,7 @@ scala> sqlDF.show()
 ```
 
 代码 4‑3
-Spark
-SQL中的本地临时视图是基于会话范围的，如果创建它的会话终止，其也将消失。如果要在所有会话之间共享临时视图，并保持活动状态，直到Spark应用程序终止，可以创建一个全局临时视图。全局临时视图与系统保留的数据库global\_temp绑定，必须使用global\_temp限定名称来引用它，例如SELECT
-\* FROM global\_temp.people。
+Spark SQL 中的本地临时视图是会话级对象：创建它的那个会话结束后，视图也会随之消失。如果需要在同一个 Spark 应用的多个会话之间共享临时结果，可以使用全局临时视图。全局临时视图统一挂在系统保留的 `global_temp` 数据库下，因此访问时必须显式带上库名前缀，例如 `SELECT * FROM global_temp.people`。
 
 ```scala
 scala> df.createGlobalTempView("people")
@@ -151,7 +149,7 @@ scala> primitiveDS.map(_ + 1).collect()
 res13: Array[Int] = Array(2, 3, 4)
 ```
 
-通过JSON文件生成一个Dataset：
+同样也可以直接从 JSON 读取结果并转成类型化 Dataset：
 
 ```scala
 scala> val peopleDS = spark.read.json("/data/people.json").as[Person]
@@ -172,14 +170,13 @@ root
 ```
 
 代码 4‑5
-上面的代码中发生了三件事：
+上面的代码可以分成三步理解：
 
-（1）Spark读取JSON，推断模式并创建DataFrame的集合。
+（1）Spark 先读取 JSON，推断 Schema，并创建 `Dataset[Row]`。
 
-（2）Spark将数据转换为DataFrame = Dataset
-\[Row\]，这是泛型Row对象的集合，因为不需要知道每行中数据的确切类型。
+（2）这个 `Dataset[Row]` 也就是我们常说的 DataFrame，它适合承载通用的结构化处理逻辑。
 
-（3）Spark再根据案例类Person，把 `Dataset[Row]` 转换为强类型的 `Dataset[Person]`。
+（3）最后再借助案例类 `Person` 和 Encoder，把 DataFrame 转成强类型的 `Dataset[Person]`。
 
 如果从使用体验上理解，`Dataset[T]` 可以看作“带类型的结构化数据集”：它既保留了DataFrame的结构化执行引擎，又让 Scala / Java 程序可以直接围绕领域对象类型进行编译期检查。这里的关键桥梁是 Encoder，它负责在 JVM 对象和 Spark 内部二进制表示之间做映射，使 Spark 既能保留类型信息，又不必放弃列式执行与序列化优化。要观察这种结构化表示最终长成什么样，可以直接查看 `schema()`：
 
@@ -191,7 +188,7 @@ StructField(name,StringType,true))
 Spark
 ```
 
-把现有RDD转成结构化对象，常见有两条路径：一种是已知对象结构时，借助案例类和反射快速得到Schema；另一种是在字段与类型需要运行时决定时，显式构造 `StructType` 与 `Row`。前者代码更紧凑，适合教学和固定结构数据；后者更灵活，适合动态Schema或遗留输入格式。无论采用哪条路径，本质上都是把“无Schema的RDD”提升为“有Schema的结构化数据”。
+把现有 RDD 转成结构化对象，常见有两条路径：一种是在对象结构已知时，借助案例类和反射快速得到 Schema；另一种是在字段和类型需要运行时决定时，显式构造 `StructType` 与 `Row`。前者代码更紧凑，适合教学和固定结构数据；后者更灵活，适合动态 Schema 或遗留输入格式。需要强调的是，在新项目中这类“RDD -> DataFrame”的写法通常只是兼容路径；更自然的主线仍然是从数据源直接读成 DataFrame。
 
 ```scala
 scala> :paste
@@ -223,11 +220,9 @@ teenager.getAs[String]("name")).show()
 +------------+
 ```
 
-解决多行语句问题的一种简单方法是在REPL中使用：paste命令。
-输入多行语句之前，在REPL中键入：paste命令。执行此操作时，REPL会提示粘贴命令（多行表达式），然后在命令末尾按\[Ctrl\]
-\[D\]。
+在 Scala REPL 中，如果示例代码跨越多行，可以先输入 `:paste` 再一次性粘贴完整代码块，结束时按 `[Ctrl][D]`。本书保留这些 REPL 片段，主要是为了帮助读者理解结构化 API 的最小使用方式；在真实工程里，这些逻辑通常会被放进常规的应用代码、测试代码或 Notebook 中。
 
-当案例类不能被提前定义时，例如记录的结构被写在一个字符串中，或者文本数据集将被解析，而对于不同的用户而言字段将被进行不同的投影，可以通过三个步骤以编程方式创建一个DataFrame：
+当案例类无法提前定义时，例如字段结构来自配置、运行时元数据或遗留文本输入，就可以通过编程方式显式创建 DataFrame。常见步骤有三步：
 
 （1）从原始RDD创建一个包含Row对象的RDD
 
@@ -280,9 +275,7 @@ scala> results.map(attributes => "Name: " + attributes(0)).show()
 ```
 
 代码 4‑6
-让我们看另一个将CSV文件加载到DataFrame中的示例。 只要文本文件包含标题，Spark
-SQL的API就会通过读取标题行来推断模式。我们还可以选择指定用于拆分文本文件行的分隔符，从CSV文件的标题行读取推导数据结构，并使用逗号“,”作为分隔符。
-我们还展示了使用schema函数和printSchema函数来验证输入文件的模式。
+再看一个更贴近真实工程的入口：直接把带表头的 CSV 文件读成 DataFrame。只要文件本身包含标题行，并显式打开 `header` 与 `inferSchema`，Spark 就能基于输入数据推断字段结构。这个例子也顺带展示了如何用 `schema` 和 `printSchema()` 快速验证推断结果。
 
 ```scala
 scala> :paste
@@ -306,7 +299,7 @@ root
 |-- Population: integer (nullable = true)
 ```
 
-我们使用StructType描述数据结构模式，是StructField对象的集合。StructType和StructField属于org.apache.spark.sql.types包，IntegerType和StringType等数据类型也属于theorg.apache.spark.sql.types包，导入这些类，我们可以显示自定义模式。
+当自动推断不足以满足需求时，就需要显式定义 Schema。这里用 `StructType` 描述整体结构，用 `StructField` 描述每个字段；像 `IntegerType`、`StringType` 这类具体类型，也都来自 `org.apache.spark.sql.types` 包。
 
 ```scala
 scala> import org.apache.spark.sql.types.{StructType,
@@ -314,7 +307,7 @@ IntegerType,StringType}
 import org.apache.spark.sql.types.{StructType, IntegerType, StringType}
 ```
 
-定义一个模式包含用两个字段，一个为整数，后跟一个字符串：
+下面定义一个只包含两个字段的最小 Schema：第一个字段是整数，第二个字段是字符串。
 
 ```scala
 scala> val schema = new StructType().add("i",
@@ -328,7 +321,7 @@ root
 |-- s: string (nullable = true)
 ```
 
-还有一个使用prettyJson()函数来打印JSON的选项，如下所示：
+如果想把 Schema 序列化成更易读的 JSON 结构，也可以直接调用 `prettyJson()`：
 
 ```scala
 scala> schema.prettyJson
@@ -349,15 +342,14 @@ res9: String =
 }
 ```
 
-Spark SQL的所有数据类型都位于org.apache.spark.sql.types包中，我们可以通过以下方式访问它们：
+Spark SQL 的内置数据类型都位于 `org.apache.spark.sql.types` 包中，通常可以这样统一导入：
 
 ```scala
 scala> import org.apache.spark.sql.types._
 import org.apache.spark.sql.types._
 ```
 
-DataType抽象类是Spark SQL中所有内置数据类型的基本类型，例如字符串等等。表格 4‑1中包括了Spark
-SQL和DataFrame支持的数据类型：
+`DataType` 是 Spark SQL 内置类型体系的抽象基类。表格 4‑1 列出了结构化处理里最常见的一组类型；学习时真正需要优先掌握的，通常是数值型、字符串、时间类型以及 `ArrayType`、`MapType`、`StructType` 这三类复杂类型。
 
 表格 4‑1 Spark SQL支持的数据类型
 
@@ -380,15 +372,14 @@ SQL和DataFrame支持的数据类型：
 | StructType    | 表示具有StructFields(fields)序列描述的结构。                                                                                                     |
 | StructField   | 表示StructType中的一个字段。                                                                                                                  |
 
-从Spark 4.x开始，Spark
-SQL提供另一种方式为复杂数据类型定义模式。首先，让我们看一个简单的例子，必须使用import语句导入编码器：
+除了手工写 `StructType`，还可以借助 Encoder 从类型信息反推出 Schema。这种方式在 Dataset 场景里尤其常见。下面先导入 `Encoders`：
 
 ```scala
 scala> import org.apache.spark.sql.Encoders
 import org.apache.spark.sql.Encoders
 ```
 
-让我们看一个简单的示例，将元组定义为要在Dataset API中使用的数据类型：
+先看一个简单的例子：直接为元组类型生成对应的 Schema。
 
 ```scala
 scala> Encoders.product[(Integer, String)].schema.printTreeString
@@ -397,14 +388,14 @@ root
 |-- _2: string (nullable = true)
 ```
 
-前面的代码始终看起来很复杂，因此我们还可以根据需要定义一个案例类Record，包括两个字段一个为Integer，另一个为String。
+如果直接面对元组类型不够直观，也可以先定义一个案例类 `Record`，再由 Encoder 自动推出 Schema。
 
 ```scala
 scala> case class Record(i: Integer, s: String)
 defined class Record
 ```
 
-使用编码器，我们可以轻松地在案例类的基础上创建一个模式，从而使我们可以轻松地使用各种API：
+有了案例类之后，就可以基于 Encoder 自动得到对应的结构化模式：
 
 ```scala
 scala> Encoders.product[Record].schema.printTreeString
