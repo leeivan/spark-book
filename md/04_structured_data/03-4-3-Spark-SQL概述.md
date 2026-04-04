@@ -107,6 +107,17 @@ scala> sqlDF.show()
 代码 4‑3
 Spark SQL 中的本地临时视图是会话级对象：创建它的那个会话结束后，视图也会随之消失。如果需要在同一个 Spark 应用的多个会话之间共享临时结果，可以使用全局临时视图。全局临时视图统一挂在系统保留的 `global_temp` 数据库下，因此访问时必须显式带上库名前缀，例如 `SELECT * FROM global_temp.people`。
 
+如果把上面这组操作放回真实工作流里，可以把它理解成一个最小的结构化分析案例：先从数据源读取 DataFrame，确认 Schema 是否符合预期，再把同一份数据同时暴露给 DataFrame API 和 SQL。两种写法的差异主要体现在“表达习惯”上，而不是执行引擎上。例如，下面这两个查询都在筛选年龄大于 21 岁的用户，并只保留 `name` 列：
+
+```scala
+scala> val adultsDF = df.filter($"age" > 21).select("name")
+adultsDF: org.apache.spark.sql.DataFrame = [name: string]
+scala> val adultsSQL = spark.sql("SELECT name FROM people WHERE age > 21")
+adultsSQL: org.apache.spark.sql.DataFrame = [name: string]
+```
+
+工程里通常可以这样分工：如果逻辑要嵌入应用代码、复用中间列、组合多个函数，DataFrame API 往往更自然；如果逻辑本身就是报表口径、筛选规则或聚合条件，SQL 往往更直接。关键点不是“二选一”，而是知道它们都汇聚到同一套结构化执行链路上，因此可以根据团队习惯和可维护性自由切换。带着这个判断，再看下面的全局临时视图和跨会话访问就会更清楚：这些能力解决的是结构化数据如何在不同查询入口之间共享，而不是另起一套执行模型。
+
 ```scala
 scala> df.createGlobalTempView("people")
 scala> spark.sql("SELECT * FROM global_temp.people").show()
