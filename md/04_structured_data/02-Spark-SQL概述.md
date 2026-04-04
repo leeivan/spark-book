@@ -10,6 +10,8 @@ Catalyst 是 Spark SQL 的查询优化框架。无论用户写的是 SQL、DataF
 
 ![](../media/04_structured_data/media/image2.png)
 
+图例 4‑2 Spark SQL 查询计划与优化流程
+
 可以把这个过程概括为四步：先生成逻辑计划，再结合 Catalog 与 Schema 解析列和表，随后利用规则与统计信息优化计划，最后从多个候选物理计划中选择一个执行。对于使用者来说，真正需要记住的是：一旦把数据处理写成结构化表达式，Spark 就有机会自动做过滤下推、投影裁剪、常量折叠、广播 Join 选择以及代码生成等优化。
 
 这也是为什么 DataFrame 往往比手写RDD流程更容易得到稳定性能。DataFrame / Dataset 暴露了列、类型和表达式语义，Catalyst 与 Tungsten 才能在这些信息上工作。调试时可以用 `explain()` 查看逻辑计划和物理计划，从而判断过滤是否被下推、Join 是否被广播、是否发生了额外的 Exchange 或 Shuffle。
@@ -24,11 +26,13 @@ DataFrame可以看作“带Schema的分布式表”，它最接近关系型思�
 
 ![](../media/04_structured_data/media/image3.png)
 
-图例 4‑2 Spark DataFrame和Dataset API
+图例 4‑3 Spark DataFrame和Dataset API
 
 从 Spark 2.0 开始，DataFrame 和 Dataset 被纳入统一的结构化API体系。可以简单理解为：SQL 最灵活，适合快速表达关系逻辑；DataFrame 通用性最强，适合绝大多数工程代码；Dataset 类型约束最强，适合 Scala / Java 中需要编译期类型检查的场景。它们之间不是互斥关系，而是同一套执行模型上的不同表达方式。
 
 ![](../media/04_structured_data/media/image4.png)
+
+图例 4‑4 Spark SQL 统一结构化 API 体系
 
 ### 4.2.3 创建结构化数据
 

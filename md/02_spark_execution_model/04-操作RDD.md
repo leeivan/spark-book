@@ -11,7 +11,11 @@ RDD谱系也称为RDD运算符图或RDD依赖图，本质上是一个逻辑执�
 
 ![](../media/02_spark_execution_model/media/image7.png)
 
+图例 2‑7 常见RDD转换操作示意（1）
+
 ![](../media/02_spark_execution_model/media/image8.png)
+
+图例 2‑8 常见RDD转换操作示意（2）
 
 下面先看基于单个RDD的转换，也就是输入只有一个RDD的情况。先通过并行化一个集合来创建示例RDD：
 

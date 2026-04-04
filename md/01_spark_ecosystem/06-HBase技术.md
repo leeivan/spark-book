@@ -8,7 +8,7 @@
 
 ![Base Flow](../media/01_spark_ecosystem/media/image8.jpeg)
 
-图例 1‑8 HBase 读写访问
+图例 1‑9 HBase 读写访问
 
 | HDFS                    | HBase                                            |
 | ----------------------- | ------------------------------------------------ |
@@ -25,7 +25,7 @@ HBase 的架构可以先抓住四个关键词：`HMaster`、`HRegionServer`、`R
 
 ![](../media/01_spark_ecosystem/media/image9.png)
 
-图例 1‑9 HBase 的系统架构
+图例 1‑10 HBase 的系统架构
 
 HMaster 是 HBase 的管理节点进程，负责区域分配、故障转移和元数据维护。一个 HBase 集群通常会配置多个 HMaster，其中一个处于活动状态，其余作为备份节点。需要注意的是，HMaster 本身并不直接承担读写流量；真正处理数据请求的是 RegionServer。因此，即使 HMaster 暂时失效，已在线的数据读写在很多情况下仍可继续，只是表结构变更和部分元数据操作会受到影响。
 
@@ -41,7 +41,7 @@ HBase 使用 ZooKeeper 进行区域分配、服务发现和分布式协调。当
 
 ![base 1](../media/01_spark_ecosystem/media/image10.png)
 
-图例 1‑10 面向列的数据库与面向行的数据库
+图例 1‑11 面向列的数据库与面向行的数据库
 
   - 面向行的数据存储
 
@@ -55,7 +55,7 @@ HBase中的数据模型旨可以容纳半结构化数据，其中的字段大小
 
 ![](../media/01_spark_ecosystem/media/image11.tiff)
 
-图例 1‑11 HBase 列族
+图例 1‑12 HBase 列族
 
 HBase表根据Row
 Key的范围被水平拆分成若干个区域，每个区域都包含了这个区域的起始键和结束键之间的所有行。区域被分配给集群中区域服务器管理，由它们来负责处理数据的读写请求。HBase中的行是逻辑上的行，物理上模型上行是按列族分别存取的。HBase
