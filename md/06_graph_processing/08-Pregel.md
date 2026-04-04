@@ -121,27 +121,19 @@ scala> afterHundredIters.vertices.foreach(println)
 ### 6.8.2 Pregel运算符
 
 现在把 Pregel 算子的编程接口正式写出来：
-
-class GraphOps\[VD, ED\] {
-
-def pregel\[A\]
-
-(initialMsg: A,
-
-maxIter: Int = Int.MaxValue,
-
-activeDir: EdgeDirection = EdgeDirection.Out)
-
-(vprog: (VertexId, VD, A) =\> VD,
-
-sendMsg: EdgeTriplet\[VD, ED\] =\> Iterator\[(VertexId, A)\],
-
-mergeMsg: (A, A) =\> A)
-
-: Graph\[VD, ED\]
-
+```scala
+class GraphOps[VD, ED] {
+  def pregel[A](
+    initialMsg: A,
+    maxIter: Int = Int.MaxValue,
+    activeDir: EdgeDirection = EdgeDirection.Out
+  )(
+    vprog: (VertexId, VD, A) => VD,
+    sendMsg: EdgeTriplet[VD, ED] => Iterator[(VertexId, A)],
+    mergeMsg: (A, A) => A
+  ): Graph[VD, ED]
 }
-
+```
 代码 6‑101
 
 Pregel方法在属性图上调用，并返回具有相同类型和结构的新图。 当边保持完整时，顶点的属性可能从一个超集更改为下一个超集。
@@ -171,52 +163,47 @@ Pregel接受以下两个参数列表。
 下面用 Pregel 接口实现一个社区检测算法。标签传播算法（Label Propagation Algorithm, LPA）是一类基于图的半监督方法，核心思路是让已标记节点的标签沿着图结构逐步向邻居扩散，并在迭代中不断更新未标记节点的标签估计。对于无向图来说，节点越相似、连接越紧密，彼此标签就越容易趋同；当迭代稳定后，标签接近的一组节点往往可以视作同一个社区。对本章来说，理解到这一层就足够了：LPA 依赖的是“节点反复接收邻居信息，再更新自身标签”的过程，因此非常适合用 Pregel 这样的消息传递模型来表达。
 
 通过在Pregel中实现此算法，我们希望获得一个图，其中点属性是社区隶属关系的标签。因此，我们将首先通过将每个点的标签设置为其标识符来初始化LPA图：
-
-val lpaGraph = graph.mapVertices { case (vid, \_) =\> vid }
-
+```scala
+val lpaGraph = graph.mapVertices { case (vid, _) => vid }
+```
 代码 6‑102
 
 接下来，我们将定义发送给Map \[Label，Long\]的消息的类型，该消息将社区标签与具有该标签的邻居数量相关联。
 将发送到每个节点的初始消息只是一个空映射：
-
+```scala
 type Label = VertexId
-
-val initialMessage = Map\[Label, Long\]()
-
+val initialMessage = Map[Label, Long]()
+```
 代码 6‑103
 
 遵循Pregel编程模型，我们定义了sendMsg函数，每个节点使用该函数将其当前标签通知其邻居。
 对于每个三元组，源节点将收到目标节点的标签，反之亦然：
-
-def sendMsg(e: EdgeTriplet\[Label, ED\]): Iterator\[(VertexId,
-Map\[Label, Long\])\] =
-
-Iterator((e.srcId, Map(e.dstAttr -\> 1L)), (e.dstId, Map(e.srcAttr -\>
-1L)))
-
+```scala
+def sendMsg(e: EdgeTriplet[Label, ED]): Iterator[(VertexId, Map[Label, Long])] =
+  Iterator(
+    (e.srcId, Map(e.dstAttr -> 1L)),
+    (e.dstId, Map(e.srcAttr -> 1L))
+  )
+```
 代码 6‑104
 
 上一个函数在每次迭代中都会返回其大多数邻居当前所属的社区的标签（即VertexId属性）。我们还需要一个mergeMsg函数来合并节点收到的所有消息。
 它的邻居变成一张地图。 如果两个消息都包含相同的标签，我们只需简单地为该标签求和相应的邻居数：
-
-def mergeMsg(count1: Map\[Label, Long\], count2: Map\[Label, Long\]):
-Map\[VertexId, Long\] = {
-
-(count1.keySet ++ count2.keySet).map { i =\> val count1Val =
-count1.getOrElse(i, 0L)
-
-val count2Val = count2.getOrElse(i, 0L) i -\>(count1Val + count2Val)
-
-}.toMap
-
+```scala
+def mergeMsg(count1: Map[Label, Long], count2: Map[Label, Long]): Map[VertexId, Long] = {
+  (count1.keySet ++ count2.keySet).map { i =>
+    val count1Val = count1.getOrElse(i, 0L)
+    val count2Val = count2.getOrElse(i, 0L)
+    i -> (count1Val + count2Val)
+  }.toMap
 }
-
+```
 代码 6‑105
 
 最后，我们可以通过调用图中的pregel方法来运行LPA算法，以实现社会财富均等化：
-
+```scala
 lpaGraph.pregel(initialMessage, 50)(vprog, sendMsg, mergeMsg)
-
+```
 代码 6‑106
 
 LPA的主要优点是它的简单性和时间效率。 实际上，已经观察到收敛的迭代次数与图的大小无关，而每次迭代都具有线性时间复杂度。
@@ -289,70 +276,52 @@ scala> println(ranksByUsername.collect().mkString("\n"))
 
 前面已经看过 GraphX 自带页面排名算法的用法。下面换一个角度，用 Pregel 自己实现一次 PageRank，这样更容易看清它的消息传递过程：
 
-（1）首先我们需要始化PageRank图，将每个边属性设置为1除以出度，每个点属性设置为1.0：
-
-val rankGraph: Graph\[(Double, Double), Double\] =
-
-// Associate the degree with each vertex
-
-graph.outerJoinVertices(graph.outDegrees) {
-
-(vid, vdata, deg) =\> deg.getOrElse(0)
-
-}.mapTriplets(e =\> 1.0 / e.srcAttr)
-
-.mapVertices((id, attr) =\> (0.0, 0.0))
-
+（1）首先我们需要初始化 PageRank 图，将每个边属性设置为 1 除以出度，每个点属性设置为 1.0：
+```scala
+val rankGraph: Graph[(Double, Double), Double] =
+  graph.outerJoinVertices(graph.outDegrees) {
+    (vid, vdata, deg) => deg.getOrElse(0)
+  }.mapTriplets(e => 1.0 / e.srcAttr)
+    .mapVertices((id, attr) => (0.0, 0.0))
+```
 代码 6‑108
 
 （2）按照Pregel的抽象定义，实现PageRank所需的三个函数。首先我们定义点程序如下：
-
+```scala
 val resetProb = 0.15
 
-def vProg(id: VertexId, attr: (Double, Double), msgSum: Double):
-(Double, Double)
-
-\= {
-
-val (oldPR, lastDelta) = attr
-
-val newPR = oldPR + (1.0 - resetProb) \* msgSum(newPR, newPR - oldPR)
-
+def vProg(id: VertexId, attr: (Double, Double), msgSum: Double): (Double, Double) = {
+  val (oldPR, lastDelta) = attr
+  val newPR = oldPR + (1.0 - resetProb) * msgSum
+  (newPR, newPR - oldPR)
 }
-
+```
 代码 6‑109
 
 接下来是创建消息函数：
-
+```scala
 val tol = 0.001
 
-def sendMessage(edge: EdgeTriplet\[(Double, Double), Double\]) = {
-
-if (edge.srcAttr.\_2 \> tol) {
-
-Iterator((edge.dstId, edge.srcAttr.\_2 \* edge.attr))
-
-} else {
-
-Iterator.empty
-
+def sendMessage(edge: EdgeTriplet[(Double, Double), Double]) = {
+  if (edge.srcAttr._2 > tol) {
+    Iterator((edge.dstId, edge.srcAttr._2 * edge.attr))
+  } else {
+    Iterator.empty
+  }
 }
-
-}
-
+```
 代码 6‑110
 
 第三个函数为mergeMsg，只是简单地增加等级：
-
+```scala
 def mergeMsg(a: Double, b: Double): Double = a + b
-
+```
 代码 6‑111
 
 然后我们将获得点排名，如下所示：
-
-rankGraph.pregel(initialMessage, activeDirection =
-
-EdgeDirection.Out)(vProg, sendMsg, mergeMsg).mapVertices((vid, attr) =\>
-attr.\_1)
-
+```scala
+rankGraph
+  .pregel(initialMessage, activeDirection = EdgeDirection.Out)(vProg, sendMsg, mergeMsg)
+  .mapVertices((vid, attr) => attr._1)
+```
 代码 6‑112

@@ -61,12 +61,11 @@ inc: Int => Int = <function1>
 ```
 
 上述定义的匿名函数，其实是下面这个常规函数的简写：
-
-def add(x:Int):Int {
-
-return x+1;
-
+```scala
+def add(x: Int): Int = {
+  x + 1
 }
+```
 
 以上范例中的 inc被定义一个值，使用方式如下：
 
@@ -291,12 +290,11 @@ Stack\[A\] 是 Stack\[B\] 的子类成立。Scala 提供了一种类型参数注
 
 型变是复杂类型的子类型关系与其组件类型的子类型关系的相关性。Scala支持泛型类
 的类型参数的型变注释，允许它们是协变的，逆变的，或在没有使用注释的情况下是不变的。在类型系统中使用型变允许我们在复杂类型之间建立直观的连接，而缺乏型变则会限制类抽象的重用性。
-
-class Foo\[+A\] // A covariant class
-
-class Bar\[-A\] // A contravariant class
-
-class Baz\[A\] // An invariant class
+```scala
+class Foo[+A] // A covariant class
+class Bar[-A] // A contravariant class
+class Baz[A]  // An invariant class
+```
 
 协变
 
@@ -305,16 +303,14 @@ class Baz\[A\] // An invariant class
 这允许我们使用泛型来创建非常有用和直观的子类型关系。
 
 考虑以下简单的类结构：
-
+```scala
 abstract class Animal {
-
-def name: String
-
+  def name: String
 }
 
 case class Cat(name: String) extends Animal
-
 case class Dog(name: String) extends Animal
+```
 
 类型 Cat 和 Dog 都是 Animal 的子类型。 Scala 标准库有一个通用的不可变的类 sealed abstract class
 List\[+A\]，其中类型参数 A 是协变的。 这意味着 List\[Cat\] 是 List\[Animal\]，List\[Dog\]
@@ -323,36 +319,26 @@ List\[Animal\]。
 
 在下例中，方法 printAnimalNames 将接受动物列表作为参数，并且逐行打印出它们的名称。 如果 List\[A\]
 不是协变的，最后两个方法调用将不能编译，这将严重限制 printAnimalNames 方法的适用性。
-
+```scala
 object CovarianceTest extends App {
+  def printAnimalNames(animals: List[Animal]): Unit = {
+    animals.foreach { animal =>
+      println(animal.name)
+    }
+  }
 
-def printAnimalNames(animals: List\[Animal\]): Unit = {
+  val cats: List[Cat] = List(Cat("Whiskers"), Cat("Tom"))
+  val dogs: List[Dog] = List(Dog("Fido"), Dog("Rex"))
 
-animals.foreach { animal =\>
+  printAnimalNames(cats)
+  // Whiskers
+  // Tom
 
-println(animal.name)
-
+  printAnimalNames(dogs)
+  // Fido
+  // Rex
 }
-
-}
-
-val cats: List\[Cat\] = List(Cat("Whiskers"), Cat("Tom"))
-
-val dogs: List\[Dog\] = List(Dog("Fido"), Dog("Rex"))
-
-printAnimalNames(cats)
-
-// Whiskers
-
-// Tom
-
-printAnimalNames(dogs)
-
-// Fido
-
-// Rex
-
-}
+```
 
 逆变
 
@@ -361,92 +347,76 @@ printAnimalNames(dogs)
 Writer\[B\] 是 Writer\[A\] 的子类型。
 
 考虑在下例中使用上面定义的类 Cat，Dog 和 Animal ：
-
-abstract class Printer\[-A\] {
-
-def print(value: A): Unit
-
+```scala
+abstract class Printer[-A] {
+  def print(value: A): Unit
 }
+```
 
 这里 Printer\[A\] 是一个简单的类，用来打印出某种类型的 A。 让我们定义一些特定的子类：
-
-class AnimalPrinter extends Printer\[Animal\] {
-
-def print(animal: Animal): Unit =
-
-println("The animal's name is: " + animal.name)
-
+```scala
+class AnimalPrinter extends Printer[Animal] {
+  def print(animal: Animal): Unit =
+    println("The animal's name is: " + animal.name)
 }
 
-class CatPrinter extends Printer\[Cat\] {
-
-def print(cat: Cat): Unit =
-
-println("The cat's name is: " + cat.name)
-
+class CatPrinter extends Printer[Cat] {
+  def print(cat: Cat): Unit =
+    println("The cat's name is: " + cat.name)
 }
+```
 
 如果 Printer\[Cat\] 知道如何在控制台打印出任意 Cat，并且 Printer\[Animal\] 知道如何在控制台打印出任意
 Animal，那么 Printer\[Animal\] 也应该知道如何打印出 Cat 就是合理的。 反向关系不适用，因为
 Printer\[Cat\] 并不知道如何在控制台打印出任意 Animal。 因此，如果我们愿意，我们应该能够用
 Printer\[Animal\] 替换 Printer\[Cat\]，而使 Printer\[A\] 逆变允许我们做到这一点。
-
+```scala
 object ContravarianceTest extends App {
+  val myCat: Cat = Cat("Boots")
 
-val myCat: Cat = Cat("Boots")
+  def printMyCat(printer: Printer[Cat]): Unit = {
+    printer.print(myCat)
+  }
 
-def printMyCat(printer: Printer\[Cat\]): Unit = {
+  val catPrinter: Printer[Cat] = new CatPrinter
+  val animalPrinter: Printer[Animal] = new AnimalPrinter
 
-printer.print(myCat)
-
+  printMyCat(catPrinter)
+  printMyCat(animalPrinter)
 }
-
-val catPrinter: Printer\[Cat\] = new CatPrinter
-
-val animalPrinter: Printer\[Animal\] = new AnimalPrinter
-
-printMyCat(catPrinter)
-
-printMyCat(animalPrinter)
-
-}
+```
 
 这个程序的输出如下：
-
+```text
 The cat's name is: Boots
-
 The animal's name is: Boots
+```
 
 不变
 
 默认情况下，Scala中的泛型类是不变的。 这意味着它们既不是协变的也不是逆变的。 在下例中，类 Container 是不变的。
 Container\[Cat\] 不是 Container\[Animal\]，反之亦然。
+```scala
+class Container[A](value: A) {
+  private var _value: A = value
 
-class Container\[A\](value: A) {
+  def getValue: A = _value
 
-private var \_value: A = value
-
-def getValue: A = \_value
-
-def setValue(value: A): Unit = {
-
-\_value = value
-
+  def setValue(value: A): Unit = {
+    _value = value
+  }
 }
-
-}
+```
 
 可能看起来一个 Container\[Cat\] 自然也应该是一个
 Container\[Animal\]，但允许一个可变的泛型类成为协变并不安全。
 在这个例子中，Container 是不变的非常重要。 假设 Container 实际上是协变的，下面的情况可能会发生：
-
-val catContainer: Container\[Cat\] = new Container(Cat("Felix"))
-
-val animalContainer: Container\[Animal\] = catContainer
-
+```scala
+val catContainer: Container[Cat] = new Container(Cat("Felix"))
+val animalContainer: Container[Animal] = catContainer
 animalContainer.setValue(Dog("Spot"))
-
 val cat: Cat = catContainer.getValue // 糟糕，我们最终会将一只狗作为值分配给一只猫
+```
 
 幸运的是，编译器在此之前就会阻止我们。
 
@@ -458,17 +428,15 @@ Function1 在其参数类型上是逆变的，并且在其返回类型上是协�
 Function1\[A, B\]。
 
 假设前面使用过的类似 Cat，Dog，Animal 的继承关系，加上以下内容：
-
+```scala
 abstract class SmallAnimal extends Animal
-
 case class Mouse(name: String) extends SmallAnimal
+```
 
-假设我们正在处理接受动物类型的函数，并返回他们的食物类型。 如果我们想要一个 Cat =\>
-SmallAnimal（因为猫吃小动物），但是给它一个 Animal =\>
-Mouse，我们的程序仍然可以工作。 直观地看，一个 Animal =\> Mouse 的函数仍然会接受一个 Cat 作为参数，因为 Cat
-即是一个 Animal，并且这个函数返回一个 Mouse，也是一个 SmallAnimal。
+假设我们正在处理接受动物类型的函数，并返回他们的食物类型。 如果我们想要一个 `Cat => SmallAnimal`（因为猫吃小动物），但是给它一个 `Animal => Mouse`，我们的程序仍然可以工作。直观地看，一个 `Animal => Mouse` 的函数仍然会接受一个 `Cat` 作为参数，因为 `Cat`
+即是一个 `Animal`，并且这个函数返回一个 `Mouse`，也是一个 `SmallAnimal`。
 既然我们可以安全地，隐式地用后者代替前者，我们可以说
-Animal =\> Mouse 是 Cat =\> SmallAnimal 的子类型。
+`Animal => Mouse` 是 `Cat => SmallAnimal` 的子类型。
 
 与其他语言的比较
 
@@ -485,36 +453,26 @@ Scala
 Spark 源码中，经常会发现 RDD 这个类没有 reduceByKey()、groupByKey() 等方法定义，但是却可以在 RDD
 上调用这些方法。这就是 Scala 隐式转换导致的，如果需要在RDD上调用这些函数，RDD必须是RDD\[(K,
 V)\]类型，即键值对类型。我们可以参考Spark源码文件，在RDD这个对象上定义了一个rddToPairRDDFunctions隐式转换。
-
-/\*\*
-
-\*/
-
+```scala
+/**
+ */
 object RDD {
+  private[spark] val CHECKPOINT_ALL_MARKED_ANCESTORS =
+    "spark.checkpoint.checkpointAllMarkedAncestors"
 
-private\[spark\] val CHECKPOINT\_ALL\_MARKED\_ANCESTORS =
-
-"spark.checkpoint.checkpointAllMarkedAncestors"
-
-// The following implicit functions were in SparkContext before 1.3 and
-users had to
-
-// \`import SparkContext.\_\` to enable them. Now we move them here to
-make the compiler find
-
-// them automatically. However, we still keep the old functions in
-SparkContext for backward
-
-// compatibility and forward to the following functions directly.
-
-implicit def rddToPairRDDFunctions\[K, V\](rdd: RDD\[(K, V)\])
-
-(implicit kt: ClassTag\[K\], vt: ClassTag\[V\], ord: Ordering\[K\] =
-null): PairRDDFunctions\[K, V\] = {
-
-new PairRDDFunctions(rdd)
-
+  // The following implicit functions were in SparkContext before 1.3 and users had to
+  // `import SparkContext._` to enable them. Now we move them here to make the compiler find
+  // them automatically. However, we still keep the old functions in SparkContext for backward
+  // compatibility and forward to the following functions directly.
+  implicit def rddToPairRDDFunctions[K, V](rdd: RDD[(K, V)])(
+    implicit kt: ClassTag[K],
+    vt: ClassTag[V],
+    ord: Ordering[K] = null
+  ): PairRDDFunctions[K, V] = {
+    new PairRDDFunctions(rdd)
+  }
 }
+```
 
 rddToPairRDDFunction为隐式转换函数，即将RDD\[(K,
 V)\]类型转换为PairRDDFunctions对象，从而可以在原始的RDD对象上调用reduceByKey()之类的方法。rddToPairRDDFunction隐式函数位于1.3之前的SparkContext中，我们必须使用import

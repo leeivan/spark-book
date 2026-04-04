@@ -34,43 +34,32 @@ Streaming应用程序接收的记录。
 
 在详细介绍Spark数据流程序之前，来看一个简单的Spark数据流程序，这个程序通过Spark
 Streaming的TCP套接字接口侦听NetCat发生的数据，统计接收到的文本数据中的字数，这个代码的主程序为：
-
+```scala
 import org.apache.spark.SparkConf
-
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object NetworkWordCount {
+  def main(args: Array[String]): Unit = {
+    if (args.length < 2) {
+      System.err.println("Usage: NetworkWordCount <hostname> <port>")
+      System.exit(1)
+    }
 
-def main(args: Array\[String\]) {
+    val sparkConf = new SparkConf()
+      .setAppName("NetworkWordCount")
+      .setMaster("local[2]")
 
-if (args.length \< 2) {
+    val ssc = new StreamingContext(sparkConf, Seconds(10))
+    val lines = ssc.socketTextStream(args(0), args(1).toInt)
+    val words = lines.flatMap(_.split(" "))
+    val wordCounts = words.map(x => (x, 1)).reduceByKey(_ + _)
 
-System.err.println("Usage: NetworkWordCount \<hostname\> \<port\>")
-
-System.exit(1)
-
+    wordCounts.print()
+    ssc.start()
+    ssc.awaitTermination()
+  }
 }
-
-val sparkConf = new
-SparkConf().setAppName("NetworkWordCount").setMaster("local\[2\]")
-
-val ssc = new StreamingContext(sparkConf, Seconds(10))
-
-val lines = ssc.socketTextStream(args(0), args(1).toInt)
-
-val words = lines.flatMap(\_.split(" "))
-
-val wordCounts = words.map(x =\> (x, 1)).reduceByKey(\_ + \_)
-
-wordCounts.print()
-
-ssc.start()
-
-ssc.awaitTermination()
-
-}
-
-}
+```
 
 代码 5‑1
 
@@ -85,13 +74,11 @@ ssc.awaitTermination()
 代码 5‑2
 
 使用Docker exec 命令进入到容器中打开另一终端界面，运行Spark应用程序：
+```text
+root@48feaa001420:~# spark-submit --class NetworkWordCount /data/application/simple-streaming/target/scala-2.13/simple-streaming_2.13-0.1.jar localhost 9999
 
-root@48feaa001420:\~\# spark-submit --class NetworkWordCount
-/data/application/simple-streaming/target/scala-2.13/simple-streaming\_2.13-0.1.jar
-localhost 9999
-
-20/03/26 08:28:39 WARN NativeCodeLoader: Unable to load native-hadoop
-library for your platform... using builtin-java classes where applicable
+20/03/26 08:28:39 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+```
 
 ```text
 -------------------------------------------
@@ -187,6 +174,7 @@ StreamingContext是流传输的主要入口点，本质上负责流传输应用�
 上面StreamingContext两个构造这里的第二个参数是batchDuration，这是数据流被分批的时间间隔。无论使用Spark交互界面或创建一个独立的应用程序，需要创建一个新的StreamingContext。要初始化Spark数据流程序，必须创建一个StreamingContext对象，它是所有Spark数据流功能的主要入口点。可以通过两种方式创建新的StreamingContext：
 
 （1）如果是在Spark应用程序中，StreamingContext对象可以从SparkConf对象创建。
+```scala
 
 import org.apache.spark.\_
 
@@ -196,6 +184,7 @@ val conf = new SparkConf().setAppName(appName).setMaster(master)
 
 val ssc = new StreamingContext(conf, Seconds(1))
 
+```
 代码 5‑4
 
 `appName` 是应用在监控界面里显示的名称。`master` 可以是 Standalone、Kubernetes、YARN 的集群地址，也可以是本地模式字符串 `local[*]`。实际部署到集群时，通常不会把 `master` 硬编码在程序里，而是通过 `spark-submit` 在提交阶段传入；本地测试或单元测试时，`local[*]` 则更方便。创建 `StreamingContext` 时会连带创建底层 `SparkContext`，可通过 `ssc.sparkContext` 访问。批次间隔本身则需要结合延迟目标和集群资源来权衡设置。
@@ -253,9 +242,13 @@ Streaming应用程序的内核数量必须大于接收器数量，否则系统�
 
 下面我们介绍几种接收器。SocketTextStream已经在代码 5‑1中使用了，通过TCP套接字接口接收文本数据，创建一个离散流。
 
-  - socketTextStream(hostname: String, port: Int, storageLevel:
-    StorageLevel = StorageLevel.MEMORY\_AND\_DISK\_SER\_2):
-    ReceiverInputDStream\[String\]
+```scala
+socketTextStream(
+  hostname: String,
+  port: Int,
+  storageLevel: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER_2
+): ReceiverInputDStream[String]
+```
 
 从hostname:port地址接收数据创建输入流，使用TCP套接字接收数据，使用UTF8编码接收文本，换行作为分隔。
 
@@ -267,12 +260,17 @@ Streaming应用程序的内核数量必须大于接收器数量，否则系统�
 
 除了套接字之外，StreamingContext提供了从文件创建离散流作为输入源的方法，即从与Hadoop兼容的任何文件系统上读取文件数据。
 
-  - def fileStream\[K: ClassTag, V: ClassTag, F \<: NewInputFormat\[K,
-    V\]:ClassTag\] (directory: String): InputDStream\[(K, V)\]
+```scala
+def fileStream[K: ClassTag, V: ClassTag, F <: NewInputFormat[K, V]: ClassTag](
+  directory: String
+): InputDStream[(K, V)]
+```
 
 创建一个输入流，该输入流监视文件系统中的新文件，并使用给定的键值类型和输入格式读取它们。必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。
 
-  - textFileStream(directory: String): DStream\[String\]
+```scala
+textFileStream(directory: String): DStream[String]
+```
 
 创建一个输入流，该流监视与Hadoop兼容的文件系统中的新文件，并将其读取为文本文件（使用键作为LongWritable，将值作为Text，将输入格式作为TextInputFormat）。
 必须通过将文件从同一文件系统中的另一个位置移动到受监控目录中。 文件名以开头。
@@ -304,8 +302,9 @@ Time: 1585054770000 ms
 代码 5‑6
 
 此时，应该看到终端界面中每10秒刷新一次。现在打开另一个终端界面，将文本文件添加到/data/input目录中：
-
+```bash
 cp /usr/local/spark/README.md /root/data/input/1.txt
+```
 
 一旦将文件添加到目录中，应该可以在执行程序的终端中看到刚添加文件的单词统计输出：
 
@@ -328,8 +327,9 @@ Time: 1585054780000 ms
 
 要停止流式传输，在运行程序的终端中使用Ctrl+C。还可以使用QueueStream创建基于RDD队列的离散流，推送到队列中的每个RDD将被视为离散流中的一批数据，并像流一样处理。
 
-  - def queueStream\[T: ClassTag\](queue: Queue\[RDD\[T\]\], oneAtATime:
-    Boolean =true): InputDStream\[T\]
+```scala
+def queueStream[T: ClassTag](queue: Queue[RDD[T]], oneAtATime: Boolean = true): InputDStream[T]
+```
 
 下面代码每隔1秒创建一个RDD放入到队列中，QueueStream每隔1秒接收队列中的数据进行处理：
 

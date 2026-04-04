@@ -142,33 +142,30 @@ System.out.println("Hello, World\!");
 Scala 是 Spark 最贴近内核生态的语言。很多底层概念、Dataset 类型系统、函数签名和示例最早都来自 Scala 语境，因此当你需要理解 Spark 内部抽象、编写更复杂的 JVM 侧库，或者希望在类型安全与表达力之间取得平衡时，Scala 会更有优势。
 
 从工程体验上看，Scala 的收益主要在三点：一是与 Spark 内部 API 更贴近；二是 `case class`、模式匹配和高阶函数很适合表达结构化与分布式逻辑；三是可以无缝复用 Java 生态。但它的学习曲线也更陡，尤其对只想快速完成分析任务的读者来说，Python 往往更容易上手。下面先用一个极小的 Scala 片段感受语法风格：
-
+```scala
 val nums = Seq(1, 2, 3)
 nums.map(_ + 1)
+```
 
 代码 1‑2
 
 更接近日常工程入口的，仍然是标准的 `object` / `main` 结构。下面保留两个最常见的 Hello World 写法：
-
+```scala
 object HelloWorld extends App {
-
-println("Hello, world\!")
-
+  println("Hello, world!")
 }
+```
 
 代码 1‑3
 
 或
-
+```scala
 object HelloWorld {
-
-def main(args: Array\[String\]) {
-
-println("Hello, world\!")
-
+  def main(args: Array[String]) {
+    println("Hello, world!")
+  }
 }
-
-}
+```
 
 代码 1‑4
 

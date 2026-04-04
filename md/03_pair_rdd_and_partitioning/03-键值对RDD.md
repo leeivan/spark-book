@@ -34,28 +34,36 @@ scala> pairRDD.collect().foreach(println)
   - 语法解释
 
 Scala元组结合件多个固定数量的项目在一起，使它们可以被作为一个整体传递。不像一个数组或列表，元组可以容纳不同类型的对象，但它们也是不可改变的。这里是一个元组持有整数、字符串和Console，如下的一个例子：
+```text
 
 val t = (1, "hello", Console)
 
+```
 代码 3.2
 这是语法方糖，是下面代码的简写方式：
+```text
 
 val t = new Tuple3(1, "hello", Console)
 
+```
 代码 3.3
 一个元组的实际类型取决于它包含的元素和这些元素的类型和数目。因此该类型 (99, "Luftballons") 是 Tuple2\[Int,
 String\]；而('u', 'r', "the", 1, 4, "me") 的类型是 Tuple6\[Char, Char, String,
 Int, Int,
 String\]。元组类型包括Tuple1、Tuple2、Tuple3等等，至少目前的上限为22，如果需要更多，那么可以使用一个集合，而不是一个元组。对于每个TupleN类型，其中1\<=
 N \<= 22，Scala定义了许多元素的访问方法。假定定义一个元组t为：
+```text
 
 val t = (4,3,2,1)
 
+```
 代码 3.4
 要访问的元组t的元素，可以使用的方法t.\_1访问的第一个元素，t.\_2进入第二个，依此类推。例如，下面的表达式计算t的所有元素的总和：
+```text
 
 val sum = t.\_1 + t.\_2 + t.\_3 + t.\_4
 
+```
 代码 3.5
 存在许多格式的数据可以直接加载为键值对，例如sequenceFile文件是Hadoop用来存储二进制形式的键值对\[Key,Value\]对而设计的一种平面文件。在此示例中，SequenceFile由键值对(Category,1)组成，当加载到Spark中时会产生键值对RDD，代码如下：
 
@@ -102,40 +110,34 @@ res11: Array[(String, Int)] = Array((key1,1), (Kay2,2), (Key3,2))
 Scala 提供了强大的模式匹配机制，应用也非常广泛。一个模式匹配包含了一系列备选项，每个都开始于关键字
 case。每个备选项都包含了一个模式及一到多个表达式。箭头符号 =\>
 隔开了模式和表达式。上面的代码中使用了元组匹配模式，使用下面的例子来学习其语法：
-
+```scala
 val langs = Seq(
-
-("Scala", "Martin", "Odersky"),
-
-("Clojure", "Rich", "Hickey"),
-
-("Lisp", "John", "McCarthy"))
+  ("Scala", "Martin", "Odersky"),
+  ("Clojure", "Rich", "Hickey"),
+  ("Lisp", "John", "McCarthy")
+)
+```
 
 代码 3.8
 定义langs序列（Seq）变量，其中包含三个三维元组。
-
-for (tuple \<- langs) {
-
-tuple match {
-
-case ("Scala", \_, \_) =\> println("Found Scala")
-
-case (lang, first, last) =\>
-
-println(s"Found other language: $lang ($first, $last)")
-
+```scala
+for (tuple <- langs) {
+  tuple match {
+    case ("Scala", _, _) =>
+      println("Found Scala")
+    case (lang, first, last) =>
+      println(s"Found other language: $lang ($first, $last)")
+  }
 }
-
-}
+```
 
 代码 3.9
 在for循环中，定义了case模式匹配。第一个case匹配一个三元素元组，其中第一个元素是字符串“Scala”，忽略第二个和第三个参数；第二个case匹配任何三元素元组，元素可以是任何类型，但是由于输入langs，它们被推断为字符串。将元素提取为变量lang、first和last，输出结果为：
-
+```text
 Found Scala
-
 Found other language: Clojure (Rich, Hickey)
-
 Found other language: Lisp (John, McCarthy)
+```
 
 代码 3.10
 在上面的代码中，一个元组可以分解成其组成元素。可以匹配元组中的字面值，在任何想要的位置，可以忽略不关心的元素。
@@ -453,32 +455,24 @@ count)，需要做的就是将第一个分区依次到最后一个分区中组�
 最终目标是逐个计算平均值averageByKey()。combineByKey()的结果是RDD，其格式为(label, (sum,
 count)) ，因此可以通过使用map方法，映射(sum, count)到sum /
 count来轻松获取平均值。接下来将数据的子集分解到多个分区，并在实际中看数据的计算方式：
-
+```text
 分区一
-
-A=3 --\> createCombiner(3) ==\> accum\[A\] = (3, 1)
-
-A=9 --\> mergeValue(accum\[A\], 9) ==\> accum\[A\] = (3 + 9, 1 + 1)
-
-B=11 --\> createCombiner(11) ==\> accum\[B\] = (11, 1)
+A=3 --> createCombiner(3) ==> accum[A] = (3, 1)
+A=9 --> mergeValue(accum[A], 9) ==> accum[A] = (3 + 9, 1 + 1)
+B=11 --> createCombiner(11) ==> accum[B] = (11, 1)
 
 分区二
-
-A=12 --\> createCombiner(12) ==\> accum\[A\] = (12, 1)
-
-B=4 --\> createCombiner(4) ==\> accum\[B\] = (4, 1)
-
-B=10 --\> mergeValue(accum\[B\], 10) ==\> accum\[B\] = (4 + 10, 1 + 1)
+A=12 --> createCombiner(12) ==> accum[A] = (12, 1)
+B=4 --> createCombiner(4) ==> accum[B] = (4, 1)
+B=10 --> mergeValue(accum[B], 10) ==> accum[B] = (4 + 10, 1 + 1)
 
 合并分区
+A ==> mergeCombiner((12, 2), (12, 1)) ==> (12 + 12, 2 + 1)
+B ==> mergeCombiner((11, 1), (14, 2)) ==> (11 + 14, 1 + 2)
 
-A ==\> mergeCombiner((12, 2), (12, 1)) ==\> (12 + 12, 2 + 1)
-
-B ==\> mergeCombiner((11, 1), (14, 2)) ==\> (11 + 14, 1 + 2)
-
-sumCount输出为：
-
+sumCount 输出为：
 Array((A, (24, 3)), (B, (25, 3)))
+```
 
 #### 3.3.2.2 分组
 
@@ -553,31 +547,24 @@ Array((34,(Some(Clerical),Robinson)), (34,(Some(Clerical),Smith)),
   - Option、Some和None
 
 在Scala里，Option常用来表达“这个结果可能存在，也可能不存在”。如果一个函数在成功时返回对象、失败时原本会返回null，那么更推荐把返回类型定义为Option。这样一来，调用者在函数签名层面就能明确知道：这里需要处理“有值”和“无值”两种情况。Option最常见的两个子类型是Some和None。下面是一个简单示例：
-
-def toInt(in: String): Option\[Int\] = {
-
-try {
-
-Some(Integer.parseInt(in.trim))
-
-} catch {
-
-case e: NumberFormatException =\> None
-
+```scala
+def toInt(in: String): Option[Int] = {
+  try {
+    Some(Integer.parseInt(in.trim))
+  } catch {
+    case e: NumberFormatException => None
+  }
 }
-
-}
+```
 
 代码 3.32
 以下是这个toInt函数的工作原理：它需要一个String作为参数。如果它可以将String转换为Int，那么它返回为Some（Int）；如果String不能转换为Int，则返回None。如果是调用此函数的代码将如下所示：
-
+```scala
 toInt(someString) match {
-
-case Some(i) =\> println(i)
-
-case None =\> println("That didn't work.")
-
+  case Some(i) => println(i)
+  case None    => println("That didn't work.")
 }
+```
 
 代码 3.33
 #### 3.3.2.4 排序
@@ -652,9 +639,11 @@ ParallelCollectionRDD[15] at parallelize at <console>:24
   - countByKey(): Map\[K, Long\]
 
 对每个键进行计数，只有当返回的结果Map预计很小时，才应该使用此方法，因为整个内容都会加载到驱动程序的内存中。要处理非常大的结果，可以考虑使用：
+```text
 
 rdd.mapValues（\_ =\> 1L）.reduceByKey（\_ + \_）
 
+```
 代码 3.38
 其将返回RDD \[T，Long\]而不是Map。
 

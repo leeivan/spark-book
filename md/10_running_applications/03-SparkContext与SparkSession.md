@@ -9,53 +9,43 @@
 SparkSession 在 Spark 2.0 之后已经把 SQLContext 和 HiveContext 统一为单一入口对象。
 
 可以使用 `SparkSession.builder` 创建或获取 SparkSession 实例。
-
+```scala
 import org.apache.spark.sql.SparkSession
 
 val spark = SparkSession
-
-.builder()
-
-.appName("Spark SQL basic example")
-
-.config("spark.some.config.option", "some-value")
-
-.getOrCreate()
+  .builder()
+  .appName("Spark SQL basic example")
+  .config("spark.some.config.option", "some-value")
+  .getOrCreate()
+```
 
 代码 10.1
 完成后可以调用 `stop()` 方法关闭当前的 SparkSession。
+```text
 
 spark.stop
 
+```
 代码 10.2
 早期 Spark 版本的 `spark-shell` 默认暴露的是 `sc`；在 Spark 2.0 之后，交互环境会直接创建名为 `spark` 的 SparkSession，同时仍然保留底层的 `sc` 以便访问 SparkContext。也就是说，今天读者在 shell 里通常先接触到的是统一入口 `spark`，而不是多个并列上下文对象。
-
-root@3997e0349ac9:\~\# spark-shell
+```text
+root@3997e0349ac9:~# spark-shell
 
 Spark context Web UI available at http://172.17.0.2:4040
-
-Spark context available as 'sc' (master = local\[\*\], app id =
-local-1525959700559).
-
+Spark context available as 'sc' (master = local[*], app id = local-1525959700559).
 Spark session available as 'spark'.
 
 Welcome to
-
-\_\_\_\_ \_\_
-
-/ \_\_/\_\_ \_\_\_ \_\_\_\_\_/ /\_\_
-
-\_\\ \\/ \_ \\/ \_ \`/ \_\_/ '\_/
-
-/\_\_\_/ .\_\_/\\\_,\_/\_/ /\_/\\\_\\ version 4.1.1
-
-/\_/
+____ __
+/ __/__ ___ _____/ /__
+_\ \/ _ \/ _ `/ _  / _/
+/___/ .__/\_,_/\_,_/\__\ version 4.1.1
+   /_/
 
 Using Scala version 2.13.16 (OpenJDK 64-Bit Server VM, Java 17)
-
 Type in expressions to have them evaluated.
-
 Type :help for more information.
+```
 
 ```scala
 scala> spark
@@ -82,11 +72,13 @@ Program）通过它连接集群管理器（YARN，Kubernetes或Standalone）并�
   - builder(): Builder
 
 > `builder()` 用来创建一个 Builder，再通过它获取或创建 SparkSession 实例。下面这段代码适用于 Scala 应用程序；在 `spark-shell` 中，SparkSession 通常已经由系统自动创建。
+```scala
 
 import org.apache.spark.sql.SparkSession
 
 val builder = SparkSession.builder
 
+```
 代码 10.4
   - version: String
 
@@ -101,11 +93,13 @@ res4: String = 4.1.1
   - implicits
 
 implicits对象是一个具有Scala隐式方法的帮助类，用于将Scala对象转换为Dataset、DataFrame和Column。它还定义了Scala原始类型的Encoder，例如Int、Double、String及其Product和Collection。
+```text
 
 val spark = SparkSession.builder.getOrCreate()
 
 import spark.implicits.\_
 
+```
 代码 10.6
 implicits对象提供对从任何类型的RDD（Encoder所包括的）、case类或元组以及Seq创建Dataset，还提供从Scala的Symbol或$到Column的转换，还提供从Product类型（例如案例类或元组）的RDD或Seq到DataFrame的转换，具有从Int、Long和String的RDD到具有单个列名“\_1”的DataFrame直接转换。
 
@@ -236,9 +230,11 @@ scala> spark.catalog.listTables.show
   - def read: DataFrameReader
 
 read方法返回一个DataFrameReader，用于从外部存储系统读取数据并将其加载到DataFrame。
+```scala
 
 val dfReader: DataFrameReader = spark.read
 
+```
 代码 10.13
   - lazy val conf: RuntimeConfig
 

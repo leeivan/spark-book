@@ -233,23 +233,39 @@ Took 0.1649 seconds
 传感器数据来自逗号分隔的 CSV 文件，并持续写入某个目录。Spark Streaming 会监视这个目录，并在发现新文件时把它们纳入后续微批处理。如前所述，流式应用当然可以接入多种数据源，但为了把历史 DStream 链路讲清楚，这里仍然使用目录中的 CSV 文件作为输入。
 
 下面先定义两个最基础的部件：一是与 CSV 记录对应的 `Sensor` 案例类，二是把 `Sensor` 转成 HBase `Put` 的辅助函数。这里继续使用 `TableOutputFormat` 写入 HBase，风格上和早期 MapReduce/HBase 集成方式很接近，也正好能说明这类历史系统通常怎么组织输出链路。
-
-case class Sensor(resid: String, date: String, time: String, hz: Double,
-disp: Double, flo: Double, sedPPM: Double, psi: Double, chlPPM: Double)
-extends Serializable
+```scala
+case class Sensor(
+  resid: String,
+  date: String,
+  time: String,
+  hz: Double,
+  disp: Double,
+  flo: Double,
+  sedPPM: Double,
+  psi: Double,
+  chlPPM: Double
+) extends Serializable
+```
 
 代码 5‑35
 
 `parseSensor` 方法负责解析 CSV 记录，并把逗号分隔的字段装配成 `Sensor` 对象。
-
+```scala
 def parseSensor(str: String): Sensor = {
-
-val p = str.split(",")
-
-Sensor(p(0), p(1), p(2), p(3).toDouble, p(4).toDouble, p(5).toDouble,
-p(6).toDouble, p(7).toDouble, p(8).toDouble)
-
+  val p = str.split(",")
+  Sensor(
+    p(0),
+    p(1),
+    p(2),
+    p(3).toDouble,
+    p(4).toDouble,
+    p(5).toDouble,
+    p(6).toDouble,
+    p(7).toDouble,
+    p(8).toDouble
+  )
 }
+```
 
 代码 5‑36
 
@@ -266,15 +282,12 @@ p(6).toDouble, p(7).toDouble, p(8).toDouble)
   - 调用 `awaitTermination()` 让驱动进程持续等待流任务运行。
 
 下面的代码把这几个步骤串起来。和前面章节里的建议一致，这类流式任务更适合作为独立应用通过 Maven 或 SBT 打包提交；这里的 `StreamingContext` 使用 2 秒批次间隔，目的是让微批边界更容易观察。
-
+```scala
 val sparkConf = new SparkConf().setAppName("HBaseStream")
-
 val ssc = new StreamingContext(sparkConf, Seconds(2))
-
 val linesDStream = ssc.textFileStream("/root/data/stream")
-
 val sensorDStream = linesDStream.map(Sensor.parseSensor)
-
+```
 代码 5‑37
 
 这段代码里，`linesDStream` 表示源数据流。`StreamingContext.textFileStream()` 会持续监视兼容 Hadoop 的文件系统目录，并在检测到新文件时把它们纳入后续批次处理。
@@ -284,68 +297,53 @@ val sensorDStream = linesDStream.map(Sensor.parseSensor)
 图例 5‑17 创建输入流
 
 这种摄取方式适合“不断把新文件移动或复制到目录里”的工作流。`linesDStream` 中的每条记录都是一行文本，而 DStream 内部则是一串按 2 秒间隔切分的 RDD。随后通过 `map(parseSensor)` 把文本转换成 `Sensor` 对象，再用 `foreachRDD()` 在每个批次上执行真正的处理逻辑：筛选低 PSI 告警、把普通数据与告警数据分别转换成 HBase `Put`，并写入外部表。
+```scala
+sensorDStream.foreachRDD { rdd =>
+  // 过滤传感器低 psi 的数据
+  val alertRDD = rdd.filter(sensor => sensor.psi < 5.0)
 
-sensorDStream.foreachRDD { rdd =\>
+  alertRDD.take(1).foreach(println)
 
-// 过滤传感器低psi的数据
+  // 将传感器数据转换成 Put 对象，写入 HBase 表的列族中
+  rdd.map(Sensor.convertToPut)
+    .saveAsHadoopDataset(jobConfig)
 
-val alertRDD = rdd.filter(sensor =\> sensor.psi \< 5.0)
-
-alertRDD.take(1).foreach(println)
-
-// 将传感器数据转换成put对象，写入HBase表的列族中
-
-rdd.map(Sensor.convertToPut).
-
-saveAsHadoopDataset(jobConfig)
-
-alertRDD.map(Sensor.convertToPutAlert).
-
-saveAsHadoopDataset(jobConfig)
-
+  alertRDD.map(Sensor.convertToPutAlert)
+    .saveAsHadoopDataset(jobConfig)
 }
+```
 
 代码 5‑38
 
 当输入流、转换和输出逻辑都定义好之后，还需要显式调用 `StreamingContext.start()` 才会真正开始接收数据；随后再用 `awaitTermination()` 让驱动进程持续等待流计算运行。
-
+```scala
 println("start streaming")
-
 ssc.start()
-
 ssc.awaitTermination()
+```
 
 代码 5‑39
 
 接下来就是把处理后的流数据写入 HBase。这里会先把数据组织成便于查询和检查的结构，再通过 `convertToPut` 把 `Sensor` 对象转换成 HBase 所需的 `Put` 对象，作为最终写入动作的输入。
-
+```scala
 def convertToPut(sensor: Sensor): (ImmutableBytesWritable, Put) = {
+  val dateTime = sensor.date + " " + sensor.time
 
-val dateTime = sensor.date + " " + sensor.time
+  // 创建一个组合行键: sensorid_date time
+  val rowkey = sensor.resid + "_" + dateTime
+  val put = new Put(Bytes.toBytes(rowkey))
 
-// 创建一个组合行键: sensorid\_date time
+  // 增加列族数据
+  put.addColumn(cfDataBytes, colHzBytes, Bytes.toBytes(sensor.hz))
+  put.addColumn(cfDataBytes, colDispBytes, Bytes.toBytes(sensor.disp))
+  put.addColumn(cfDataBytes, colFloBytes, Bytes.toBytes(sensor.flo))
+  put.addColumn(cfDataBytes, colSedBytes, Bytes.toBytes(sensor.sedPPM))
+  put.addColumn(cfDataBytes, colPsiBytes, Bytes.toBytes(sensor.psi))
+  put.addColumn(cfDataBytes, colChlBytes, Bytes.toBytes(sensor.chlPPM))
 
-val rowkey = sensor.resid + "\_" + dateTime
-
-val put = new Put(Bytes.toBytes(rowkey))
-
-// 增加列族数据
-
-put.addColumn(cfDataBytes, colHzBytes, Bytes.toBytes(sensor.hz))
-
-put.addColumn(cfDataBytes, colDispBytes, Bytes.toBytes(sensor.disp))
-
-put.addColumn(cfDataBytes, colFloBytes, Bytes.toBytes(sensor.flo))
-
-put.addColumn(cfDataBytes, colSedBytes, Bytes.toBytes(sensor.sedPPM))
-
-put.addColumn(cfDataBytes, colPsiBytes, Bytes.toBytes(sensor.psi))
-
-put.addColumn(cfDataBytes, colChlBytes, Bytes.toBytes(sensor.chlPPM))
-
-return (new ImmutableBytesWritable(Bytes.toBytes(rowkey)), put)
-
+  (new ImmutableBytesWritable(Bytes.toBytes(rowkey)), put)
 }
+```
 
 代码 5‑40
 
@@ -358,234 +356,168 @@ return (new ImmutableBytesWritable(Bytes.toBytes(rowkey)), put)
 这将使用该存储系统的Hadoop Configuration对象将RDD输出到任何Hadoop支持的存储系统上，将sensorRDD
 对象转换为Put对象，然后使用
 saveAsHadoopDataset()方法写入到HBase中。现在要读取HBase传感器表数据，然后计算每日摘要统计信息并将这些统计信息写入统计信息列族，以下代码读取HBase表传感器表psi列数据，使用StatCounter计算此数据的统计数据，然后将统计数据写入传感器统计数据列系列。
-
+```scala
 val conf = HBaseConfiguration.create()
+conf.set(TableInputFormat.INPUT_TABLE, HBaseSensorStream.tableName)
 
-conf.set(TableInputFormat.INPUT\_TABLE, HBaseSensorStream.tableName)
+// 读取列族 psi 列中的数据
+conf.set(TableInputFormat.SCAN_COLUMNS, "data:psi")
 
-//读取列族psi列中的数据
+// 加载 (row key, row Result) RDD 元组
+val hBaseRDD = sc.newAPIHadoopRDD(
+  conf,
+  classOf[TableInputFormat],
+  classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+  classOf[org.apache.hadoop.hbase.client.Result]
+)
 
-conf.set(TableInputFormat.SCAN\_COLUMNS, "data:psi")
+// 转换 (row key, row Result) 元组为 resultRDD
+val resultRDD = hBaseRDD.map(tuple => tuple._2)
 
-//加载(row key,row Result)RDD元组
+val keyValueRDD = resultRDD.map { result =>
+  (Bytes.toString(result.getRow()).split(" ")(0), Bytes.toDouble(result.value))
+}
 
-val hBaseRDD = sc.newAPIHadoopRDD(conf, classOf\[TableInputFormat\],
+// 通过 rowkey 分组, 得到列值的统计
+val keyStatsRDD = keyValueRDD
+  .groupByKey()
+  .mapValues(list => StatCounter(list))
 
-classOf\[org.apache.hadoop.hbase.io.ImmutableBytesWritable\],
-
-classOf\[org.apache.hadoop.hbase.client.Result\])
-
-//转换(row key,row Result)元组为resultRDD
-
-val resultRDD = hBaseRDD.map(tuple =\> tuple.\_2)
-
-val keyValueRDD = resultRDD.
-
-map(result =\> (Bytes.toString(result.getRow()).
-
-split(" ")(0), Bytes.toDouble(result.value)))
-
-// 通过rowkey分组,得到列值的统计
-
-val keyStatsRDD = keyValueRDD.
-
-groupByKey().
-
-mapValues(list =\> StatCounter(list))
-
-keyStatsRDD.map { case (k, v) =\> convertToPut(k, v)
-}.saveAsHadoopDataset(jobConfig)
+keyStatsRDD.map { case (k, v) => convertToPut(k, v) }
+  .saveAsHadoopDataset(jobConfig)
+```
 
 代码 5‑41
 
 newAPIHadoopRDD()的输出是键值对RDD，PairRDDFunctions.saveAsHadoopDataset()方法将Put对象保存到HBase。现在，让我们看一看代码运行步骤和输出结果。
 
 步骤1：启动流媒体应用
-
-spark-submit --class HBaseSensorStream
-/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
+```bash
+spark-submit --class HBaseSensorStream \
+  /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
+```
 
 代码 5‑42
 
 步骤2：将流数据文件复制到流目录
-
+```bash
 cp /data/sensordata.csv /root/data/stream/
+```
 
 代码 5‑43
 
 步骤3：我们可以扫描写入表的数据，但是无法从shell界面读取二进制double值。启动hbase
 shell命令，扫描data列族和alert列族
-
-hbase(main):007:0\> scan 'sensor', {COLUMNS=\>\['data'\], LIMIT =\> 1}
+```text
+hbase(main):007:0> scan 'sensor', {COLUMNS=>['data'], LIMIT => 1}
 
 ROW COLUMN+CELL
 
-ANDOUILLE\_3/10/14 10:01 column=data:chlPPM, timestamp=1586161685698,
-value=?\\xF7\\x0A=p\\xA3\\xD7\\x0A
-
-ANDOUILLE\_3/10/14 10:01 column=data:disp, timestamp=1586161685698,
-value=?\\xFB|\\xED\\x91hr\\xB0
-
-ANDOUILLE\_3/10/14 10:01 column=data:flo, timestamp=1586161685698,
-value=@\\x93\\xEC\\x00\\x00\\x00\\x00\\x00
-
-ANDOUILLE\_3/10/14 10:01 column=data:hz, timestamp=1586161685698,
-value=@\#\\xA3\\xD7\\x0A=p\\xA4
-
-ANDOUILLE\_3/10/14 10:01 column=data:psi, timestamp=1586161685698,
-value=@S\\x00\\x00\\x00\\x00\\x00\\x00
-
-ANDOUILLE\_3/10/14 10:01 column=data:sedPPM, timestamp=1586161685698,
-value=?\\xD3333333
+ANDOUILLE_3/10/14 10:01 column=data:chlPPM, timestamp=1586161685698, value=?\xF7\x0A=p\xA3\xD7\x0A
+ANDOUILLE_3/10/14 10:01 column=data:disp, timestamp=1586161685698, value=?\xFB|\xED\x91hr\xB0
+ANDOUILLE_3/10/14 10:01 column=data:flo, timestamp=1586161685698, value=@\x93\xEC\x00\x00\x00\x00\x00
+ANDOUILLE_3/10/14 10:01 column=data:hz, timestamp=1586161685698, value=@#\xA3\xD7\x0A=p\xA4
+ANDOUILLE_3/10/14 10:01 column=data:psi, timestamp=1586161685698, value=@S\x00\x00\x00\x00\x00\x00
+ANDOUILLE_3/10/14 10:01 column=data:sedPPM, timestamp=1586161685698, value=?\xD3333333
 
 1 row(s)
-
 Took 0.0186 seconds
 
-hbase(main):006:0\> scan 'sensor', {COLUMNS=\>\['alert'\], LIMIT =\> 2}
+hbase(main):006:0> scan 'sensor', {COLUMNS=>['alert'], LIMIT => 2}
 
 ROW COLUMN+CELL
 
-LAGNAPPE\_3/14/14 19:39 column=alert:psi, timestamp=1586161686313,
-value=\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00
-
-LAGNAPPE\_3/14/14 19:41 column=alert:psi, timestamp=1586161686313,
-value=\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00
+LAGNAPPE_3/14/14 19:39 column=alert:psi, timestamp=1586161686313, value=\x00\x00\x00\x00\x00\x00\x00\x00
+LAGNAPPE_3/14/14 19:41 column=alert:psi, timestamp=1586161686313, value=\x00\x00\x00\x00\x00\x00\x00\x00
 
 2 row(s)
+```
 
 代码 5‑44
 
 步骤4：启动以下程序之一以读取数据并计算每日统计数据
 
 （1）计算一列的统计信息
+```text
+root@48feaa001420:~# spark-submit --class HBaseReadWrite /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
-root@48feaa001420:\~\# spark-submit --class HBaseReadWrite
-/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
+20/04/06 13:35:19 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
 
-20/04/06 13:35:19 WARN NativeCodeLoader: Unable to load native-hadoop
-library for your platform... using builtin-java classes where applicable
-
-(COHUTTA\_3/10/14,95.0)
-
-(COHUTTA\_3/10/14,88.0)
-
-(COHUTTA\_3/10/14,(count: 958, mean: 87.586639, stdev: 7.309181, max:
-100.000000, min: 75.000000))
+(COHUTTA_3/10/14,95.0)
+(COHUTTA_3/10/14,88.0)
+(COHUTTA_3/10/14,(count: 958, mean: 87.586639, stdev: 7.309181, max: 100.000000, min: 75.000000))
+```
 
 代码 5‑45
 
 （2）计算整列的统计信息
+```text
+root@48feaa001420:~# spark-submit --class HBaseReadRowWriteStats /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
-root@48feaa001420:\~\# spark-submit --class HBaseReadRowWriteStats
-/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
-
-20/04/06 13:37:56 WARN NativeCodeLoader: Unable to load native-hadoop
-library for your platform... using builtin-java classes where applicable
+20/04/06 13:37:56 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
 
 root
-
 |-- rowkey: string (nullable = true)
-
 |-- hz: double (nullable = false)
-
 |-- disp: double (nullable = false)
-
 |-- flo: double (nullable = false)
-
 |-- sedPPM: double (nullable = false)
-
 |-- psi: double (nullable = false)
-
 |-- chlPPM: double (nullable = false)
 
-\+-----------------+----+-----+------+------+----+------+
-
++-----------------+----+-----+------+------+----+------+
 | rowkey| hz| disp| flo|sedPPM| psi|chlPPM|
-
-\+-----------------+----+-----+------+------+----+------+
-
-|ANDOUILLE\_3/10/14|9.82|1.718|1275.0| 0.3|76.0| 1.44|
-
-|ANDOUILLE\_3/10/14|9.88|1.716|1273.0| 0.1|80.0| 0.89|
-
-\+-----------------+----+-----+------+------+----+------+
++-----------------+----+-----+------+------+----+------+
+|ANDOUILLE_3/10/14|9.82|1.718|1275.0| 0.3|76.0| 1.44|
+|ANDOUILLE_3/10/14|9.88|1.716|1273.0| 0.1|80.0| 0.89|
++-----------------+----+-----+------+------+----+------+
 
 only showing top 2 rows
 
-`[MOJO\_3/10/14,87.20876826722338]`
-
-`[CARGO\_3/11/14,87.2901878914405]`
+[MOJO_3/10/14,87.20876826722338]
+[CARGO_3/11/14,87.2901878914405]
 
 root
-
 |-- rowkey: string (nullable = true)
-
 |-- maxhz: double (nullable = true)
-
 |-- minhz: double (nullable = true)
-
 |-- avghz: double (nullable = true)
-
 |-- maxdisp: double (nullable = true)
-
 |-- mindisp: double (nullable = true)
-
 |-- avgdisp: double (nullable = true)
-
 |-- maxflo: double (nullable = true)
-
 |-- minflo: double (nullable = true)
-
 |-- avgflo: double (nullable = true)
-
 |-- maxsedPPM: double (nullable = true)
-
 |-- minsedPPM: double (nullable = true)
-
 |-- avgsedPPM: double (nullable = true)
-
 |-- maxpsi: double (nullable = true)
-
 |-- minpsi: double (nullable = true)
-
 |-- avgpsi: double (nullable = true)
-
 |-- maxchlPPM: double (nullable = true)
-
 |-- minchlPPM: double (nullable = true)
-
 |-- avgchlPPM: double (nullable = true)
 
-`[MOJO\_3/10/14,10.5,9.5,9.999457202505226,3.345,1.828,2.6188089770354934,1770.0,967.0,1385.8131524008352,2.0,0.0,0.9798121085594999,100.0,75.0,87.20876826722338,2.0,0.5,1.2699686847599168]`
-
-`[CARGO\_3/11/14,10.5,9.5,10.010824634655517,3.864,1.983,2.948458246346556,1579.0,810.0,1204.7265135699374,2.0,0.0,0.9811482254697279,100.0,75.0,87.2901878914405,2.0,0.5,1.2506784968684743]`
-
-SensorStatsRow(MOJO\_3/10/14,10.5,9.5,9.999457202505226,3.345,1.828,2.6188089770354934,1770.0,967.0,1385.8131524008352,2.0,0.0,0.9798121085594999,100.0,75.0,87.20876826722338,2.0,0.5,1.2699686847599168)
-
-SensorStatsRow(CARGO\_3/11/14,10.5,9.5,10.010824634655517,3.864,1.983,2.948458246346556,1579.0,810.0,1204.7265135699374,2.0,0.0,0.9811482254697279,100.0,75.0,87.2901878914405,2.0,0.5,1.2506784968684743)
+[MOJO_3/10/14,10.5,9.5,9.999457202505226,3.345,1.828,2.6188089770354934,1770.0,967.0,1385.8131524008352,2.0,0.0,0.9798121085594999,100.0,75.0,87.20876826722338,2.0,0.5,1.2699686847599168]
+[CARGO_3/11/14,10.5,9.5,10.010824634655517,3.864,1.983,2.948458246346556,1579.0,810.0,1204.7265135699374,2.0,0.0,0.9811482254697279,100.0,75.0,87.2901878914405,2.0,0.5,1.2506784968684743]
+SensorStatsRow(MOJO_3/10/14,10.5,9.5,9.999457202505226,3.345,1.828,2.6188089770354934,1770.0,967.0,1385.8131524008352,2.0,0.0,0.9798121085594999,100.0,75.0,87.20876826722338,2.0,0.5,1.2699686847599168)
+SensorStatsRow(CARGO_3/11/14,10.5,9.5,10.010824634655517,3.864,1.983,2.948458246346556,1579.0,810.0,1204.7265135699374,2.0,0.0,0.9811482254697279,100.0,75.0,87.2901878914405,2.0,0.5,1.2506784968684743)
+```
 
 代码 5‑46
 
 （3）启动HBase shell并扫描统计信息
-
-hbase(main):002:0\> scan 'sensor' , {COLUMNS=\>\['stats'\], LIMIT =\> 1}
+```text
+hbase(main):002:0> scan 'sensor' , {COLUMNS=>['stats'], LIMIT => 1}
 
 ROW COLUMN+CELL
 
-ANDOUILLE\_3/10/14 column=stats:chlPPMmax, timestamp=1586180290366,
-value=@\\x00\\x00\\x00\\x00\\x00\\x00\\x00
-
-ANDOUILLE\_3/10/14 column=stats:chlPPMmin, timestamp=1586180290366,
-value=?\\xE0\\x00\\x00\\x00\\x00\\x00\\x00
-
-ANDOUILLE\_3/10/14 column=stats:dispavg, timestamp=1586180290366,
-value=?\\xF9\\x83KY3\\x88\\x8D
-
-ANDOUILLE\_3/10/14 column=stats:dispmax, timestamp=1586180290366,
-value=@\\x00\\xE7l\\x8BC\\x95\\x81
-
-ANDOUILLE\_3/10/14 column=stats:dispmin,
+ANDOUILLE_3/10/14 column=stats:chlPPMmax, timestamp=1586180290366, value=@\x00\x00\x00\x00\x00\x00\x00
+ANDOUILLE_3/10/14 column=stats:chlPPMmin, timestamp=1586180290366, value=?\xE0\x00\x00\x00\x00\x00\x00
+ANDOUILLE_3/10/14 column=stats:dispavg, timestamp=1586180290366, value=?\xF9\x83KY3\x88\x8D
+ANDOUILLE_3/10/14 column=stats:dispmax, timestamp=1586180290366, value=@\x00\xE7l\x8BC\x95\x81
+ANDOUILLE_3/10/14 column=stats:dispmin, ...
+```
 
 代码 5‑47
 
@@ -596,32 +528,33 @@ ANDOUILLE\_3/10/14 column=stats:dispmin,
   - 产生低压警报传感器的生产厂家和维护信息是什么？
 
 为回答这个问题，下面会先从离散流中过滤告警数据，再与提前读入并缓存的供应商信息、维护信息做连接。随后把每个 RDD 转成 DataFrame、注册成临时表，并通过 SQL 查询得到结果。下面这段查询首先回答“低压告警来自哪些厂家和维护记录”这一问题。
-
+```scala
 val pumpRDD =
-sc.textFile("/root/data/sensorvendor.csv").map(parsePumpInfo)
+  sc.textFile("/root/data/sensorvendor.csv").map(parsePumpInfo)
 
 val maintRDD = sc.textFile("/root/data/sensormaint.csv").map(parseMaint)
 
 val maintDF = maintRDD.toDF()
-
 val pumpDF = pumpRDD.toDF()
 
-maintDF.createOrReplaceTempView ("maint")
+maintDF.createOrReplaceTempView("maint")
+pumpDF.createOrReplaceTempView("pump")
 
-pumpDF.createOrReplaceTempView ("pump")
+sensorDStream.foreachRDD { rdd =>
+  rdd.filter { sensor => sensor.psi < 5.0 }
+    .toDF()
+    .createOrReplaceTempView("alert")
 
-sensorDStream.foreachRDD(rdd =\> {
+  val alertPumpMaint = sqlContext.sql(
+    """select a.resid, a.date, a.psi, p.pumpType, p.vendor, m.date, m.technician
+      |from alert a
+      |join pump p on a.resid = p.resid
+      |join maint m on p.resid = m.resid""".stripMargin
+  )
 
-rdd.filter { sensor =\> sensor.psi \< 5.0
-}.toDF.registerTempTable("alert")
-
-val alertPumpMaint = sqlContext.sql("select
-a.resid,a.date,a.psi,p.pumpType,p.vendor,m.date,m.technician from alert
-a join pump p on a.resid = p.resid join maint m on p.resid = m.resid")
-
-alertPumpMaint.show()
-
-})
+  alertPumpMaint.show()
+}
+```
 
 代码 5‑48
 
@@ -634,35 +567,23 @@ Spark Streaming 为 DStream 提供了一组与 RDD 很相似的转换，例如 `
 （2）foreachRDD()运算符应用到离散流的每个批次内的RDD上。
 
 现在，让我们看一看代码运行步骤和输出结果。
+```text
+root@48feaa001420:~# spark-submit --class SensorStreamSQL /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 
-root@48feaa001420:\~\# spark-submit --class SensorStreamSQL
-/data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
-
-20/04/06 14:35:26 WARN NativeCodeLoader: Unable to load native-hadoop
-library for your platform... using builtin-java classes where applicable
+20/04/06 14:35:26 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
 
 Starting streaming process
-
 Low pressure alert
-
 Sensor(NANTAHALLA,3/13/14,2:05,0.0,0.0,0.0,1.73,0.0,1.51)
 
 Alert pump maintenance data
-
-\+----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
-
-| resid| date|psi| pumpType|purchaseDate|serviceDate|
-vendor|eventDate|technician|description|
-
-\+----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
-
-|NANTAHALLA|3/13/14|0.0|HYDROPUMP| 11/27/10| 3/15/11|HYDROCAM| 3/15/11|
-J.Thomas| Install|
-
-\+----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
-
++----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
+| resid| date|psi| pumpType|purchaseDate|serviceDate|vendor|eventDate|technician|description|
++----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
+|NANTAHALLA|3/13/14|0.0|HYDROPUMP| 11/27/10| 3/15/11|HYDROCAM| 3/15/11|J.Thomas| Install|
++----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
 only showing top 1 row
-
+```
 代码 5‑49
 
 ### 5.9.4 窗口操作
@@ -680,9 +601,10 @@ only showing top 1 row
   - 滑动间隔：窗口重新计算的频率，本例中为 2 个单位。
 
 再次强调，这两个参数都必须是批次间隔的倍数。比如希望“每 4 秒输出一次最近 6 秒的单词计数”，就可以在键值对 DStream 上使用 `reduceByKeyAndWindow()`：
-
-val windowsWordCounts = pairs.reduceByKeyAndWindow(a:Int,b:Int)=\>(a+b),
-Seconds(6),Seconds(4))
+```scala
+val windowsWordCounts =
+  pairs.reduceByKeyAndWindow((a: Int, b: Int) => a + b, Seconds(6), Seconds(4))
+```
 
 代码 5‑50
 
@@ -693,36 +615,33 @@ Seconds(6),Seconds(4))
   - 什么是最大，最小和平均的psi？
 
 下面这段代码演示的是“每 2 秒重新统计一次最近 6 秒数据”的窗口查询。它会把同一窗口里的传感器记录先转成 DataFrame，再用 SQL 分别计算事件数量和 PSI 的最大值、最小值、平均值：
-
+```scala
 sensorDStream.window(Seconds(6), Seconds(2))
+  .foreachRDD { rdd =>
+    if (!rdd.partitions.isEmpty) {
+      val sensorDF = rdd.toDF()
 
-.foreachRDD { rdd =\>
+      println("sensor data")
+      sensorDF.show()
 
-if (\!rdd.partitions.isEmpty) {
+      sensorDF.createOrReplaceTempView("sensor")
 
-val sensorDF = rdd.toDF()
+      val res = spark.sql(
+        "SELECT resid, date, count(resid) as total FROM sensor GROUP BY resid, date"
+      )
 
-println("sensor data")
+      println("sensor count ")
+      res.show()
 
-sensorDF.show()
+      val res2 = spark.sql(
+        "SELECT resid, date, MAX(psi) as maxpsi, min(psi) as minpsi, avg(psi) as avgpsi FROM sensor GROUP BY resid, date"
+      )
 
-sensorDF.createOrReplaceTempView("sensor")
-
-val res = spark.sql("SELECT resid, date, count(resid) as total FROM
-sensor GROUP BY resid, date")
-
-println("sensor count ")
-
-res.show
-
-val res2 = spark.sql("SELECT resid, date, MAX(psi) as maxpsi, min(psi)
-as minpsi, avg(psi) as avgpsi FROM sensor GROUP BY resid,date")
-
-println("sensor max, min, averages ")
-
-res2.show
-
-}
+      println("sensor max, min, averages ")
+      res2.show()
+    }
+  }
+```
 
 代码 5‑51
 
@@ -817,9 +736,11 @@ Sensor max, min, averages
 | CHER|3/10/14| 100.0| 75.0|87.44885177453027|
 
 \+-----+-------+------+------+-----------------+
+```text
 
 only showing top 1 row
 
+```
 代码 5‑52
 
   - 在什么情况下，窗口操作会特别有用？

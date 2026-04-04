@@ -527,128 +527,100 @@ ROW COLUMN+CELL
 #### 1.7.3.5 其他
 
 describe该命令返回表的说明，下面给出的是order表的 describe 命令的输出。
-
+```text
 describe 'order'
 
 Table order is ENABLED
-
 order
-
 COLUMN FAMILIES DESCRIPTION
 
-{NAME =\> 'Customer', VERSIONS =\> '1', EVICT\_BLOCKS\_ON\_CLOSE =\>
-'false', NEW\_VERSION\_BEHAVIOR =\> 'false', KEEP\_DELETED\_CELLS =\>
-'FALSE', CACHE\_DATA\_ON\_WRITE =\>
+{NAME => 'Customer', VERSIONS => '1', EVICT_BLOCKS_ON_CLOSE => 'false',
+ NEW_VERSION_BEHAVIOR => 'false', KEEP_DELETED_CELLS => 'FALSE',
+ CACHE_DATA_ON_WRITE => 'false', DATA_BLOCK_ENCODING => 'NONE',
+ TTL => 'FOREVER', MIN_VERSIONS => '0', REPLICATION_SCOPE => '0',
+ BLOOMFILTER => 'ROW', CACHE_INDEX_ON_WRITE => 'false',
+ IN_MEMORY => 'false', CACHE_BLOOMS_ON_WRITE => 'false',
+ PREFETCH_BLOCKS_ON_OPEN => 'false', COMPRESSION => 'NONE',
+ BLOCKCACHE => 'true', BLOCKSIZE => '65536'}
 
-'false', DATA\_BLOCK\_ENCODING =\> 'NONE', TTL =\> 'FOREVER',
-MIN\_VERSIONS =\> '0', REPLICATION\_SCOPE =\> '0', BLOOMFILTER =\>
-'ROW', CACHE\_INDEX\_ON\_WRITE =\> 'false
-
-', IN\_MEMORY =\> 'false', CACHE\_BLOOMS\_ON\_WRITE =\> 'false',
-PREFETCH\_BLOCKS\_ON\_OPEN =\> 'false', COMPRESSION =\> 'NONE',
-BLOCKCACHE =\> 'true', BLOCKSIZE =\> '6553
-
-6'}
-
-{NAME =\> 'Sales', VERSIONS =\> '1', EVICT\_BLOCKS\_ON\_CLOSE =\>
-'false', NEW\_VERSION\_BEHAVIOR =\> 'false', KEEP\_DELETED\_CELLS =\>
-'FALSE', CACHE\_DATA\_ON\_WRITE =\> 'f
-
-alse', DATA\_BLOCK\_ENCODING =\> 'NONE', TTL =\> 'FOREVER',
-MIN\_VERSIONS =\> '0', REPLICATION\_SCOPE =\> '0', BLOOMFILTER =\>
-'ROW', CACHE\_INDEX\_ON\_WRITE =\> 'false',
-
-IN\_MEMORY =\> 'false', CACHE\_BLOOMS\_ON\_WRITE =\> 'false',
-PREFETCH\_BLOCKS\_ON\_OPEN =\> 'false', COMPRESSION =\> 'NONE',
-BLOCKCACHE =\> 'true', BLOCKSIZE =\> '65536'}
+{NAME => 'Sales', VERSIONS => '1', EVICT_BLOCKS_ON_CLOSE => 'false',
+ NEW_VERSION_BEHAVIOR => 'false', KEEP_DELETED_CELLS => 'FALSE',
+ CACHE_DATA_ON_WRITE => 'false', DATA_BLOCK_ENCODING => 'NONE',
+ TTL => 'FOREVER', MIN_VERSIONS => '0', REPLICATION_SCOPE => '0',
+ BLOOMFILTER => 'ROW', CACHE_INDEX_ON_WRITE => 'false',
+ IN_MEMORY => 'false', CACHE_BLOOMS_ON_WRITE => 'false',
+ PREFETCH_BLOCKS_ON_OPEN => 'false', COMPRESSION => 'NONE',
+ BLOCKCACHE => 'true', BLOCKSIZE => '65536'}
 
 2 row(s)
-
 QUOTAS
-
 0 row(s)
-
 Took 0.1444 seconds
+```
 
 命令 1.49
 
 `alter` 用于修改现有表的结构或属性，例如调整列族的最大版本数、设置表级参数，或者删除列族。下面这组命令先演示把单元版本数上限设置为 `5`。
-
-hbase(main):044:0\> alter 'order', NAME =\> 'Customer', VERSIONS =\> 5
-
+```text
+hbase(main):044:0> alter 'order', NAME => 'Customer', VERSIONS => 5
 Updating all regions with the new schema...
-
 1/1 regions updated.
-
 Done.
-
 Took 2.0384 seconds
+```
 
 命令 1.50
 
 `alter` 也可以设置或删除表级选项，例如 `MAX_FILESIZE`、`READONLY`、`MEMSTORE_FLUSHSIZE`、`DEFERRED_LOG_FLUSH` 等。下面的命令把 `order` 表设置为只读。
-
-hbase(main):045:0\> alter 'order', READONLY
-
+```text
+hbase(main):045:0> alter 'order', READONLY
 Updating all regions with the new schema...
-
 1/1 regions updated.
-
 Done.
-
 Took 2.0662 seconds
+```
 
 命令 1.51
 
 下面给出的是一个例子，从order表中删除列族。假设在HBase中有一个order表，包含以下数据：
-
-hbase(main):046:0\> scan 'order'
+```text
+hbase(main):046:0> scan 'order'
 
 ROW COLUMN+CELL
-
 101 column=Customer:City, timestamp=1582443891708, value=Beijing
-
 101 column=Customer:Name, timestamp=1582443884829, value=Jone White
-
 101 column=Sales:Price, timestamp=1582443903201, value=400.00
-
 101 column=Sales:Product, timestamp=1582443897589, value=Chairs
-
 104 column=Customer:City, timestamp=1582444875119, value=Chongqing
 
 2 row(s)
-
 Took 0.0213 seconds
+```
 
 命令 1.52
 
 现在使用alter命令删除指定的 Sales 列族。
-
-hbase(main):047:0\> alter 'order','delete'=\>'Sales'
-
+```text
+hbase(main):047:0> alter 'order','delete'=>'Sales'
 Updating all regions with the new schema...
-
 1/1 regions updated.
-
 Done.
-
 Took 1.9196 seconds
+```
 
 命令 1.53
 
 现在验证该表中变更后的数据，观察到列族Sales也没有了，因为前面已经被删除了。
-
-hbase(main):048:0\> scan 'order'
+```text
+hbase(main):048:0> scan 'order'
 
 ROW COLUMN+CELL
-
 101 column=Customer:City, timestamp=1582443891708, value=Beijing
-
 101 column=Customer:Name, timestamp=1582443884829, value=Jone White
-
 104 column=Customer:City, timestamp=1582444875119, value=Chongqing
 
 2 row(s)
+```
 
 Took 0.0092 seconds
 

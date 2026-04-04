@@ -428,36 +428,23 @@ capNames: List[String] = List(Adam, David, Frank)
 
 Scala还有一个match表达式的概念。在最简单的情况下，可以使用match类似Java
 switch语句的表达式。使用match表达式可以编写了许多case语句，用于匹配可能的值。在示例中，我们将整数值1到12进行匹配。其他任何值都将落入最后一个符号“\_”，这是通用的默认情况。match表达式很不错，因为它们也返回值，所以您可以将字符串结果分配给新值：
-
+```scala
 val monthName = i match {
-
-case 1 =\> "January"
-
-case 2 =\> "February"
-
-case 3 =\> "March"
-
-case 4 =\> "April"
-
-case 5 =\> "May"
-
-case 6 =\> "June"
-
-case 7 =\> "July"
-
-case 8 =\> "August"
-
-case 9 =\> "September"
-
-case 10 =\> "October"
-
-case 11 =\> "November"
-
-case 12 =\> "December"
-
-case \_ =\> "Invalid month"
-
+  case 1  => "January"
+  case 2  => "February"
+  case 3  => "March"
+  case 4  => "April"
+  case 5  => "May"
+  case 6  => "June"
+  case 7  => "July"
+  case 8  => "August"
+  case 9  => "September"
+  case 10 => "October"
+  case 11 => "November"
+  case 12 => "December"
+  case _  => "Invalid month"
 }
+```
 
 另外，Scala还使将match表达式用作方法主体变得容易。作为简要介绍，下面是一个名为的方法convertBooleanToStringMessage，该方法接受一个Boolean值并返回String：
 
