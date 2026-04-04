@@ -4,8 +4,7 @@
 ## 目录
 
 - [10.1 本章先看懂什么](01-本章先看懂什么.md)
-- [10.2 一个最小例子](02-一个最小例子.md)
-- [10.3 SparkContext与SparkSession](03-SparkContext与SparkSession.md)
-- [10.4 构建应用](04-构建应用.md)
-- [10.5 部署应用](05-部署应用.md)
-- [10.6 小结](06-小结.md)
+- [10.2 SparkContext与SparkSession](02-SparkContext与SparkSession.md)
+- [10.3 构建应用](03-构建应用.md)
+- [10.4 部署应用](04-部署应用.md)
+- [10.5 小结](05-小结.md)
