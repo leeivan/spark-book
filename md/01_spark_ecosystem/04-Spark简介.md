@@ -102,7 +102,7 @@ Cassandra 这类系统更适合作为外部数据库或在线存储来理解，�
 
 ### 1.4.3 编程语言
 
-Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本地实验通常只需要准备好 Java 环境变量；进入集群部署时，再考虑 Python、R、Scala 版本与运行时依赖的一致性。对 Spark 4.x 而言，更稳妥的版本基线是 Java 17+（建议 21）、Python 3.10+、R 4.x；对于 Scala API，Spark 4.1.1 使用 Scala 2.13，工程里也应尽量保持 Scala 2.13.x 生态一致。
+Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本地实验通常只需要准备好 Java 环境变量；进入集群部署时，再考虑 Python、R、Scala 版本与运行时依赖的一致性。对 Spark 4.x 而言，更稳妥的环境组合通常是 Java 17+（建议 21）、Python 3.10+、R 4.x；对于 Scala API，Spark 4.1.1 使用 Scala 2.13，工程里也应尽量保持 Scala 2.13.x 生态一致。
 
 语言选择不必变成抽象争论。更实用的判断方式是：如果团队偏数据分析、Notebook 和快速实验，Python 往往是第一入口；如果要贴近 Spark 内部模型、类型系统和 JVM 工程，Scala 更有优势；如果平台侧已经是成熟的 Java 体系，Java 也完全可用；R 则更适合统计分析和交互式探索。表格 1‑1 给出了一组对 Spark 工程最有参考价值的比较维度：
 
