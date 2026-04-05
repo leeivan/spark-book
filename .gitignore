@@ -1,1 +1,8 @@
 /references/
+/.tmp/
+/output/
+/output-per-md/
+/output-per-md-local/
+/spark.potx
+~$*.pptx
+
