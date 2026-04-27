@@ -159,15 +159,21 @@ object HelloWorld {
 
 和 Java 相比，Scala 的入口通常通过 `object` 定义，而不是显式写 `static main`。如果把程序保存为 `HelloWorld.scala`，可以像下面这样编译：
 
-\> scalac HelloWorld.scala
+```bash
+> scalac HelloWorld.scala
+```
 
 若要运行：
 
-\> scala -classpath . HelloWorld
+```bash
+> scala -classpath . HelloWorld
+```
 
 这说明 Scala 在编译和运行模型上与 Java 非常接近，也因此天然适合放进 JVM 工程体系。直接使用 Scala 解释器也可以快速运行该程序，例如：
 
-\> scala -i HelloWorld.scala -e 'HelloWorld.main(null)'
+```bash
+> scala -i HelloWorld.scala -e 'HelloWorld.main(null)'
+```
 
 #### 1.4.3.3 Python
 
@@ -177,25 +183,33 @@ Python 是今天最常见的 PySpark 入口语言。它的优势在于语法简�
 
 - Python 3.x（当前推荐）
 
+```python
 print("Hello, world!")
+```
 
 - Python 2.x（历史写法，仅用于兼容老代码）
 
+```python
 print "Hello, world!"
+```
 
 Python 也很适合交互式探索。启动解释器后，可以直接在提示符号 `>>>` 后输入语句并立即看到结果：
 
 - Python 3.x（当前推荐）
 
-\>>> print("Hello, world!")
+```python
+>>> print("Hello, world!")
 
 Hello, world!
+```
 
 - Python 2.x（历史写法，仅用于兼容老代码）
 
-\>>> print "Hello, world!"
+```python
+>>> print "Hello, world!"
 
 Hello, world!
+```
 
 需要特别注意的是，Python 2 与 Python 3 的 `print` 语法不同。Spark 4.x 已经完全站在 Python 3 生态上，旧写法仅保留给历史兼容场景。
 
