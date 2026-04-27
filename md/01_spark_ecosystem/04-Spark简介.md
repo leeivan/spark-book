@@ -173,19 +173,19 @@ object HelloWorld {
 
 \> scalac HelloWorld.scala
 
-代码 1‑5
+
 
 若要运行：
 
 \> scala -classpath . HelloWorld
 
-代码 1‑6
+
 
 这说明 Scala 在编译和运行模型上与 Java 非常接近，也因此天然适合放进 JVM 工程体系。直接使用 Scala 解释器也可以快速运行该程序，例如：
 
 \> scala -i HelloWorld.scala -e 'HelloWorld.main(null)'
 
-代码 1‑7
+
 
 #### 1.4.3.3 Python
 
