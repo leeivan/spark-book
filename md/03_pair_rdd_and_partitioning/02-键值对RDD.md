@@ -365,7 +365,7 @@ $$ (2 + 3) + 4 = 2 + (3 + 4) = 9 $$
 
 $$ 2 \times \left( 3 \times 4 \right) = \left( 2 \times 3 \right) \times 4 = 24 $$
 
-公式 3‑1
+
 
 关联性让我们可以按顺序并行使用相同的函数。reduceByKey使用该属性计算RDD的结果，RDD是由分区组成的分布式集合。直观地说，这个函数在重复应用于具有多个分区的同一组RDD数据时会产生相同的结果，而不管元素的顺序如何。此外，它首先使用Reduce函数在本地执行合并，然后在分区之间发送记录以准备最终结果，通过下面的代码看一看reduceByKey的执行过程：
 
@@ -672,6 +672,7 @@ res80: scala.collection.Map[Int,Int] = Map(1 -> 2, 3 -> 6)
 scala> rdd.lookup(3)
 res91: Seq[Int] = WrappedArray(4, 6)
 ```
+
 
 
 

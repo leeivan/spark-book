@@ -307,7 +307,7 @@ res25: Int = 2
 
 ((1 + 2 + 1) + (3 + 3 + 1) + 1) = 12
 
-公式 2‑1
+
 
   - aggregate\[U\](zeroValue: U)(seqOp: (U, T) ⇒ U, combOp: (U, U) ⇒
     U)(implicit arg0: ClassTag\[U\]): U
@@ -332,14 +332,14 @@ res32: (Int, Int) = (9,4)
 
 (1 + 2 = 3, 1 + 1 = 2) = (3 , 2) (3 + 3 = 6, 1 + 1 = 2) = (6 , 2)
 
-公式 2‑2
+
 
 然后组合分区的结果，combOp为(x, y)=\>(x.\_1 + y.\_1, x.\_2 +
 y.\_2)，表示对所有的分区计算结果进行累加，计算方法如下：
 
 ((3 + 6) = 9 , (2 + 2) = 4）= (9 , 4)
 
-公式 2‑3
+
 
   - saveAsTextFile(path)
 
@@ -352,6 +352,7 @@ y.\_2)，表示对所有的分区计算结果进行累加，计算方法如下�
   - saveAsObjectFile(path)
 
 将数据集的元素写为使用Java串行化的简单格式，然后可以使用SparkContext.objectFile()进行加载。
+
 
 
 
