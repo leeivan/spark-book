@@ -147,7 +147,7 @@ val nums = Seq(1, 2, 3)
 nums.map(_ + 1)
 ```
 
-代码 1‑2
+
 
 更接近日常工程入口的，仍然是标准的 `object` / `main` 结构。下面保留两个最常见的 Hello World 写法：
 ```scala
@@ -203,7 +203,7 @@ print("Hello, world\!")
 
 print "Hello, world\!"
 
-代码 1‑9
+
 
 Python 也很适合交互式探索。启动解释器后，可以直接在提示符号 `>>>` 后输入语句并立即看到结果：
 
