@@ -1,4 +1,4 @@
-﻿# 1.2 Spark与大模型技术发展的关系
+﻿﻿# 1.2 Spark与大模型技术发展的关系
 
 大模型技术从“参数规模竞争”进入“工程化落地竞争”阶段后，数据质量、训练样本构建、知识更新速度和成本控制成为关键。Spark在这一阶段的定位不是替代PyTorch等训练框架，而是承担大模型系统中的数据与计算中枢。
 
@@ -15,4 +15,6 @@
 在Spark 4.x的工程实践中，批处理、交互式分析和流处理通常围绕DataFrame/Dataset、Spark SQL与Structured Streaming展开；机器学习主线以`spark.ml`管道式API为主，图计算则更多作为专题能力出现。Spark既可以从HDFS、Amazon S3、HBase等持久层读取数据，也可以通过Shell、Spark Submit、Notebook、SQL服务等多种入口承载不同类型的应用。
 
 Spark支持多种编程语言，包括Java、Scala、Python以及R。对于Spark每个功能的讲解，大部分使用Scala语言，并包括语法讲解，有些使用Java和Python语言用于对比和参考。本书使用Docker容器技术部署Spark实验学习环境，其中包括Spark 4.1.1、HBase 1.4.0，以及Maven和sbt等工具。
+
+
 

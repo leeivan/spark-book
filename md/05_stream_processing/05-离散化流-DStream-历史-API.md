@@ -61,7 +61,7 @@ object NetworkWordCount {
 }
 ```
 
-代码 5‑1
+
 
 这段代码展示的是最经典的 DStream 版 `NetworkWordCount`。整体链路其实很简单：先用 `SparkConf` 和 `StreamingContext` 建立一个本地流式应用，`local[2]` 表示至少给接收数据和处理数据各留一个执行线程，批次间隔设为 10 秒；再用 `ssc.socketTextStream()` 从 TCP 套接字持续接收文本行，把每一行拆成单词，映射成 `(word, 1)` 形式的键值对，并在每个微批上用 `reduceByKey()` 统计词频。最后通过 `wordCounts.print()` 输出结果。需要特别记住的是：到这一步为止，程序仍然只是在定义计算链路，真正开始处理数据还要等 `ssc.start()` 被调用。
 
@@ -71,7 +71,7 @@ object NetworkWordCount {
 { while :; do echo "Hello Apache Spark"; sleep 0.05; done; } | netcat -l -p 9999
 ```
 
-代码 5‑2
+
 
 使用Docker exec 命令进入到容器中打开另一终端界面，运行Spark应用程序：
 ```text
@@ -95,9 +95,9 @@ Time: 1585211340000 ms
 (Spark,188)
 ```
 
-代码 5‑3
 
-就这样，第一个终端窗口负责发送数据（代码 5‑2），第二个终端窗口负责接收处理数据（代码 5‑3）。
+
+就这样，第一个终端窗口负责发送数据（），第二个终端窗口负责接收处理数据（）。
 
 ### 5.5.2 迁移对照：DStream 到 Structured Streaming
 
@@ -185,7 +185,7 @@ val conf = new SparkConf().setAppName(appName).setMaster(master)
 val ssc = new StreamingContext(conf, Seconds(1))
 
 ```
-代码 5‑4
+
 
 `appName` 是应用在监控界面里显示的名称。`master` 可以是 Standalone、Kubernetes、YARN 的集群地址，也可以是本地模式字符串 `local[*]`。实际部署到集群时，通常不会把 `master` 硬编码在程序里，而是通过 `spark-submit` 在提交阶段传入；本地测试或单元测试时，`local[*]` 则更方便。创建 `StreamingContext` 时会连带创建底层 `SparkContext`，可通过 `ssc.sparkContext` 访问。批次间隔本身则需要结合延迟目标和集群资源来权衡设置。
 
@@ -199,7 +199,7 @@ ssc: org.apache.spark.streaming.StreamingContext =
 org.apache.spark.streaming.StreamingContext@3c4231e5
 ```
 
-代码 5‑5
+
 
 定义好StreamingContext后，必须执行以下操作：
 
@@ -221,7 +221,7 @@ org.apache.spark.streaming.StreamingContext@3c4231e5
 
 ### 5.5.4 输入流
 
-可以使用StreamingContext创建多种类型的输入流，例如receiverStream和fileStream。在代码 5‑1中，lines是一个输入离散流，通过socketTextStream从NetCat服务器接收的数据流。每个输入流与接收器（Receiver）对象相关联，该对象接收数据并将其存储在内存中进行处理。
+可以使用StreamingContext创建多种类型的输入流，例如receiverStream和fileStream。在中，lines是一个输入离散流，通过socketTextStream从NetCat服务器接收的数据流。每个输入流与接收器（Receiver）对象相关联，该对象接收数据并将其存储在内存中进行处理。
 
   - abstract class Receiver\[T\] extends Serializable
 
@@ -240,7 +240,7 @@ Streaming应用程序的内核数量必须大于接收器数量，否则系统�
 
 另外，基于接收信息的可靠性也可以用来区分数据接收器。当数据被接收并且复制存储在Spark中时，接收器正确地向可靠的数据源发送确认，可靠的数据源，如Kafka和Flume，实现了传输数据的确认机制，接收器可以确认接收的数据，可以确保在产生故障时不会丢失任何数据。如果接收器不向数据源发送确认信息，可以使用不支持发送确认的数据源，也可以使用可靠的数据源但是不需要进行复杂的确认。
 
-下面我们介绍几种接收器。SocketTextStream已经在代码 5‑1中使用了，通过TCP套接字接口接收文本数据，创建一个离散流。
+下面我们介绍几种接收器。SocketTextStream已经在中使用了，通过TCP套接字接口接收文本数据，创建一个离散流。
 
 ```scala
 socketTextStream(
@@ -299,7 +299,7 @@ Time: 1585054770000 ms
 -------------------------------------------
 ```
 
-代码 5‑6
+
 
 此时，应该看到终端界面中每10秒刷新一次。现在打开另一个终端界面，将文本文件添加到/data/input目录中：
 ```bash
@@ -388,4 +388,6 @@ Time: 1585059428000 ms
     Int):DStream\[Array\[Byte\]\]
 
 创建一个输入流，该输入流监视的文件系统中的新文件，并将它们读取为二进制文件，假定每条记录的长度固定，每条记录生成一个字节数组，必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。
+
+
 

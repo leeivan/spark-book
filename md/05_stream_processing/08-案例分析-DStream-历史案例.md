@@ -247,7 +247,7 @@ case class Sensor(
 ) extends Serializable
 ```
 
-代码 5‑35
+
 
 `parseSensor` 方法负责解析 CSV 记录，并把逗号分隔的字段装配成 `Sensor` 对象。
 ```scala
@@ -267,7 +267,7 @@ def parseSensor(str: String): Sensor = {
 }
 ```
 
-代码 5‑36
+
 
 本小节继续沿用上面的历史案例，因此输入源仍采用目录文件 + `textFileStream`，写出仍以 HBase 为目标。这种写法便于演示 DStream 的微批处理链路，但在 Spark 4.x 的新系统中，更常见的做法是使用 Structured Streaming 从 Kafka、对象存储或湖仓增量源读取数据，再通过 DataFrame API 完成转换与输出。
 
@@ -288,7 +288,7 @@ val ssc = new StreamingContext(sparkConf, Seconds(2))
 val linesDStream = ssc.textFileStream("/root/data/stream")
 val sensorDStream = linesDStream.map(Sensor.parseSensor)
 ```
-代码 5‑37
+
 
 这段代码里，`linesDStream` 表示源数据流。`StreamingContext.textFileStream()` 会持续监视兼容 Hadoop 的文件系统目录，并在检测到新文件时把它们纳入后续批次处理。
 
@@ -313,7 +313,7 @@ sensorDStream.foreachRDD { rdd =>
 }
 ```
 
-代码 5‑38
+
 
 当输入流、转换和输出逻辑都定义好之后，还需要显式调用 `StreamingContext.start()` 才会真正开始接收数据；随后再用 `awaitTermination()` 让驱动进程持续等待流计算运行。
 ```scala
@@ -322,7 +322,7 @@ ssc.start()
 ssc.awaitTermination()
 ```
 
-代码 5‑39
+
 
 接下来就是把处理后的流数据写入 HBase。这里会先把数据组织成便于查询和检查的结构，再通过 `convertToPut` 把 `Sensor` 对象转换成 HBase 所需的 `Put` 对象，作为最终写入动作的输入。
 ```scala
@@ -345,7 +345,7 @@ def convertToPut(sensor: Sensor): (ImmutableBytesWritable, Put) = {
 }
 ```
 
-代码 5‑40
+
 
 接下来使用PairRDDFunctions.saveAsHadoopDataset()方法写入传感器和警报数据。
 
@@ -387,7 +387,7 @@ keyStatsRDD.map { case (k, v) => convertToPut(k, v) }
   .saveAsHadoopDataset(jobConfig)
 ```
 
-代码 5‑41
+
 
 newAPIHadoopRDD()的输出是键值对RDD，PairRDDFunctions.saveAsHadoopDataset()方法将Put对象保存到HBase。现在，让我们看一看代码运行步骤和输出结果。
 
@@ -397,14 +397,14 @@ spark-submit --class HBaseSensorStream \
   /data/application/sensor-streaming/target/scala-2.13/sensor-streaming-assembly-0.1.jar
 ```
 
-代码 5‑42
+
 
 步骤2：将流数据文件复制到流目录
 ```bash
 cp /data/sensordata.csv /root/data/stream/
 ```
 
-代码 5‑43
+
 
 步骤3：我们可以扫描写入表的数据，但是无法从shell界面读取二进制double值。启动hbase
 shell命令，扫描data列族和alert列族
@@ -433,7 +433,7 @@ LAGNAPPE_3/14/14 19:41 column=alert:psi, timestamp=1586161686313, value=\x00\x00
 2 row(s)
 ```
 
-代码 5‑44
+
 
 步骤4：启动以下程序之一以读取数据并计算每日统计数据
 
@@ -448,7 +448,7 @@ root@48feaa001420:~# spark-submit --class HBaseReadWrite /data/application/senso
 (COHUTTA_3/10/14,(count: 958, mean: 87.586639, stdev: 7.309181, max: 100.000000, min: 75.000000))
 ```
 
-代码 5‑45
+
 
 （2）计算整列的统计信息
 ```text
@@ -504,7 +504,7 @@ SensorStatsRow(MOJO_3/10/14,10.5,9.5,9.999457202505226,3.345,1.828,2.61880897703
 SensorStatsRow(CARGO_3/11/14,10.5,9.5,10.010824634655517,3.864,1.983,2.948458246346556,1579.0,810.0,1204.7265135699374,2.0,0.0,0.9811482254697279,100.0,75.0,87.2901878914405,2.0,0.5,1.2506784968684743)
 ```
 
-代码 5‑46
+
 
 （3）启动HBase shell并扫描统计信息
 ```text
@@ -519,7 +519,7 @@ ANDOUILLE_3/10/14 column=stats:dispmax, timestamp=1586180290366, value=@\x00\xE7
 ANDOUILLE_3/10/14 column=stats:dispmin, ...
 ```
 
-代码 5‑47
+
 
 ### 5.8.3 转换操作
 
@@ -556,7 +556,7 @@ sensorDStream.foreachRDD { rdd =>
 }
 ```
 
-代码 5‑48
+
 
 Spark Streaming 为 DStream 提供了一组与 RDD 很相似的转换，例如 `map()`、`flatMap()`、`filter()`、`join()` 和 `reduceByKey()`。它也提供 `reduce()`、`count()` 这类返回单元素 DStream 的运算符，但这些在流式语境里并不是立刻触发执行的动作，而是继续定义下一层 DStream。除此之外，还有一类更重要的有状态转换：它们可以跨批次保留中间结果，用来支持窗口统计、跨时间跟踪状态等任务。真正触发计算的仍然是输出操作，常见的包括：
 
@@ -584,7 +584,7 @@ Alert pump maintenance data
 +----------+-------+---+---------+------------+-----------+--------+---------+----------+-----------+
 only showing top 1 row
 ```
-代码 5‑49
+
 
 ### 5.8.4 窗口操作
 
@@ -606,7 +606,7 @@ val windowsWordCounts =
   pairs.reduceByKeyAndWindow((a: Int, b: Int) => a + b, Seconds(6), Seconds(4))
 ```
 
-代码 5‑50
+
 
 在这个历史案例里，窗口操作主要用来回答两个问题：
 
@@ -643,7 +643,7 @@ sensorDStream.window(Seconds(6), Seconds(2))
   }
 ```
 
-代码 5‑51
+
 
 在这个查询里，`res` 回答的是“窗口内各传感器记录数”，`res2` 回答的是“窗口内 PSI 的最大值、最小值和平均值”。这正体现了 DStream 窗口操作的典型思路：先按时间把多个微批拼成一个更大的观察窗口，再在窗口上复用熟悉的聚合逻辑。
 
@@ -741,7 +741,9 @@ Sensor max, min, averages
 only showing top 1 row
 
 ```
-代码 5‑52
+
 
   - 在什么情况下，窗口操作会特别有用？
+
+
 

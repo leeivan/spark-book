@@ -51,7 +51,7 @@ scala> df.show
 +----+-------+
 ```
 
-代码 4‑1
+
 这个例子展示了最常见的工作流：先从数据源读取 DataFrame，再做选择、过滤、聚合与显示。对新项目来说，这条“数据源 -> DataFrame -> 结构化操作”的路径应当优先于“先读成RDD，再手动补Schema”的做法。
 
 ```scala
@@ -91,7 +91,7 @@ scala> df.groupBy("age").count().show()
 +----+-----+
 ```
 
-代码 4‑2
+
 除了简单的列引用和表达式，DataFrame 还拥有丰富的内置函数库，包括字符串处理、日期算术、窗口分析和常用数学运算等。与此同时，`SparkSession.sql()` 也提供了另一条常见入口：当查询逻辑本身更适合用关系表达式描述时，可以直接写 SQL，再把结果继续接回 DataFrame 流程。
 
 ```scala
@@ -108,7 +108,7 @@ scala> sqlDF.show()
 +----+-------+
 ```
 
-代码 4‑3
+
 Spark SQL 中的本地临时视图是会话级对象：创建它的那个会话结束后，视图也会随之消失。如果需要在同一个 Spark 应用的多个会话之间共享临时结果，可以使用全局临时视图。全局临时视图统一挂在系统保留的 `global_temp` 数据库下，因此访问时必须显式带上库名前缀，例如 `SELECT * FROM global_temp.people`。
 
 如果把上面这组操作放回真实工作流里，可以把它理解成一个最小的结构化分析案例：先从数据源读取 DataFrame，确认 Schema 是否符合预期，再把同一份数据同时暴露给 DataFrame API 和 SQL。两种写法的差异主要体现在“表达习惯”上，而不是执行引擎上。例如，下面这两个查询都在筛选年龄大于 21 岁的用户，并只保留 `name` 列：
@@ -143,7 +143,7 @@ global_temp.people").show()
 +----+-------+
 ```
 
-代码 4‑4
+
 下面继续看Dataset的基本用法。这里需要再次强调：在 Spark 4.x 中，DataFrame 是结构化处理主线，而 Dataset 更适合作为 Scala / Java 中的类型化补充。Dataset 通过 Encoder 把领域对象映射到 Spark 的内部二进制表示，使 Spark 可以在保留类型信息的同时继续执行过滤、排序、聚合和序列化优化。下面的例子用 `toDS()` 创建一个Dataset：
 
 ```scala
@@ -184,7 +184,7 @@ root
 |-- name: string (nullable = true)
 ```
 
-代码 4‑5
+
 上面的代码可以分成三步理解：
 
 （1）Spark 先读取 JSON，推断 Schema，并创建 `Dataset[Row]`。
@@ -289,7 +289,7 @@ scala> results.map(attributes => "Name: " + attributes(0)).show()
 +-------------+
 ```
 
-代码 4‑6
+
 再看一个更贴近真实工程的入口：直接把带表头的 CSV 文件读成 DataFrame。只要文件本身包含标题行，并显式打开 `header` 与 `inferSchema`，Spark 就能基于输入数据推断字段结构。这个例子也顺带展示了如何用 `schema` 和 `printSchema()` 快速验证推断结果。
 
 ```scala
@@ -418,4 +418,6 @@ root
 |-- i: integer (nullable = true)
 |-- s: string (nullable = true)
 ```
+
+
 

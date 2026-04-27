@@ -25,7 +25,7 @@ fromB
 mergeMsg: (fromA: Double, fromB: Double)Double
 ```
 
-代码 6‑95
+
 
 其次，他们还将需要一个称为顶点程序的函数，以计算在上一个超集中收到钱后所拥有的钱：
 
@@ -36,7 +36,7 @@ vprog: (id: org.apache.spark.graphx.VertexId, balance: Double, credit:
 Double)Double
 ```
 
-代码 6‑96
+
 
 最后，还需要一个名为sendMsg的函数来在朋友之间进行汇款：
 
@@ -53,7 +53,7 @@ org.apache.spark.graphx.EdgeTriplet[Double,Int])Iterator[(org.apache.spark.graph
 Double)]
 ```
 
-代码 6‑97
+
 
 从上一个函数签名可以看出，sendMsg将边缘三元组作为输入而不是顶点，因此我们可以访问源节点和目标节点。
 `sendMsg` 的具体实现放在下一节展开。为了先把思路讲清楚，可以把问题进一步简化成“三个朋友构成的三角网络”：
@@ -76,7 +76,7 @@ scala> graph.vertices.foreach(println)
 (1,10.0)
 ```
 
-代码 6‑98
+
 
 先看一下输出结果：
 
@@ -91,7 +91,7 @@ scala> afterOneIter.vertices.foreach(println)
 (2,3.75)
 ```
 
-代码 6‑99
+
 
 到这里逻辑已经是通的；如果继续增加最大迭代次数，结果会发生什么？
 
@@ -114,7 +114,7 @@ scala> afterHundredIters.vertices.foreach(println)
 (2,6.207038273723298)
 ```
 
-代码 6‑100
+
 
 即使迭代 100 次，账户余额也没有精确收敛到理想值 6 美元，而是在其附近波动。在这个玩具示例里，这是符合预期的。
 
@@ -134,7 +134,7 @@ class GraphOps[VD, ED] {
   ): Graph[VD, ED]
 }
 ```
-代码 6‑101
+
 
 Pregel方法在属性图上调用，并返回具有相同类型和结构的新图。 当边保持完整时，顶点的属性可能从一个超集更改为下一个超集。
 Pregel接受以下两个参数列表。
@@ -166,7 +166,7 @@ Pregel接受以下两个参数列表。
 ```scala
 val lpaGraph = graph.mapVertices { case (vid, _) => vid }
 ```
-代码 6‑102
+
 
 接下来，我们将定义发送给Map \[Label，Long\]的消息的类型，该消息将社区标签与具有该标签的邻居数量相关联。
 将发送到每个节点的初始消息只是一个空映射：
@@ -174,7 +174,7 @@ val lpaGraph = graph.mapVertices { case (vid, _) => vid }
 type Label = VertexId
 val initialMessage = Map[Label, Long]()
 ```
-代码 6‑103
+
 
 遵循Pregel编程模型，我们定义了sendMsg函数，每个节点使用该函数将其当前标签通知其邻居。
 对于每个三元组，源节点将收到目标节点的标签，反之亦然：
@@ -185,7 +185,7 @@ def sendMsg(e: EdgeTriplet[Label, ED]): Iterator[(VertexId, Map[Label, Long])] =
     (e.dstId, Map(e.srcAttr -> 1L))
   )
 ```
-代码 6‑104
+
 
 上一个函数在每次迭代中都会返回其大多数邻居当前所属的社区的标签（即VertexId属性）。我们还需要一个mergeMsg函数来合并节点收到的所有消息。
 它的邻居变成一张地图。 如果两个消息都包含相同的标签，我们只需简单地为该标签求和相应的邻居数：
@@ -198,13 +198,13 @@ def mergeMsg(count1: Map[Label, Long], count2: Map[Label, Long]): Map[VertexId, 
   }.toMap
 }
 ```
-代码 6‑105
+
 
 最后，我们可以通过调用图中的pregel方法来运行LPA算法，以实现社会财富均等化：
 ```scala
 lpaGraph.pregel(initialMessage, 50)(vprog, sendMsg, mergeMsg)
 ```
-代码 6‑106
+
 
 LPA的主要优点是它的简单性和时间效率。 实际上，已经观察到收敛的迭代次数与图的大小无关，而每次迭代都具有线性时间复杂度。
 尽管标签传播算法有其优点，但不一定会收敛，并且还可能导致不感兴趣的解决方案，例如将每个节点标识为单个社区。
@@ -272,7 +272,7 @@ scala> println(ranksByUsername.collect().mkString("\n"))
 (odersky,1.2979769092759237)
 ```
 
-代码 6‑107
+
 
 前面已经看过 GraphX 自带页面排名算法的用法。下面换一个角度，用 Pregel 自己实现一次 PageRank，这样更容易看清它的消息传递过程：
 
@@ -284,7 +284,7 @@ val rankGraph: Graph[(Double, Double), Double] =
   }.mapTriplets(e => 1.0 / e.srcAttr)
     .mapVertices((id, attr) => (0.0, 0.0))
 ```
-代码 6‑108
+
 
 （2）按照Pregel的抽象定义，实现PageRank所需的三个函数。首先我们定义点程序如下：
 ```scala
@@ -296,7 +296,7 @@ def vProg(id: VertexId, attr: (Double, Double), msgSum: Double): (Double, Double
   (newPR, newPR - oldPR)
 }
 ```
-代码 6‑109
+
 
 接下来是创建消息函数：
 ```scala
@@ -310,13 +310,13 @@ def sendMessage(edge: EdgeTriplet[(Double, Double), Double]) = {
   }
 }
 ```
-代码 6‑110
+
 
 第三个函数为mergeMsg，只是简单地增加等级：
 ```scala
 def mergeMsg(a: Double, b: Double): Double = a + b
 ```
-代码 6‑111
+
 
 然后我们将获得点排名，如下所示：
 ```scala
@@ -324,5 +324,7 @@ rankGraph
   .pregel(initialMessage, activeDirection = EdgeDirection.Out)(vProg, sendMsg, mergeMsg)
   .mapVertices((vid, attr) => attr._1)
 ```
-代码 6‑112
+
+
+
 
