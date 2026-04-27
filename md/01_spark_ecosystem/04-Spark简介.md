@@ -108,7 +108,7 @@
 | 学习成本 | 对新手更陡一些                     | 对多数数据分析与脚本开发者更友好                    |
 | 生态工具 | 更适合贴近 Spark/Scala 生态深入开发    | 数据处理、实验与可视化生态更丰富                    |
 
-表格 1‑1 Scala和Python的比较
+&emsp;&emsp;表格 1‑1 Scala和Python的比较
 
 </div>
 
@@ -147,7 +147,7 @@ object HelloWorld extends App {
 }
 ```
 
-或
+&emsp;&emsp;或
 
 ```scala
 object HelloWorld {
@@ -163,7 +163,7 @@ object HelloWorld {
 > scalac HelloWorld.scala
 ```
 
-若要运行：
+&emsp;&emsp;若要运行：
 
 ```bash
 > scala -classpath . HelloWorld

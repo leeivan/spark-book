@@ -1,7 +1,7 @@
 ﻿# 04 结构化数据
 
 ## 本章介绍
-聚焦 Spark SQL 与 DataFrame 的核心实践。
+&emsp;&emsp;聚焦 Spark SQL 与 DataFrame 的核心实践。
 
 ## 本章目录
 - [01-本章先看懂什么](01-本章先看懂什么.md)
