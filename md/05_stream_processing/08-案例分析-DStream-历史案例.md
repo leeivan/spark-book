@@ -16,17 +16,19 @@
 
 早期 Spark Streaming 会把连续到达的数据按固定时间间隔切成一批批小 RDD，这种抽象就叫 DStream。对开发者来说，它的编程体验很像“持续不断地处理一串按时间到达的 RDD”；每个批次里仍然使用熟悉的 Spark Core API，而微批调度负责把这些批次串起来持续执行。
 
-![https://www.mapr.com/sites/default/files/blogimages/sparkstream2-blog.png](../media/05_stream_processing/media/image14.jpeg)
+<div align="center">![https://www.mapr.com/sites/default/files/blogimages/sparkstream2-blog.png](../media/05_stream_processing/media/image14.jpeg)
 
 图例 5‑14 将数据流划分为X秒的批次
+</div>
 
 Spark Streaming 可以接入 HDFS 目录、TCP 套接字、Kafka、Flume 等输入源，再把结果写到文件系统、HDFS、数据库，或任何支持 Hadoop OutputFormat 的外部系统。理解这一点有助于读懂下面的历史案例：它本质上就是“以微批方式接入日志，再通过 RDD 转换和 `foreachRDD` 把结果落到外部存储”。
 
 下面这个历史案例继续沿用 DStream + HBase 的组合，目的是说明一个典型微批流式应用怎样从输入流一路走到外部存储。示例背景是油井监控：钻井平台传感器持续产生日志数据，Spark Streaming 负责实时处理，再把结果写入 HBase，供后续分析和报表使用。
 
-![](../media/05_stream_processing/media/image15.jpeg)
+<div align="center">![](../media/05_stream_processing/media/image15.jpeg)
 
 图例 5‑15 流数据处理阶段
+</div>
 
 这个案例除了把每条原始事件写入 HBase，还会额外筛选告警数据，并计算按天汇总的统计信息。整体处理链路并不复杂：先读入传感器日志，再在每个微批上做过滤、转换和写出，最后把明细与汇总分别落到 HBase。
 
@@ -193,9 +195,10 @@ only showing top 5 rows
 
 （2）stats列族：最小值、最大值和平均值的列。
 
-![https://www.mapr.com/sites/default/files/blogimages/sparkstream5-blog.png](../media/05_stream_processing/media/image16.jpeg)
+<div align="center">![https://www.mapr.com/sites/default/files/blogimages/sparkstream5-blog.png](../media/05_stream_processing/media/image16.jpeg)
 
 图例 5‑16 数据格式
+</div>
 
 创建HBase表：
 
@@ -292,9 +295,10 @@ val sensorDStream = linesDStream.map(Sensor.parseSensor)
 
 这段代码里，`linesDStream` 表示源数据流。`StreamingContext.textFileStream()` 会持续监视兼容 Hadoop 的文件系统目录，并在检测到新文件时把它们纳入后续批次处理。
 
-![](../media/05_stream_processing/media/image17.jpeg)
+<div align="center">![](../media/05_stream_processing/media/image17.jpeg)
 
 图例 5‑17 创建输入流
+</div>
 
 这种摄取方式适合“不断把新文件移动或复制到目录里”的工作流。`linesDStream` 中的每条记录都是一行文本，而 DStream 内部则是一串按 2 秒间隔切分的 RDD。随后通过 `map(parseSensor)` 把文本转换成 `Sensor` 对象，再用 `foreachRDD()` 在每个批次上执行真正的处理逻辑：筛选低 PSI 告警、把普通数据与告警数据分别转换成 HBase `Put`，并写入外部表。
 ```scala
@@ -349,9 +353,10 @@ def convertToPut(sensor: Sensor): (ImmutableBytesWritable, Put) = {
 
 接下来使用PairRDDFunctions.saveAsHadoopDataset()方法写入传感器和警报数据。
 
-![处输入图片的描述](../media/05_stream_processing/media/image18.jpeg)
+<div align="center">![处输入图片的描述](../media/05_stream_processing/media/image18.jpeg)
 
 图例 5‑18 使用 `saveAsHadoopDataset` 方法写入到 HBase 中
+</div>
 
 这将使用该存储系统的Hadoop Configuration对象将RDD输出到任何Hadoop支持的存储系统上，将sensorRDD
 对象转换为Put对象，然后使用
@@ -590,9 +595,10 @@ only showing top 1 row
 
 窗口操作的意义，在于把多个连续微批合并成一个“按时间滚动观察”的结果视图。这样就可以回答“过去 6 秒内发生了什么”“每隔 2 秒重新统计一次最近窗口”这一类问题，而不必只盯着单个批次。
 
-![](../media/05_stream_processing/media/image19.jpeg)
+<div align="center">![](../media/05_stream_processing/media/image19.jpeg)
 
 图例 5‑19 数据的滑动窗口
+</div>
 
 在图例 5‑19 中，原始 DStream 以 1 秒间隔到达。窗口长度由 `windowLength` 指定，这里是 3 个时间单位；窗口每隔 2 个单位向前滑动一次。需要记住的约束只有一个：窗口长度和滑动间隔都必须是批次间隔的整数倍。每当窗口滑动时，落入该窗口范围内的多个 RDD 会被合并视作一个新的窗口 RDD，并在其上执行后续操作。因而，窗口操作通常只需要两个参数：
 
@@ -744,6 +750,7 @@ only showing top 1 row
 
 
   - 在什么情况下，窗口操作会特别有用？
+
 
 
 

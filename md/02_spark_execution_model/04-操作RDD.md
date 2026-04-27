@@ -9,13 +9,15 @@ RDD谱系也称为RDD运算符图或RDD依赖图，本质上是一个逻辑执�
 
 转换大体可以分成两类：窄转换和宽转换。窄转换指的是，子RDD中某个分区的计算只依赖父RDD中的单个分区或少量固定分区，例如map()、filter()；宽转换则意味着一个分区的结果可能依赖父RDD的多个分区，通常会伴随Shuffle，例如groupByKey()和reduceByKey()。下面列出一些Spark中常见的转换操作。
 
-![](../media/02_spark_execution_model/media/image7.png)
+<div align="center">![](../media/02_spark_execution_model/media/image7.png)
 
 图例 2‑7 常见RDD转换操作示意（1）
+</div>
 
-![](../media/02_spark_execution_model/media/image8.png)
+<div align="center">![](../media/02_spark_execution_model/media/image8.png)
 
 图例 2‑8 常见RDD转换操作示意（2）
+</div>
 
 下面先看基于单个RDD的转换，也就是输入只有一个RDD的情况。先通过并行化一个集合来创建示例RDD：
 
@@ -352,6 +354,7 @@ y.\_2)，表示对所有的分区计算结果进行累加，计算方法如下�
   - saveAsObjectFile(path)
 
 将数据集的元素写为使用Java串行化的简单格式，然后可以使用SparkContext.objectFile()进行加载。
+
 
 
 

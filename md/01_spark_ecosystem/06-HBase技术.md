@@ -6,9 +6,10 @@
 
 从学习顺序看，本节的重点不是掌握 HBase 的全部运维细节，而是理解三个问题：它为什么存在、它在 Spark 体系里扮演什么角色、以及实验环境中如何完成最基本的表操作与读写验证。
 
-![Base Flow](../media/01_spark_ecosystem/media/image8.jpeg)
+<div align="center">![Base Flow](../media/01_spark_ecosystem/media/image8.jpeg)
 
 图例 1‑9 HBase 读写访问
+</div>
 
 | HDFS                    | HBase                                            |
 | ----------------------- | ------------------------------------------------ |
@@ -23,9 +24,10 @@
 
 HBase 的架构可以先抓住四个关键词：`HMaster`、`HRegionServer`、`Region` 和 `WAL/MemStore/HFile`。前两者负责集群管理与读写服务，Region 负责按 Row Key 范围切分数据，WAL 与 MemStore/HFile 共同构成写入落盘路径。理解这几个概念，就足够支撑后续 Spark + HBase 示例阅读。
 
-![](../media/01_spark_ecosystem/media/image9.png)
+<div align="center">![](../media/01_spark_ecosystem/media/image9.png)
 
 图例 1‑10 HBase 的系统架构
+</div>
 
 HMaster 是 HBase 的管理节点进程，负责区域分配、故障转移和元数据维护。一个 HBase 集群通常会配置多个 HMaster，其中一个处于活动状态，其余作为备份节点。需要注意的是，HMaster 本身并不直接承担读写流量；真正处理数据请求的是 RegionServer。因此，即使 HMaster 暂时失效，已在线的数据读写在很多情况下仍可继续，只是表结构变更和部分元数据操作会受到影响。
 
@@ -39,9 +41,10 @@ HBase 使用 ZooKeeper 进行区域分配、服务发现和分布式协调。当
 
 现在，看一下面向列的数据库与面向行与面向列的数据存储的数据结构和概念有何不同。如下所示，在面向行的数据存储中，行是一起读取或写入的数据单元，而面向列的数据存储中，列中的数据存储在一起，因此可以快速检索。
 
-![base 1](../media/01_spark_ecosystem/media/image10.png)
+<div align="center">![base 1](../media/01_spark_ecosystem/media/image10.png)
 
 图例 1‑11 面向列的数据库与面向行的数据库
+</div>
 
   - 面向行的数据存储
 
@@ -53,9 +56,10 @@ HBase 使用 ZooKeeper 进行区域分配、服务发现和分布式协调。当
 
 HBase中的数据模型旨可以容纳半结构化数据，其中的字段大小、数据类型和列是可以变化的。此外，数据模型的布局可以使数据分区以及在整个集群中分布更加容易。HBase中的数据模型由不同的逻辑组件组成，例如表、行、列族、列、单元格和版本。
 
-![](../media/01_spark_ecosystem/media/image11.tiff)
+<div align="center">![](../media/01_spark_ecosystem/media/image11.tiff)
 
 图例 1‑12 HBase 列族
+</div>
 
 HBase表根据Row
 Key的范围被水平拆分成若干个区域，每个区域都包含了这个区域的起始键和结束键之间的所有行。区域被分配给集群中区域服务器管理，由它们来负责处理数据的读写请求。HBase中的行是逻辑上的行，物理上模型上行是按列族分别存取的。HBase
@@ -711,6 +715,7 @@ hbase(main):021:0\> exit
 stop-hbase.sh
 
 命令 1.62
+
 
 
 

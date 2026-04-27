@@ -8,9 +8,10 @@ Spark SQL 是 Spark 4.x 最核心的结构化数据处理模块。与基本的 R
 
 Catalyst 是 Spark SQL 的查询优化框架。无论用户写的是 SQL、DataFrame 还是 Dataset API，Spark 最终都会先把这些操作表示成查询计划，再经历解析、分析、优化和物理规划等阶段。下图展示了从高级结构化 API 到最终执行代码的大致转换过程：
 
-![](../media/04_structured_data/media/image2.png)
+<div align="center">![](../media/04_structured_data/media/image2.png)
 
 图例 4‑2 Spark SQL 查询计划与优化流程
+</div>
 
 可以把这个过程概括为四步：先生成逻辑计划，再结合 Catalog 与 Schema 解析列和表，随后利用规则与统计信息优化计划，最后从多个候选物理计划中选择一个执行。对于使用者来说，真正需要记住的是：一旦把数据处理写成结构化表达式，Spark 就有机会自动做过滤下推、投影裁剪、常量折叠、广播 Join 选择以及代码生成等优化。
 
@@ -24,15 +25,17 @@ DataFrame可以看作“带Schema的分布式表”，它最接近关系型思�
 
 从语言支持角度看，DataFrame在 Scala、Java、Python 和 R 中都可用；Dataset只在 Scala 和 Java 中可用。在 Scala API 中，DataFrame 本质上就是 `Dataset[Row]` 的类型别名；在 Java API 中，通常直接写成 `Dataset<Row>`。因此，讨论“DataFrame 与 Dataset”的时候，真正需要把握的不是二选一的历史争论，而是结构化主线和类型化扩展之间的边界。
 
-![](../media/04_structured_data/media/image3.png)
+<div align="center">![](../media/04_structured_data/media/image3.png)
 
 图例 4‑3 Spark DataFrame和Dataset API
+</div>
 
 从 Spark 2.0 开始，DataFrame 和 Dataset 被纳入统一的结构化API体系。可以简单理解为：SQL 最灵活，适合快速表达关系逻辑；DataFrame 通用性最强，适合绝大多数工程代码；Dataset 类型约束最强，适合 Scala / Java 中需要编译期类型检查的场景。它们之间不是互斥关系，而是同一套执行模型上的不同表达方式。
 
-![](../media/04_structured_data/media/image4.png)
+<div align="center">![](../media/04_structured_data/media/image4.png)
 
 图例 4‑4 Spark SQL 统一结构化 API 体系
+</div>
 
 ### 4.2.3 创建结构化数据
 
@@ -418,6 +421,7 @@ root
 |-- i: integer (nullable = true)
 |-- s: string (nullable = true)
 ```
+
 
 
 
