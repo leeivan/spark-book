@@ -197,7 +197,7 @@ Python 是今天最常见的 PySpark 入口语言。它的优势在于语法简�
 
 print("Hello, world\!")
 
-代码 1‑8
+
 
   - Python 2.x（历史写法，仅用于兼容老代码）
 
@@ -213,7 +213,7 @@ Python 也很适合交互式探索。启动解释器后，可以直接在提示�
 
 Hello, world\!
 
-代码 1‑10
+
 
   - Python 2.x（历史写法，仅用于兼容老代码）
 
@@ -221,7 +221,7 @@ Hello, world\!
 
 Hello, world\!
 
-代码 1‑11
+
 
 需要特别注意的是，Python 2 与 Python 3 的 `print` 语法不同。Spark 4.x 已经完全站在 Python 3 生态上，旧写法仅保留给历史兼容场景。
 
