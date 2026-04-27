@@ -97,6 +97,8 @@ Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本
 
 语言选择不必变成抽象争论。更实用的判断方式是：如果团队偏数据分析、Notebook 和快速实验，Python 往往是第一入口；如果要贴近 Spark 内部模型、类型系统和 JVM 工程，Scala 更有优势；如果平台侧已经是成熟的 Java 体系，Java 也完全可用；R 则更适合统计分析和交互式探索。表格 1‑1 给出了一组对 Spark 工程最有参考价值的比较维度：
 
+<div align="center">
+
 | 影响因素 | Scala                       | Python                              |
 | ---- | --------------------------- | ----------------------------------- |
 | 性能   | 与 Spark 内部实现更贴近，通常更容易获得稳定性能 | 开发效率高，但 Python 与 JVM 之间存在额外序列化与边界开销 |
@@ -108,6 +110,8 @@ Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本
 
 表格 1‑1 Scala和Python的比较
 
+</div>
+
 注意：Spark 4.x 已不再支持旧版 Java 7 与 Python 2 生态；生产环境建议统一使用 LTS JDK（17/21）与 Python 3.10+。
 
 #### 1.4.3.1 Java
@@ -116,15 +120,13 @@ Java 适合那些已经深度依赖 JVM 生态的企业环境，例如现有平�
 
 在 Spark 4.x 中，Java API 可以直接使用 lambda 表达式和函数式接口来组织转换逻辑。虽然日常数据分析里更常见的是 Python 或 Scala，但对于需要长期维护、强调规范工程化的团队，Java 仍然是可行选择。下面保留一个最小的 Hello World，用来说明 Java 项目的基本入口形式：
 
+```java
 public class HelloWorld {
-
-public static void main(String\[] args) {
-
-System.out.println("Hello, World!");
-
+    public static void main(String\[] args) {
+        System.out.println("Hello, World!");
+    }
 }
-
-}
+```
 
 #### 1.4.3.2 Scala
 
