@@ -22,7 +22,6 @@ scala> pairRDD.collect().foreach(println)
 (10,technology)
 ```
 
-
 &emsp;&emsp;上面的代码创建了键值对RDD，每一行为一个元组，其中键是长度，值是单词。它们被包裹在一对括号内。一旦以这种方式排列了每一行，我们就可以通过按键分组轻松发现长度相同的单词。以下各节将介绍如何创建键值对RDD，以及如何使用关联的转换和操作。
 
 ### 3.2.1 创建
@@ -75,7 +74,6 @@ ParallelCollectionRDD[16] at parallelize at <console>:24
 scala> data.saveAsSequenceFile("/data/seq-output")
 ```
 
-
 &emsp;&emsp;SequenceFile可以用于解决大量小文件问题，SequenceFile是Hadoop
 &emsp;&emsp;API提供的一种二进制文件支持，直接将键值对序列化到文件中，一般对小文件可以使用这种文件合并，即将文件名作为键，文件内容作为值序列化到大文件中，如下的代码是怎样读取SequenceFile：
 
@@ -90,7 +88,6 @@ MapPartitionsRDD[19] at map at <console>:26
 scala> result.collect
 res11: Array[(String, Int)] = Array((key1,1), (Kay2,2), (Key3,2))
 ```
-
 
   - def sequenceFile\[K, V\](path: String, keyClass: Class\[K\],
 &emsp;&emsp;    valueClass: Class\[V\]): RDD\[(K, V)\]
@@ -118,7 +115,6 @@ val langs = Seq(
 )
 ```
 
-
 &emsp;&emsp;定义langs序列（Seq）变量，其中包含三个三维元组。
 ```scala
 for (tuple <- langs) {
@@ -131,14 +127,12 @@ for (tuple <- langs) {
 }
 ```
 
-
 &emsp;&emsp;在for循环中，定义了case模式匹配。第一个case匹配一个三元素元组，其中第一个元素是字符串“Scala”，忽略第二个和第三个参数；第二个case匹配任何三元素元组，元素可以是任何类型，但是由于输入langs，它们被推断为字符串。将元素提取为变量lang、first和last，输出结果为：
 ```text
 Found Scala
 Found other language: Clojure (Rich, Hickey)
 Found other language: Lisp (John, McCarthy)
 ```
-
 
 &emsp;&emsp;在上面的代码中，一个元组可以分解成其组成元素。可以匹配元组中的字面值，在任何想要的位置，可以忽略不关心的元素。
 
@@ -157,7 +151,6 @@ res29: Array[(String, Int)] = Array((INGLESIDE,1), (SOUTHERN,1),
 (PARK,1), (NORTHERN,1))
 ```
 
-
 &emsp;&emsp;在这个例子中，首先这是在内存中创建键值对集合dist1，然后通过SparkContext.parallelize方法应用于dist1来创建键值对dist1RDD。另外，在一组小文本文件上运行sc.wholetextFiles将创建键值对，其中键是文件的名称，而值为文件中的内容。
 
 ### 3.2.2 转换
@@ -174,7 +167,6 @@ rdd: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[15] at parallelize at <console>:24
 ```
 
-
   - reduceByKey(func: (V, V) ⇒ V, numPartitions: Int): RDD\[(K, V)\]
 
 &emsp;&emsp;调用包含(K, V)的数据集，返回的结果也为(K, V)。数据集中的每个键对应的所有值被聚集，使用给定的汇总功能func，其类型必须为(V,
@@ -184,7 +176,6 @@ ParallelCollectionRDD[15] at parallelize at <console>:24
 scala> rdd.reduceByKey((x, y) => x + y).collect
 res5: Array[(Int, Int)] = Array((1,2), (3,10))
 ```
-
 
   - groupByKey(numPartitions: Int): RDD\[(K, Iterable\[V\])\]
 
@@ -196,7 +187,6 @@ scala> rdd.groupByKey().collect
 res6: Array[(Int, Iterable[Int])] = Array((1,CompactBuffer(2)),
 (3,CompactBuffer(4, 6)))
 ```
-
 
   - combineByKey\[C\](createCombiner: (V) ⇒ C, mergeValue: (C, V) ⇒ C,
 &emsp;&emsp;    mergeCombiners: (C, C) ⇒ C): RDD\[(K, C)\]
@@ -212,7 +202,6 @@ scala> rdd.mapValues(x => x+1).collect
 res11: Array[(Int, Int)] = Array((1,3), (3,5), (3,7))
 ```
 
-
   - flatMapValues\[U\](f: (V) ⇒ TraversableOnce\[U\]): RDD\[(K, U)\]
 
 &emsp;&emsp;与mapValues相似，将键值对中每个值传递给函数f而不改变键，不同的是将数据的内在结构扁平化。
@@ -223,7 +212,6 @@ res13: Array[(Int, Int)] = Array((1,2), (1,3), (1,4), (1,5), (3,4),
 (3,5))
 ```
 
-
   - keys: RDD\[K\]
 
 &emsp;&emsp;将键值对RDD中每个元组的键返回，产生一个RDD。
@@ -232,7 +220,6 @@ res13: Array[(Int, Int)] = Array((1,2), (1,3), (1,4), (1,5), (3,4),
 scala> rdd.keys.collect
 res15: Array[Int] = Array(1, 3, 3)
 ```
-
 
   - values: RDD\[V\]
 
@@ -243,7 +230,6 @@ scala> rdd.values.collect
 res20: Array[Int] = Array(2, 4, 6)
 ```
 
-
   - sortByKey(ascending: Boolean = true, numPartitions: Int =
 &emsp;&emsp;    self.partitions.length): RDD\[(K, V)\]
 
@@ -253,7 +239,6 @@ res20: Array[Int] = Array(2, 4, 6)
 scala> rdd.sortByKey().collect
 res25: Array[(Int, Int)] = Array((1,2), (3,4), (3,6))
 ```
-
 
   - aggregateByKey\[U\](zeroValue: U)(seqOp: (U, V) ⇒ U, combOp: (U, U)
 &emsp;&emsp;    ⇒ U)(implicit arg0: ClassTag\[U\]): RDD\[(K, U)\]
@@ -280,7 +265,6 @@ scala> pairRDD.aggregateByKey(100)(math.max(_, _), _ + _).collect
 res2: Array[(String, Int)] = Array((dog,100), (cat,200), (mouse,200))
 ```
 
-
 &emsp;&emsp;上面的代码中，通过定义myfunc函数，分别打印出RDD分区中内容。
 
   - 基于两个键值对RDD的转换
@@ -296,7 +280,6 @@ other: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[43] at parallelize at <console>:24
 ```
 
-
   - subtractByKey
 
 &emsp;&emsp;从rdd中删除other中存在的键元素。
@@ -306,7 +289,6 @@ scala> rdd.subtractByKey(other).collect
 res27: Array[(Int, Int)] = Array((1,2))
 ```
 
-
   - join(otherDataset, \[numTasks\])
 
 &emsp;&emsp;在两个RDD之间执行内部连接。
@@ -315,7 +297,6 @@ res27: Array[(Int, Int)] = Array((1,2))
 scala> rdd.join(other).collect
 res28: Array[(Int, (Int, Int))] = Array((3,(4,9)), (3,(6,9)))
 ```
-
 
   - rightOuterJoin
 
@@ -327,7 +308,6 @@ res30: Array[(Int, (Option[Int], Int))] = Array((3,(Some(4),9)),
 (3,(Some(6),9)))
 ```
 
-
   - leftOuterJoin
 
 &emsp;&emsp;在两个RDD之间执行连接，其中键必须存在于另一个RDD中。
@@ -337,7 +317,6 @@ scala> rdd.leftOuterJoin(other).collect
 res31: Array[(Int, (Int, Option[Int]))] = Array((1,(2,None)),
 (3,(4,Some(9))), (3,(6,Some(9))))
 ```
-
 
   - cogroup(otherDataset, \[numTasks\])
 
@@ -349,7 +328,6 @@ res32: Array[(Int, (Iterable[Int], Iterable[Int]))] =
 Array((1,(CompactBuffer(2),CompactBuffer())), (3,(CompactBuffer(4,
 6),CompactBuffer(9))))
 ```
-
 
 #### 3.2.2.1 聚合
 
@@ -365,8 +343,6 @@ Array((1,(CompactBuffer(2),CompactBuffer())), (3,(CompactBuffer(4,
 
 &emsp;&emsp;$$ 2 \times \left( 3 \times 4 \right) = \left( 2 \times 3 \right) \times 4 = 24 $$
 
-
-
 &emsp;&emsp;关联性让我们可以按顺序并行使用相同的函数。reduceByKey使用该属性计算RDD的结果，RDD是由分区组成的分布式集合。直观地说，这个函数在重复应用于具有多个分区的同一组RDD数据时会产生相同的结果，而不管元素的顺序如何。此外，它首先使用Reduce函数在本地执行合并，然后在分区之间发送记录以准备最终结果，通过下面的代码看一看reduceByKey的执行过程：
 
 ```scala
@@ -379,10 +355,8 @@ scala> x.reduceByKey(_ + _).collect()
 res3: Array[(String, Int)] = Array((a,6), (b,6))
 ```
 
-
 <p align="center"><img src="../media/03_pair_rdd_and_partitioning/media/image1.png" alt="https://camo.githubusercontent.com/516114b94193cddf7e59bdd5368d6756d30dc8b4/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f313836363838325f6f7269672e706e67" width="60%" /></p>
 <p align="center">图例 3‑1 ReduceByKey运行示意图</p>
-
 
 &emsp;&emsp;在上图中，可以看到RDD具有多个键值对元素，如(a,1)和(b,1)，以及3个分区。在对整个分区之间的数据洗牌之前，先在每个本地分区中进行相同的聚合。可以使用reduceByKey与mapValues一起计算每个键的平均值，代码和图示如下：
 
@@ -399,7 +373,6 @@ res38: Array[(String, (Int, Int))] = Array((panda,(1,2)),
 
 <p align="center"><img src="../media/03_pair_rdd_and_partitioning/media/image2.png" alt="nsp 0402" width="60%" /></p>
 <p align="center">图例 3‑2 每键平均值计算的数据流</p>
-
 
 &emsp;&emsp;实际上，reduceByKey是aggregateByKey的一个特列。aggregateByKey有两个函数参数：一个应用于每个分区的聚合，另一个应用于分区之间聚合。reduceByKey在上述两种情况下都使用相同的关联函数，在每个分区上执行一遍，然后在分区间执行一遍，将第一遍的结果合并为最终结果。
 
@@ -427,7 +400,6 @@ scala> averageByKey.foreach(println)
 (A,8.0)
 (B,8.333333)
 ```
-
 
 &emsp;&emsp;参考上面的代码，combineByKey需要三个函数分别为：createCombiner、mergeValue和mergeCombiner：
 
@@ -489,12 +461,10 @@ scala> x.groupByKey().map(t => (t._1, t._2.sum)).collect
 res4: Array[(String, Int)] = Array((a,6), (b,6))
 ```
 
-
 &emsp;&emsp;得到的结果与上面的代码一致，但是数据的计算过程不一样。另一方面，当调用groupByKey时所有的键值对都在Shuffle，在网络中传输的大量不必要的数据。当在一个执行器上有更多的数据在内存中进行Shuffle时，Spark将内存数据溢出到磁盘中。但是，一次只会将一个键数据刷新到磁盘上，因此如果单个键的值超过了内存容量，则会发生内存不足异常。这种情况在Spark的后续版本中可以更加优雅地处理，因此作业仍然可以继续，但仍然应该避免。当Spark需要溢出到磁盘时，性能会受到严重影响。
 
 <p align="center"><img src="../media/03_pair_rdd_and_partitioning/media/image3.png" alt="https://camo.githubusercontent.com/ed75baabdaee2198d3fc1390e04a5d20bcd2e484/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f333030393135315f6f7269672e706e67" width="60%" /></p>
 <p align="center">图例 3‑3 GroupByKey运行示意图</p>
-
 
 &emsp;&emsp;可以尝试的一种优化方法是合并或组合值，因此最终只发送较少的键值对。另外，较少的键值对意味着Reduce不会有太多的工作要做，从而带来额外的性能提升。groupByKey()调用不会尝试进行合并或组合值，因此这是一项昂贵的操作。对于一个更大的数据集，洗牌数据量的差异在reduceByKey()和groupByKey()之间会变得更加夸张和不同。以下是比groupByKey更优化的方法：
 
@@ -525,7 +495,6 @@ Array((34,(Clerical,Robinson)), (34,(Clerical,Smith)),
 (31,(Sales,Rafferty)))
 ```
 
-
 &emsp;&emsp;有些场景下，我们并不要求结果中的键同时出现在两个输入RDD中。例如，把“客户信息”和“推荐结果”做关联时，即使某个客户暂时没有推荐结果，通常也不希望把客户记录直接丢掉。leftOuterJoin(other)和rightOuterJoin(other)就是为这类场景准备的：它们都会按键连接两个键值对RDD，但会保留其中一侧RDD中的全部键。
 
 &emsp;&emsp;对于leftOuterJoin，结果RDD会保留左侧RDD中的所有键。结果中每个键对应的值是一个元组：第一部分来自左侧RDD，第二部分来自右侧RDD，并用Option包裹以表示“可能有值，也可能没有值”。与普通join一样，如果某个键在一侧或两侧都出现了多个值，结果仍然会形成对应值集合之间的笛卡尔组合。rightOuterJoin的规则与之对称，只是它保留的是右侧RDD中的所有键。下面继续使用中的departments和employees演示这两个操作：
@@ -543,7 +512,6 @@ Array((34,(Some(Clerical),Robinson)), (34,(Some(Clerical),Smith)),
 (33,(Some(Engineering),Heisenberg)), (31,(Some(Sales),Rafferty)))
 ```
 
-
   - Option、Some和None
 
 &emsp;&emsp;在Scala里，Option常用来表达“这个结果可能存在，也可能不存在”。如果一个函数在成功时返回对象、失败时原本会返回null，那么更推荐把返回类型定义为Option。这样一来，调用者在函数签名层面就能明确知道：这里需要处理“有值”和“无值”两种情况。Option最常见的两个子类型是Some和None。下面是一个简单示例：
@@ -557,7 +525,6 @@ def toInt(in: String): Option[Int] = {
 }
 ```
 
-
 &emsp;&emsp;以下是这个toInt函数的工作原理：它需要一个String作为参数。如果它可以将String转换为Int，那么它返回为Some（Int）；如果String不能转换为Int，则返回None。如果是调用此函数的代码将如下所示：
 ```scala
 toInt(someString) match {
@@ -565,7 +532,6 @@ toInt(someString) match {
   case None    => println("That didn't work.")
 }
 ```
-
 
 #### 3.2.2.4 排序
 
@@ -594,11 +560,9 @@ res11: Array[(String, Int)] = Array((397090770,4), (com,3),
 (iteblog,2), (test,5), (wyp,1))
 ```
 
-
 &emsp;&emsp;上面对键进行了排序，sortBy()函数中可以对排序方式进行重写，sortByKey()也有这样的功能，通过在OrderedRDDFunctions类中有个变量ordering，它是隐式的：
 
 &emsp;&emsp;private val ordering = implicitly\[Ordering\[K\]\]
-
 
 &emsp;&emsp;这就是默认的排序规则，可以对它进行重写，如下：
 
@@ -622,7 +586,6 @@ res17: Array[(Int, String)] = Array((1,iteblog), (12,397090770),
 (3,wyp), (4,test), (9,com))
 ```
 
-
 &emsp;&emsp;例子中的sortIntegersByString就是修改了默认的排序规则。这样将默认按照Int大小排序改成了对字符串的排序，所以12会排序在3之前。
 
 ### 3.2.3 动作
@@ -634,7 +597,6 @@ scala> val rdd = sc.parallelize(List((1, 2), (3, 4), (3, 6)))
 rdd: org.apache.spark.rdd.RDD[(Int, Int)] =
 ParallelCollectionRDD[15] at parallelize at <console>:24
 ```
-
 
   - countByKey(): Map\[K, Long\]
 
@@ -652,7 +614,6 @@ scala> rdd.countByKey()
 res74: scala.collection.Map[Int,Long] = Map(1 -> 1, 3 -> 2)
 ```
 
-
   - collectAsMap(): Map\[K, V\]
 
 &emsp;&emsp;与collect()类似，但对关键值RDD起作用并将其转换为Scala
@@ -663,7 +624,6 @@ scala> rdd.collectAsMap()
 res80: scala.collection.Map[Int,Int] = Map(1 -> 2, 3 -> 6)
 ```
 
-
   - lookup(key: K): Seq\[V\]
 
 &emsp;&emsp;返回与提供键相关联的所有值。如果RDD具有已知的分区程序，则只需搜索该键映射到的分区即可高效地执行此操作。
@@ -672,14 +632,3 @@ res80: scala.collection.Map[Int,Int] = Map(1 -> 2, 3 -> 6)
 scala> rdd.lookup(3)
 res91: Seq[Int] = WrappedArray(4, 6)
 ```
-
-
-
-
-
-
-
-
-
-
-

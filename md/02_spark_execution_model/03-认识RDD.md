@@ -7,7 +7,6 @@
 <p align="center"><img src="../media/02_spark_execution_model/media/image6.png" alt="" width="60%" /></p>
 <p align="center">图例 2‑6 RDD 看作是一个只读分区的记录集合</p>
 
-
 &emsp;&emsp;RDD 这个名字可以拆开理解。所谓“弹性”，指的是它能够借助谱系信息在分区丢失时重新计算；所谓“分布式”，指的是数据按分区散布在多个节点上并行处理；所谓“数据集”，则强调它表示的是一批可被统一操作的记录。RDD 不要求输入必须符合固定表结构，文本、键值对、日志行以及程序中的对象集合都可以成为它的输入。
 &emsp;&emsp;换句话说，RDD具备容错能力：当某些分区因节点故障而丢失时，可以依据谱系重新计算。
 
@@ -33,7 +32,6 @@ scala> sorted.foreach(println)
 (computer,65)
 (maths,85)
 ```
-
 
   - 语法解释
 
@@ -62,12 +60,3 @@ jun
 ```
 
 &emsp;&emsp;Spark可以从Hadoop生态支持的多种存储系统中创建RDD，包括本地文件系统、HDFS、Cassandra、HBase、Amazon S3等。Spark支持文本文件、SequenceFile，以及任何基于Hadoop InputFormat的数据源。最常见的读取方式之一是使用SparkContext.textFile()：传入本地路径、Hadoop集群路径或云存储路径后，Spark会把文件内容读取为“按行组织”的RDD。
-
-
-
-
-
-
-
-
-

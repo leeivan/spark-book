@@ -15,7 +15,3 @@
 &emsp;&emsp;在Spark 4.x的工程实践中，批处理、交互式分析和流处理通常围绕DataFrame/Dataset、Spark SQL与Structured Streaming展开；机器学习主线以`spark.ml`管道式API为主，图计算则更多作为专题能力出现。Spark既可以从HDFS、Amazon S3、HBase等持久层读取数据，也可以通过Shell、Spark Submit、Notebook、SQL服务等多种入口承载不同类型的应用。
 
 &emsp;&emsp;Spark支持多种编程语言，包括Java、Scala、Python以及R。对于Spark每个功能的讲解，大部分使用Scala语言，并包括语法讲解，有些使用Java和Python语言用于对比和参考。本书使用Docker容器技术部署Spark实验学习环境，其中包括Spark 4.1.1、HBase 1.4.0，以及Maven和sbt等工具。
-
-
-
-

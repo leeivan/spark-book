@@ -11,7 +11,6 @@
 <p align="center"><img src="../media/04_structured_data/media/image2.png" alt="" width="60%" /></p>
 <p align="center">图例 4‑2 Spark SQL 查询计划与优化流程</p>
 
-
 &emsp;&emsp;可以把这个过程概括为四步：先生成逻辑计划，再结合 Catalog 与 Schema 解析列和表，随后利用规则与统计信息优化计划，最后从多个候选物理计划中选择一个执行。对于使用者来说，真正需要记住的是：一旦把数据处理写成结构化表达式，Spark 就有机会自动做过滤下推、投影裁剪、常量折叠、广播 Join 选择以及代码生成等优化。
 
 &emsp;&emsp;这也是为什么 DataFrame 往往比手写RDD流程更容易得到稳定性能。DataFrame / Dataset 暴露了列、类型和表达式语义，Catalyst 与 Tungsten 才能在这些信息上工作。调试时可以用 `explain()` 查看逻辑计划和物理计划，从而判断过滤是否被下推、Join 是否被广播、是否发生了额外的 Exchange 或 Shuffle。
@@ -27,12 +26,10 @@
 <p align="center"><img src="../media/04_structured_data/media/image3.png" alt="" width="60%" /></p>
 <p align="center">图例 4‑3 Spark DataFrame和Dataset API</p>
 
-
 &emsp;&emsp;从 Spark 2.0 开始，DataFrame 和 Dataset 被纳入统一的结构化API体系。可以简单理解为：SQL 最灵活，适合快速表达关系逻辑；DataFrame 通用性最强，适合绝大多数工程代码；Dataset 类型约束最强，适合 Scala / Java 中需要编译期类型检查的场景。它们之间不是互斥关系，而是同一套执行模型上的不同表达方式。
 
 <p align="center"><img src="../media/04_structured_data/media/image4.png" alt="" width="60%" /></p>
 <p align="center">图例 4‑4 Spark SQL 统一结构化 API 体系</p>
-
 
 ### 4.2.3 创建结构化数据
 
@@ -50,7 +47,6 @@ scala> df.show
 | 19| Justin|
 +----+-------+
 ```
-
 
 &emsp;&emsp;这个例子展示了最常见的工作流：先从数据源读取 DataFrame，再做选择、过滤、聚合与显示。对新项目来说，这条“数据源 -> DataFrame -> 结构化操作”的路径应当优先于“先读成RDD，再手动补Schema”的做法。
 
@@ -91,7 +87,6 @@ scala> df.groupBy("age").count().show()
 +----+-----+
 ```
 
-
 &emsp;&emsp;除了简单的列引用和表达式，DataFrame 还拥有丰富的内置函数库，包括字符串处理、日期算术、窗口分析和常用数学运算等。与此同时，`SparkSession.sql()` 也提供了另一条常见入口：当查询逻辑本身更适合用关系表达式描述时，可以直接写 SQL，再把结果继续接回 DataFrame 流程。
 
 ```scala
@@ -107,7 +102,6 @@ scala> sqlDF.show()
 | 19| Justin|
 +----+-------+
 ```
-
 
 &emsp;&emsp;Spark SQL 中的本地临时视图是会话级对象：创建它的那个会话结束后，视图也会随之消失。如果需要在同一个 Spark 应用的多个会话之间共享临时结果，可以使用全局临时视图。全局临时视图统一挂在系统保留的 `global_temp` 数据库下，因此访问时必须显式带上库名前缀，例如 `SELECT * FROM global_temp.people`。
 
@@ -142,7 +136,6 @@ global_temp.people").show()
 | 19| Justin|
 +----+-------+
 ```
-
 
 &emsp;&emsp;下面继续看Dataset的基本用法。这里需要再次强调：在 Spark 4.x 中，DataFrame 是结构化处理主线，而 Dataset 更适合作为 Scala / Java 中的类型化补充。Dataset 通过 Encoder 把领域对象映射到 Spark 的内部二进制表示，使 Spark 可以在保留类型信息的同时继续执行过滤、排序、聚合和序列化优化。下面的例子用 `toDS()` 创建一个Dataset：
 
@@ -183,7 +176,6 @@ root
 |-- age: long (nullable = true)
 |-- name: string (nullable = true)
 ```
-
 
 &emsp;&emsp;上面的代码可以分成三步理解：
 
@@ -288,7 +280,6 @@ scala> results.map(attributes => "Name: " + attributes(0)).show()
 | Name: Justin|
 +-------------+
 ```
-
 
 &emsp;&emsp;再看一个更贴近真实工程的入口：直接把带表头的 CSV 文件读成 DataFrame。只要文件本身包含标题行，并显式打开 `header` 与 `inferSchema`，Spark 就能基于输入数据推断字段结构。这个例子也顺带展示了如何用 `schema` 和 `printSchema()` 快速验证推断结果。
 
@@ -418,12 +409,3 @@ root
 |-- i: integer (nullable = true)
 |-- s: string (nullable = true)
 ```
-
-
-
-
-
-
-
-
-

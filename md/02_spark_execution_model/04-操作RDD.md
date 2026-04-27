@@ -12,10 +12,8 @@
 <p align="center"><img src="../media/02_spark_execution_model/media/image7.png" alt="" width="60%" /></p>
 <p align="center">图例 2‑7 常见RDD转换操作示意（1）</p>
 
-
 <p align="center"><img src="../media/02_spark_execution_model/media/image8.png" alt="" width="60%" /></p>
 <p align="center">图例 2‑8 常见RDD转换操作示意（2）</p>
-
 
 &emsp;&emsp;下面先看基于单个RDD的转换，也就是输入只有一个RDD的情况。先通过并行化一个集合来创建示例RDD：
 
@@ -24,7 +22,6 @@ scala> val rdd = sc.parallelize(List(1,2,3,3))
 rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[0] at
 parallelize at <console>:24
 ```
-
 
   - map\[U\](f: (T) ⇒ U)(implicit arg0: ClassTag\[U\]): RDD\[U\]
 
@@ -35,7 +32,6 @@ scala> rdd.map(x => x + 1).collect
 res0: Array[Int] = Array(2, 3, 4, 4)
 ```
 
-
   - filter(f: (T) ⇒ Boolean): RDD\[T\]
 
 &emsp;&emsp;返回一个仅包含满足条件元素的新RDD。filter()方法返回一个新的RDD，其中仅包含满足条件的元素。这是一个狭窄的操作，因为它不会将数据从一个分区拖到多个分区。例如，假设RDD包含五个自然数1、2、3、4和5，并且根据条件检查偶数，过滤器后的结果RDD将仅包含偶数，即2和4。
@@ -44,7 +40,6 @@ res0: Array[Int] = Array(2, 3, 4, 4)
 scala> rdd.filter(x => x != 1).collect
 res1: Array[Int] = Array(2, 3, 3)
 ```
-
 
   - flatMap\[U\](f: (T) ⇒ TraversableOnce\[U\])(implicit arg0:
 &emsp;&emsp;    ClassTag\[U\]): RDD\[U\]
@@ -59,7 +54,6 @@ res2: Array[scala.collection.immutable.Range.Inclusive] =
 Array(Range(1, 2, 3), Range(2, 3), Range(3), Range(3))
 ```
 
-
   - 语法说明
 
 &emsp;&emsp;Range是相等地间隔开的整数有序序列。例如，“1,2,3”是一个Range，“5,8,11,14”也是。要创建Scala中的一个Range，使用预定义的方法to和by。
@@ -71,14 +65,12 @@ scala> 5 to 14 by 3
 res3: scala.collection.immutable.Range = Range(5, 8, 11, 14)
 ```
 
-
 &emsp;&emsp;如果想创建一个Range，而不包括上限，可以用方便的方法until：
 
 ```scala
 scala> 1 until 3
 res3: scala.collection.immutable.Range = Range(1, 2)
 ```
-
 
 &emsp;&emsp;Range以恒定的间隔表示，因为它们可以由三个数字定义：开始，结束和步进值。由于这种表示，大多数范围上的操作都非常快。
 
@@ -91,7 +83,6 @@ res3: scala.collection.immutable.Range = Range(1, 2)
 scala> rdd.distinct().collect
 res4: Array[Int] = Array(2, 1, 3)
 ```
-
 
 &emsp;&emsp;在很多应用场景都需要对结果数据进行排序，Spark中有时也不例外。在Spark中存在两种对RDD进行排序的函数，分别是sortBy和sortByKey函数。sortBy是对标准的RDD进行排序，它是从Spark
 &emsp;&emsp;0.9.0之后才引入的。而sortByKey函数是对PairRDD进行排序，也就是有键值对RDD。下面将分别对这两个函数的实现以及使用进行说明。sortBy函数是在org.apache.spark.rdd.RDD类中实现的：
@@ -110,7 +101,6 @@ scala> rdd.sortBy(x => x, false).collect
 res3: Array[Int] = Array(90, 12, 5, 3, 3, 1)
 ```
 
-
 &emsp;&emsp;下面介绍的转换是基于两个RDD。基于二个RDD的转换是指输入RDD是两个，转换后变成一个。首先创建两个RDD：
 
 ```scala
@@ -121,7 +111,6 @@ scala> val other = sc.parallelize(List(3,4,5))
 other: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[11] at
 parallelize at <console>:24
 ```
-
 
   - union(other: RDD\[T\]): RDD\[T\]
 
@@ -135,7 +124,6 @@ scala> rdd.union(other).collect
 res6: Array[Int] = Array(1, 2, 3, 3, 4, 5)
 ```
 
-
   - intersection(other: RDD\[T\]): RDD\[T\]
 
 &emsp;&emsp;返回此RDD和另外一个的交集，输出将不包含任何重复的元素，即使两个输入RDD包含重复的部分。使用intersection()方法，我们只能在新的RDD中获得两个RDD的公共元素。
@@ -148,7 +136,6 @@ scala> rdd.intersection(other).collect
 res7: Array[Int] = Array(3)
 ```
 
-
   - subtract(other: RDD\[T\]): RDD\[T\]
 
 &emsp;&emsp;返回一个RDD，其中包括的元素在调用subtract()方法的RDD而不在另一个。
@@ -157,7 +144,6 @@ res7: Array[Int] = Array(3)
 scala> rdd.subtract(other).collect
 res8: Array[Int] = Array(2, 1)
 ```
-
 
   - cartesian\[U\](other: RDD\[U\])(implicit arg0: ClassTag\[U\]):
 &emsp;&emsp;    RDD\[(T, U)\]
@@ -170,7 +156,6 @@ res9: Array[(Int, Int)] = Array((1,3), (1,4), (1,5), (2,3), (3,3),
 (2,4), (2,5), (3,4), (3,5))
 ```
 
-
 ### 2.4.2 动作
 
 &emsp;&emsp;转换会创建RDD，但是当我们要获取实际数据集时将需要执行动作。当触发动作后，不会像转换那样形成新的RDD，因此动作是提供非RDD值的操作，计算结果存储到驱动程序或外部存储系统中，并将惰性执行的RDD转换激活开始实际的计算任务。动作是将数据从执行器发送到驱动程序的方法之一，执行器是负责执行任务的代理。驱动程序是一个JVM进程，可协调工作节点和任务的执行。现在来看看Spark包含哪些基本动作，首先创建一个RDD：
@@ -181,7 +166,6 @@ rdd: org.apache.spark.rdd.RDD[Int] = ParallelCollectionRDD[24] at
 parallelize at <console>:24
 ```
 
-
   - reduce(f: (T, T) ⇒ T): T
 
 &emsp;&emsp;此函数提供Spark中众所周知的Reduce功能。请注意，提供的任何方法f都应该符合交换律，以产生可重复的结果。reduce()方法将RDD中的两个元素作为输入，然后生成与输入元素相同类型的输出。这种方法的一种简单形式是相加，可以添加RDD中的元素，然后计算单词数。reduce()方法接受交换和关联运算符作为参数。
@@ -190,7 +174,6 @@ parallelize at <console>:24
 scala> rdd.reduce((x, y) => x + y)
 res11: Int = 9
 ```
-
 
   - collect(): Array\[T\]
 
@@ -201,7 +184,6 @@ scala> rdd.collect
 res12: Array[Int] = Array(1, 2, 3, 3)
 ```
 
-
   - count(): Long
 
 &emsp;&emsp;返回数据集中元素的数量。例如RDD的值为(1, 2, 2, 3, 4, 5, 5, 6)，rdd.count()将得出结果8。
@@ -210,7 +192,6 @@ res12: Array[Int] = Array(1, 2, 3, 3)
 scala> rdd.count
 res13: Long = 4
 ```
-
 
   - first(): T
 
@@ -221,7 +202,6 @@ scala> rdd.first
 res14: Int = 1
 ```
 
-
   - take(num: Int): Array\[T\]
 
 &emsp;&emsp;提取RDD的前num个元素并将其作为数组返回。此方法尝试减少其访问的分区数量，因此它表示一个有偏差的集合，我们不能假定元素的顺序。例如有RDD为{1,2,2,3,4,5,5,6}
@@ -231,7 +211,6 @@ res14: Int = 1
 scala> rdd.take(3)
 res15: Array[Int] = Array(1, 2, 3)
 ```
-
 
   - takeSample(withReplacement: Boolean, num: Int, seed: Long =
 &emsp;&emsp;    Utils.random.nextLong): Array\[T\]
@@ -251,7 +230,6 @@ scala> rdd.takeSample(true,3)
 res16: Array[Int] = Array(2, 1, 1)
 ```
 
-
   - takeOrdered(num: Int)(implicit ord: Ordering\[T\]): Array\[T\]
 
 &emsp;&emsp;使用内在的隐式排序函数对RDD的数据项进行排序，并将前num个项作为数组返回。
@@ -267,7 +245,6 @@ scala> rdd.takeOrdered(2)(Ordering[Int].reverse)
 res18: Array[Int] = Array(3, 3)
 ```
 
-
   - foreach(f: (T) ⇒ Unit): Unit
 
 &emsp;&emsp;对该RDD的所有元素应用函数f。与其他操作不同，foreach不返回任何值。它只是在RDD中的所有元素上运行，可以在不想返回任何结果的情况下使用，但是需要启动对RDD的计算，一个很好的例子是将RDD中的元素插入数据库，或者打印输出。
@@ -276,7 +253,6 @@ res18: Array[Int] = Array(3, 3)
 scala> rdd.foreach(x => print(x +" "))
 1 3 3 2
 ```
-
 
   - fold(zeroValue: T)(op: (T, T) ⇒ T): T
 
@@ -294,7 +270,6 @@ scala> rdd.fold(1)((x, y) => x + y)
 res29: Int = 12
 ```
 
-
 &emsp;&emsp;第二个代码为什么是12？先执行下面的代码查看一下rdd的分区数：
 
 ```scala
@@ -302,12 +277,9 @@ scala> rdd.partitions.size
 res25: Int = 2
 ```
 
-
 &emsp;&emsp;可以看到rdd默认有两个分区，这是由于此Docker容器的CPU是两核。集合中的数据被分成两组，如果分别是（1，2）和（3，3），这种分组在真实的分布式环境中是不确定的。对这两组数据应用fold中匿名方法进行累加，还需要加上zeroValue=1，分区中的数累加后，两个分区累加结果再累加，还要再加一次zeroValue=1，其最终的算式为：
 
 &emsp;&emsp;((1 + 2 + 1) + (3 + 3 + 1) + 1) = 12
-
-
 
   - aggregate\[U\](zeroValue: U)(seqOp: (U, T) ⇒ U, combOp: (U, U) ⇒
 &emsp;&emsp;    U)(implicit arg0: ClassTag\[U\]): U
@@ -326,20 +298,15 @@ y)=>(x._1 + y._1, x._2 + y._2))
 res32: (Int, Int) = (9,4)
 ```
 
-
 &emsp;&emsp;上面代码中zeroValue为(0, 0)；seqOp为(x, y)=\>(x.\_1 + y, x.\_2 +
 &emsp;&emsp;1)，表示通过对每个分区内的元素进行累加和计数生成二元组，两个分区的计算方法和结果如下，如果两个分区的元素分别为(1,2)和(3,3)：
 
 &emsp;&emsp;(1 + 2 = 3, 1 + 1 = 2) = (3 , 2) (3 + 3 = 6, 1 + 1 = 2) = (6 , 2)
 
-
-
 &emsp;&emsp;然后组合分区的结果，combOp为(x, y)=\>(x.\_1 + y.\_1, x.\_2 +
 &emsp;&emsp;y.\_2)，表示对所有的分区计算结果进行累加，计算方法如下：
 
 &emsp;&emsp;((3 + 6) = 9 , (2 + 2) = 4）= (9 , 4)
-
-
 
   - saveAsTextFile(path)
 
@@ -352,12 +319,3 @@ res32: (Int, Int) = (9,4)
   - saveAsObjectFile(path)
 
 &emsp;&emsp;将数据集的元素写为使用Java串行化的简单格式，然后可以使用SparkContext.objectFile()进行加载。
-
-
-
-
-
-
-
-
-

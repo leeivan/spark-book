@@ -11,7 +11,6 @@
 <p align="center"><img src="../media/05_stream_processing/media/image5.jpeg" alt="" width="60%" /></p>
 <p align="center">图例 5‑5 Spark数据流总体框架</p>
 
-
 &emsp;&emsp;然后是流处理过程，获得的数据由Spark
 &emsp;&emsp;Streaming系统进行处理，接下来是基于NoSql的数据存储，如HBase等用于存储处理的数据，该系统必须能够实现低延迟地、快速地读写操作，最后是通过终端应用程序显示或分析，终端应用程序可以包括仪表板、商业智能工具和其他使用已处理的流数据进行分析的应用程序，输出的数据也可以存储在数据库中，以便稍后进一步处理。
 
@@ -19,7 +18,6 @@
 
 <p align="center"><img src="../media/05_stream_processing/media/image6.png" alt="火流" width="60%" /></p>
 <p align="center">图例 5‑6 Spark Streaming工作原理</p>
-
 
 &emsp;&emsp;Spark Streaming提供称为离散化数据流（Discretized
 &emsp;&emsp;Stream，DStream）的高级抽象，可以简称离散流，它代表连续产生的数据流。可以从诸如Kafka、Flume和Kinesis等来源的输入数据流中创建离散流，或者通过对其他离散流应用高级操作来创建。在内部，离散流可以表示为一个批次接着一个批次以RDD为底层结构的数据流。
@@ -61,8 +59,6 @@ object NetworkWordCount {
 }
 ```
 
-
-
 &emsp;&emsp;这段代码展示的是最经典的 DStream 版 `NetworkWordCount`。整体链路其实很简单：先用 `SparkConf` 和 `StreamingContext` 建立一个本地流式应用，`local[2]` 表示至少给接收数据和处理数据各留一个执行线程，批次间隔设为 10 秒；再用 `ssc.socketTextStream()` 从 TCP 套接字持续接收文本行，把每一行拆成单词，映射成 `(word, 1)` 形式的键值对，并在每个微批上用 `reduceByKey()` 统计词频。最后通过 `wordCounts.print()` 输出结果。需要特别记住的是：到这一步为止，程序仍然只是在定义计算链路，真正开始处理数据还要等 `ssc.start()` 被调用。
 
 &emsp;&emsp;在虚拟实验环境中，上面的应用已经完成编译和打包。为了复现实验，先启动 Netcat 作为文本输入源：
@@ -70,8 +66,6 @@ object NetworkWordCount {
 ```bash
 { while :; do echo "Hello Apache Spark"; sleep 0.05; done; } | netcat -l -p 9999
 ```
-
-
 
 &emsp;&emsp;使用Docker exec 命令进入到容器中打开另一终端界面，运行Spark应用程序：
 ```text
@@ -94,8 +88,6 @@ Time: 1585211340000 ms
 (Apache,188)
 (Spark,188)
 ```
-
-
 
 &emsp;&emsp;就这样，第一个终端窗口负责发送数据（），第二个终端窗口负责接收处理数据（）。
 
@@ -186,7 +178,6 @@ val ssc = new StreamingContext(conf, Seconds(1))
 
 ```
 
-
 &emsp;&emsp;`appName` 是应用在监控界面里显示的名称。`master` 可以是 Standalone、Kubernetes、YARN 的集群地址，也可以是本地模式字符串 `local[*]`。实际部署到集群时，通常不会把 `master` 硬编码在程序里，而是通过 `spark-submit` 在提交阶段传入；本地测试或单元测试时，`local[*]` 则更方便。创建 `StreamingContext` 时会连带创建底层 `SparkContext`，可通过 `ssc.sparkContext` 访问。批次间隔本身则需要结合延迟目标和集群资源来权衡设置。
 
 &emsp;&emsp;（2）如果通过spark-shell打开交互界面，StreamingContext对象也可以从现有的SparkContext对象创建。
@@ -198,8 +189,6 @@ scala> val ssc = new StreamingContext(sc, Seconds(10))
 ssc: org.apache.spark.streaming.StreamingContext =
 org.apache.spark.streaming.StreamingContext@3c4231e5
 ```
-
-
 
 &emsp;&emsp;定义好StreamingContext后，必须执行以下操作：
 
@@ -299,8 +288,6 @@ Time: 1585054770000 ms
 -------------------------------------------
 ```
 
-
-
 &emsp;&emsp;此时，应该看到终端界面中每10秒刷新一次。现在打开另一个终端界面，将文本文件添加到/data/input目录中：
 ```bash
 cp /usr/local/spark/README.md /root/data/input/1.txt
@@ -388,12 +375,3 @@ Time: 1585059428000 ms
 &emsp;&emsp;    Int):DStream\[Array\[Byte\]\]
 
 &emsp;&emsp;创建一个输入流，该输入流监视的文件系统中的新文件，并将它们读取为二进制文件，假定每条记录的长度固定，每条记录生成一个字节数组，必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。
-
-
-
-
-
-
-
-
-

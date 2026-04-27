@@ -9,7 +9,6 @@
 <p align="center"><img src="../media/01_spark_ecosystem/media/image8.jpeg" alt="Base Flow" width="60%" /></p>
 <p align="center">图例 1‑9 HBase 读写访问</p>
 
-
 | HDFS                    | HBase                                            |
 | ----------------------- | ------------------------------------------------ |
 | HDFS是适于存储大容量文件的分布式文件系统。 | HBase是建立在HDFS之上的数据库。                             |
@@ -26,7 +25,6 @@
 <p align="center"><img src="../media/01_spark_ecosystem/media/image9.png" alt="" width="60%" /></p>
 <p align="center">图例 1‑10 HBase 的系统架构</p>
 
-
 &emsp;&emsp;HMaster 是 HBase 的管理节点进程，负责区域分配、故障转移和元数据维护。一个 HBase 集群通常会配置多个 HMaster，其中一个处于活动状态，其余作为备份节点。需要注意的是，HMaster 本身并不直接承担读写流量；真正处理数据请求的是 RegionServer。因此，即使 HMaster 暂时失效，已在线的数据读写在很多情况下仍可继续，只是表结构变更和部分元数据操作会受到影响。
 
 &emsp;&emsp;RegionServer 才是 HBase 的一线数据服务进程。它负责承接读写请求、托管 HMaster 分配下来的 Region，并在 Region 过大时触发切分。对客户端来说，访问路径通常是“先通过 ZooKeeper 和元数据定位到目标 RegionServer，再直接与对应 RegionServer 通信”，而不是每次都经过 HMaster。写入数据时，RegionServer 会先把变更追加到 `WAL`，再写入各列族对应的 `MemStore`；当 MemStore 达到阈值或触发刷盘时，数据再落成 `HFile`。也就是说，一个 Region 下每个列族都会对应一个 `Store`，而每个 `Store` 内部会管理自己的 `MemStore` 与一组 `HFile`。从 Spark 读者的角度，记住这条路径就够了：`客户端 -> RegionServer -> WAL/MemStore -> HFile/HDFS`。
@@ -42,7 +40,6 @@
 <p align="center"><img src="../media/01_spark_ecosystem/media/image10.png" alt="base 1" width="60%" /></p>
 <p align="center">图例 1‑11 面向列的数据库与面向行的数据库</p>
 
-
   - 面向行的数据存储
 
 &emsp;&emsp;每次存储和检索数据一行，因此如果仅需要一行中的某些数据，则需要读取一行中其他不必要的数据；易于读取和写入记录，非常适合OLTP系统；执行操作整个数据集的效率不高，因此聚合是一项昂贵的操作；与面向列的数据存储相比，典型的压缩机制提供效果较差。
@@ -55,7 +52,6 @@
 
 <p align="center"><img src="../media/01_spark_ecosystem/media/image11.tiff" alt="" width="60%" /></p>
 <p align="center">图例 1‑12 HBase 列族</p>
-
 
 &emsp;&emsp;HBase表根据Row
 &emsp;&emsp;Key的范围被水平拆分成若干个区域，每个区域都包含了这个区域的起始键和结束键之间的所有行。区域被分配给集群中区域服务器管理，由它们来负责处理数据的读写请求。HBase中的行是逻辑上的行，物理上模型上行是按列族分别存取的。HBase
@@ -173,8 +169,6 @@
 
 &emsp;&emsp;hbase(main):001:0\>
 
-
-
 &emsp;&emsp;在交互式 shell 中，可以随时输入 `exit` 或使用 `<Ctrl + C>` 退出。继续之前，先用 `list` 看看当前实例里有哪些表；这也是验证 HBase 是否已经正常工作的最直接方式之一。一个最小示例如下：
 
 &emsp;&emsp;hbase(main):001:0\> list
@@ -188,8 +182,6 @@
 &emsp;&emsp;\=\> \["sensor"\]
 
 &emsp;&emsp;hbase(main):002:0\>
-
-
 
 #### 1.6.3.1 创建表
 
@@ -213,8 +205,6 @@
 
 &emsp;&emsp;\=\> Hbase::Table – order
 
-&emsp;&emsp;命令 1.31
-
 &emsp;&emsp;建表完成后，可以再次执行 `list` 确认结果；如果成功，输出中就能看到刚创建的 `order` 表：
 
 &emsp;&emsp;hbase(main):012:0\> list
@@ -231,8 +221,6 @@
 
 &emsp;&emsp;\=\> \["emp", "order"\]
 
-&emsp;&emsp;命令 1.32
-
 #### 1.6.3.2 禁用表
 
 &emsp;&emsp;要删除表或改变其设置，首先需要使用 disable 命令关闭表。使用 enable 命令，可以重新启用它，下面给出的语法是用来禁用一个表：
@@ -240,8 +228,6 @@
 &emsp;&emsp;hbase(main):003:0\> disable 'order'
 
 &emsp;&emsp;0 row(s) in 2.4570 seconds
-
-&emsp;&emsp;命令 1.33
 
 &emsp;&emsp;禁用表之后，仍然可以通过 list 和exists命令查看到。无法扫描到它存在，它会给下面的错误。
 
@@ -251,8 +237,6 @@
 
 &emsp;&emsp;ERROR: order is disabled.
 
-&emsp;&emsp;命令 1.34
-
 &emsp;&emsp;`is_disabled` 用来检查表是否处于禁用状态。下面这组命令用 `order` 表做演示：如果表已经禁用，会返回 `true`；否则返回 `false`。
 
 &emsp;&emsp;hbase(main):005:0\> is\_disabled 'order'
@@ -260,8 +244,6 @@
 &emsp;&emsp;true
 
 &emsp;&emsp;0 row(s) in 0.0180 seconds
-
-&emsp;&emsp;命令 1.35
 
 &emsp;&emsp;disable\_all此命令用于禁用所有匹配给定正则表达式的表，假设有5个表在HBase，即order01、order02、order03、order04
 &emsp;&emsp;和order05，下面的代码将禁用所有以order开始的表。
@@ -284,8 +266,6 @@
 
 &emsp;&emsp;5 tables successfully disabled
 
-&emsp;&emsp;命令 1.36
-
 #### 1.6.3.3 启用表
 
 &emsp;&emsp;给出下面是一个例子，使一个表启用。
@@ -293,8 +273,6 @@
 &emsp;&emsp;hbase(main):005:0\> enable 'order'
 
 &emsp;&emsp;0 row(s) in 0.4580 seconds
-
-&emsp;&emsp;命令 1.37
 
 &emsp;&emsp;启用表之后，扫描。如果能看到的模式，那么证明表已成功启用。
 
@@ -308,8 +286,6 @@
 
 &emsp;&emsp;1 column=Sales:Product, timestamp=1417532601, value=椅子
 
-&emsp;&emsp;命令 1.38
-
 &emsp;&emsp;is\_enabled此命令用于查找表是否被启用，下面的代码验证表order是否启用，如果启用，它将返回true，如果没有，它会返回false。
 
 &emsp;&emsp;hbase(main):031:0\> is\_enabled 'order'
@@ -317,8 +293,6 @@
 &emsp;&emsp;true
 
 &emsp;&emsp;0 row(s) in 0.0440 seconds
-
-&emsp;&emsp;命令 1.39
 
 #### 1.6.3.4 增删改
 
@@ -351,8 +325,6 @@
 &emsp;&emsp;hbase(main):029:0\> put 'order','101','Sales:Price','400.00'
 
 &emsp;&emsp;Took 0.0063 seconds
-
-&emsp;&emsp;命令 1.40
 
 &emsp;&emsp;以相同的方式使用put命令插入剩余的行。如果插入完成整个表格，会得到下面的输出。
 
@@ -394,8 +366,6 @@
 
 &emsp;&emsp;4 row(s)
 
-&emsp;&emsp;命令 1.41
-
 &emsp;&emsp;可以使用put命令更新现有的单元格值，假设HBase中有一个表order拥有下列数据
 
 &emsp;&emsp;hbase(main):003:0\> scan 'order'
@@ -411,8 +381,6 @@
 &emsp;&emsp;104 column=Sales:Product, timestamp=1582443897589, value=Bed
 
 &emsp;&emsp;1 row(s) in 0.0100 seconds
-
-&emsp;&emsp;命令 1.42
 
 &emsp;&emsp;以下命令将更新名为Jack Black客户的城市值为Chongqing。
 
@@ -436,8 +404,6 @@
 
 &emsp;&emsp;1 row(s) in 0.0100 seconds
 
-&emsp;&emsp;命令 1.43
-
 &emsp;&emsp;`get` 命令用于按 Row Key 读取单行数据。下面用 `order` 表中键为 `101` 的记录演示最基本的读取方式。
 
 &emsp;&emsp;hbase(main):040:0\> get 'order', '101'
@@ -456,8 +422,6 @@
 
 &emsp;&emsp;Took 0.0374 seconds
 
-&emsp;&emsp;命令 1.44
-
 &emsp;&emsp;下面给出的示例，是用于读取HBase表中的特定列。
 
 &emsp;&emsp;hbase(main):042:0\> get 'order', '101', {COLUMN=\>'Customer:Name'}
@@ -470,8 +434,6 @@
 
 &emsp;&emsp;Took 0.0239 seconds
 
-&emsp;&emsp;命令 1.45
-
 &emsp;&emsp;使用 delete 命令，可以在一个表中删除特定单元格，下面是一个删除特定单元格的例子，在这里删除City：
 
 &emsp;&emsp;hbase(main):006:0\> delete 'order', '101', 'Customer:City',
@@ -480,15 +442,11 @@
 
 &emsp;&emsp;0 row(s) in 0.0060 seconds
 
-&emsp;&emsp;命令 1.46
-
 &emsp;&emsp;使用deleteall命令，可以删除一行中所有单元格，这里是使用deleteall命令删去 order表中101行的所有单元。
 
 &emsp;&emsp;hbase(main):007:0\> deleteall 'order','101'
 
 &emsp;&emsp;0 row(s) in 0.0240 seconds
-
-&emsp;&emsp;命令 1.47
 
 &emsp;&emsp;使用scan命令验证表，表被删除后的快照如下。
 
@@ -521,8 +479,6 @@
 &emsp;&emsp;104 column=Sales:Product, timestamp=1582443897589, value=Bed
 
 &emsp;&emsp;3 row(s)
-
-&emsp;&emsp;命令 1.48
 
 #### 1.6.3.5 其他
 
@@ -558,8 +514,6 @@ QUOTAS
 Took 0.1444 seconds
 ```
 
-&emsp;&emsp;命令 1.49
-
 &emsp;&emsp;`alter` 用于修改现有表的结构或属性，例如调整列族的最大版本数、设置表级参数，或者删除列族。下面这组命令先演示把单元版本数上限设置为 `5`。
 ```text
 hbase(main):044:0> alter 'order', NAME => 'Customer', VERSIONS => 5
@@ -569,8 +523,6 @@ Done.
 Took 2.0384 seconds
 ```
 
-&emsp;&emsp;命令 1.50
-
 &emsp;&emsp;`alter` 也可以设置或删除表级选项，例如 `MAX_FILESIZE`、`READONLY`、`MEMSTORE_FLUSHSIZE`、`DEFERRED_LOG_FLUSH` 等。下面的命令把 `order` 表设置为只读。
 ```text
 hbase(main):045:0> alter 'order', READONLY
@@ -579,8 +531,6 @@ Updating all regions with the new schema...
 Done.
 Took 2.0662 seconds
 ```
-
-&emsp;&emsp;命令 1.51
 
 &emsp;&emsp;下面给出的是一个例子，从order表中删除列族。假设在HBase中有一个order表，包含以下数据：
 ```text
@@ -597,8 +547,6 @@ ROW COLUMN+CELL
 Took 0.0213 seconds
 ```
 
-&emsp;&emsp;命令 1.52
-
 &emsp;&emsp;现在使用alter命令删除指定的 Sales 列族。
 ```text
 hbase(main):047:0> alter 'order','delete'=>'Sales'
@@ -607,8 +555,6 @@ Updating all regions with the new schema...
 Done.
 Took 1.9196 seconds
 ```
-
-&emsp;&emsp;命令 1.53
 
 &emsp;&emsp;现在验证该表中变更后的数据，观察到列族Sales也没有了，因为前面已经被删除了。
 ```text
@@ -624,8 +570,6 @@ ROW COLUMN+CELL
 
 &emsp;&emsp;Took 0.0092 seconds
 
-&emsp;&emsp;命令 1.54
-
 &emsp;&emsp;可以使用 `exists` 检查表是否存在，下面给出最小示例。
 
 &emsp;&emsp;hbase(main):024:0\> exists 'order'
@@ -640,8 +584,6 @@ ROW COLUMN+CELL
 
 &emsp;&emsp;0 row(s) in 0.0480 seconds
 
-&emsp;&emsp;命令 1.55
-
 &emsp;&emsp;用drop命令可以删除表，在删除一个表之前必须先将其禁用。
 
 &emsp;&emsp;hbase(main):018:0\> disable 'order'
@@ -651,8 +593,6 @@ ROW COLUMN+CELL
 &emsp;&emsp;hbase(main):019:0\> drop 'order'
 
 &emsp;&emsp;0 row(s) in 0.3060 seconds
-
-&emsp;&emsp;命令 1.56
 
 &emsp;&emsp;使用exists 命令验证表是否被删除。
 
@@ -664,8 +604,6 @@ ROW COLUMN+CELL
 
 &emsp;&emsp;drop\_all
 
-&emsp;&emsp;命令 1.57
-
 &emsp;&emsp;可以使用count命令计算表的行数量。
 
 &emsp;&emsp;hbase(main):023:0\> count 'order'
@@ -673,8 +611,6 @@ ROW COLUMN+CELL
 &emsp;&emsp;2 row(s) in 0.090 seconds
 
 &emsp;&emsp;\=\> 2
-
-&emsp;&emsp;命令 1.58
 
 &emsp;&emsp;truncate命令将禁止删除并重新创建一个表，下面给出是 truncate 命令的例子：
 
@@ -688,8 +624,6 @@ ROW COLUMN+CELL
 
 &emsp;&emsp;0 row(s) in 1.5950 seconds
 
-&emsp;&emsp;命令 1.59
-
 &emsp;&emsp;使用scan 命令来验证，会得到表的行数为零。
 
 &emsp;&emsp;hbase(main):017:0\> scan 'order'
@@ -698,25 +632,10 @@ ROW COLUMN+CELL
 
 &emsp;&emsp;0 row(s) in 0.3110 seconds
 
-&emsp;&emsp;命令 1.60
-
 &emsp;&emsp;可以通过键入exit命令退出交互程序。
 
 &emsp;&emsp;hbase(main):021:0\> exit
 
-&emsp;&emsp;命令 1.61
-
 &emsp;&emsp;要停止HBase键入以下命令。
 
 &emsp;&emsp;stop-hbase.sh
-
-&emsp;&emsp;命令 1.62
-
-
-
-
-
-
-
-
-

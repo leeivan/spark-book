@@ -1279,7 +1279,3 @@ res2: scala.collection.mutable.Set[Int] = Set(1, 4, 3, 5)
 scala> set.remove(40)
 res3: Boolean = false
 ```
-
-
-
-

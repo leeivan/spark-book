@@ -19,7 +19,6 @@ val spark = SparkSession
   .getOrCreate()
 ```
 
-
 &emsp;&emsp;完成后可以调用 `stop()` 方法关闭当前的 SparkSession。
 ```text
 
@@ -56,7 +55,6 @@ res2: org.apache.spark.SparkContext =
 <org.apache.spark.SparkContext@5e9af5d4>
 ```
 
-
 &emsp;&emsp;SparkSession 内部封装了 SparkContext。为了理解提交、调度与资源协作关系，下面先简单看一下 SparkContext 在运行时中的位置。
 
 &emsp;&emsp;![Fig 7. SparkContext as it relates to Driver and Cluster
@@ -89,7 +87,6 @@ scala> spark.version
 res4: String = 4.1.1
 ```
 
-
   - implicits
 
 &emsp;&emsp;implicits对象是一个具有Scala隐式方法的帮助类，用于将Scala对象转换为Dataset、DataFrame和Column。它还定义了Scala原始类型的Encoder，例如Int、Double、String及其Product和Collection。
@@ -119,7 +116,6 @@ root
 |-- value: string (nullable = true)
 ```
 
-
   - def range(end: Long): Dataset\[java.lang.Long\]
 
   - def range(start: Long, end: Long): Dataset\[java.lang.Long\]
@@ -142,7 +138,6 @@ scala> spark.range(start = 0, end = 4, step = 2, numPartitions =
 | 2|
 +---+
 ```
-
 
   - 注意
 
@@ -169,7 +164,6 @@ scala> sql("SHOW TABLES").show
 +---------+-----------+
 ```
 
-
   - def udf: UDFRegistration
 
 &emsp;&emsp;访问用户定义的函数（UDF）。udf属性允许访问UDFRegistration，允许注册基于SQL查询的用户定义函数。
@@ -191,7 +185,6 @@ scala> sql("SELECT *, myUpper(value) UPPER FROM strs").show
 +-----+-----+
 ```
 
-
   - def table(tableName: String): DataFrame
 
 &emsp;&emsp;从表创建DataFrame。将表加载为DataFrame，如果存在。
@@ -211,7 +204,6 @@ scala> t1.show
 +-----+
 ```
 
-
   - lazy val catalog: Catalog
 
 &emsp;&emsp;访问结构化查询实体的元数据目录，catalog属性是当前元数据目录的查询接口，元数据目录包括关系实体，如数据库、表、函数、表列和临时视图。
@@ -225,7 +217,6 @@ scala> spark.catalog.listTables.show
 | strs| null| null|TEMPORARY| true|
 +------------------+--------+-----------+---------+-----------+
 ```
-
 
   - def read: DataFrameReader
 
@@ -255,7 +246,3 @@ val dfReader: DataFrameReader = spark.read
   - def stop(): Unit
 
 &emsp;&emsp;停止SparkSession 。
-
-
-
-
