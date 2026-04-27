@@ -1,101 +1,101 @@
 ﻿# 1.4 Spark简介
 
-  Apache Spark 是一个开源的通用分布式计算框架，最初由加州大学伯克利分校 AMPLab 发起，并在长期演进中逐步形成了今天以结构化处理、流处理和机器学习流水线为核心的能力体系。与早期强依赖磁盘落盘的批处理框架相比，Spark 的优势不应简单理解为某个固定倍数的"速度宣传"，而应理解为：它提供了更统一的执行模型、更丰富的抽象层次，以及更适合交互分析、迭代计算和批流一体处理的工程接口。
+&emsp;&emsp;Apache Spark 是一个开源的通用分布式计算框架，最初由加州大学伯克利分校 AMPLab 发起，并在长期演进中逐步形成了今天以结构化处理、流处理和机器学习流水线为核心的能力体系。与早期强依赖磁盘落盘的批处理框架相比，Spark 的优势不应简单理解为某个固定倍数的"速度宣传"，而应理解为：它提供了更统一的执行模型、更丰富的抽象层次，以及更适合交互分析、迭代计算和批流一体处理的工程接口。
 
-  在实际部署中，Spark 可以运行在本地模式、Standalone、YARN 或 Kubernetes 上；在存储层，则可以对接 HDFS、对象存储、Hive、湖仓表格式以及多种外部数据库。也正因为这种计算与存储解耦的特性，Spark 更适合作为现代数据平台中的"统一计算层"，而不是某个单一生态组件的附属工具。
+&emsp;&emsp;在实际部署中，Spark 可以运行在本地模式、Standalone、YARN 或 Kubernetes 上；在存储层，则可以对接 HDFS、对象存储、Hive、湖仓表格式以及多种外部数据库。也正因为这种计算与存储解耦的特性，Spark 更适合作为现代数据平台中的"统一计算层"，而不是某个单一生态组件的附属工具。
 
-  Spark 提供 Java、Scala、Python 和 R 等多种语言接口，因此既适合教学入门，也适合工程环境中的多语言协作。对现代实践而言，其主线能力主要是 Spark SQL / DataFrame、Structured Streaming 以及基于 `spark.ml` 的机器学习流水线；GraphX 等组件更适合作为专题能力理解（图例 1‑3）。
+&emsp;&emsp;Spark 提供 Java、Scala、Python 和 R 等多种语言接口，因此既适合教学入门，也适合工程环境中的多语言协作。对现代实践而言，其主线能力主要是 Spark SQL / DataFrame、Structured Streaming 以及基于 `spark.ml` 的机器学习流水线；GraphX 等组件更适合作为专题能力理解（图例 1‑3）。
 
 <p align="center"><img src="../media/01_spark_ecosystem/media/image2.png" alt="" width="60%" /></p>
 <p align="center">图例 1‑3 Spark组件</p>
 
 ### 1.4.1 技术特性
 
-  如果把 Spark 看成一套分层能力，最底层是 Spark Core 提供的分布式调度、容错和 I/O 基础，而最基础的数据抽象是 RDD。RDD 有助于理解分区、谱系、缓存与 Shuffle 这些底层机制，因此它仍然是学习执行模型的重要入口；但对今天的大多数 Spark 4.x 项目来说，RDD 已经不再是默认开发界面。真正的高频工程主线，更多建立在结构化处理、流处理和机器学习流水线之上。
+&emsp;&emsp;如果把 Spark 看成一套分层能力，最底层是 Spark Core 提供的分布式调度、容错和 I/O 基础，而最基础的数据抽象是 RDD。RDD 有助于理解分区、谱系、缓存与 Shuffle 这些底层机制，因此它仍然是学习执行模型的重要入口；但对今天的大多数 Spark 4.x 项目来说，RDD 已经不再是默认开发界面。真正的高频工程主线，更多建立在结构化处理、流处理和机器学习流水线之上。
 
-  从模块关系上看，Spark 的价值不在于"提供了很多彼此孤立的子项目"，而在于这些能力共享同一套执行引擎和集群运行时。结构化查询、流处理、特征工程、模型训练，最终都可以围绕统一的数据抽象和调度模型展开。理解这一点后，再看 Spark 的各个组件，重点就不再是记名字，而是看它们分别解决哪类问题：
+&emsp;&emsp;从模块关系上看，Spark 的价值不在于"提供了很多彼此孤立的子项目"，而在于这些能力共享同一套执行引擎和集群运行时。结构化查询、流处理、特征工程、模型训练，最终都可以围绕统一的数据抽象和调度模型展开。理解这一点后，再看 Spark 的各个组件，重点就不再是记名字，而是看它们分别解决哪类问题：
 
 - Spark SQL
 
-  Spark SQL 是 Spark 4.x 最核心的结构化处理模块，主线抽象是 DataFrame / Dataset。它既支持直接写 SQL，也支持用 DataFrame API 组织过滤、聚合、窗口和 Join 等逻辑，还能复用 Hive Metastore 等元数据体系。对于绝大多数分析、ETL 和特征准备任务来说，Spark SQL 都是默认入口。
+&emsp;&emsp;Spark SQL 是 Spark 4.x 最核心的结构化处理模块，主线抽象是 DataFrame / Dataset。它既支持直接写 SQL，也支持用 DataFrame API 组织过滤、聚合、窗口和 Join 等逻辑，还能复用 Hive Metastore 等元数据体系。对于绝大多数分析、ETL 和特征准备任务来说，Spark SQL 都是默认入口。
 
 - Structured Streaming（推荐）
 
-  Structured Streaming 建立在 Spark SQL 执行引擎之上，把流数据尽量拉回到 DataFrame / Dataset 的统一模型里。它支持事件时间、水位线、窗口与状态计算，适合今天大多数需要批流一致性的日志、指标和业务事件处理场景。
+&emsp;&emsp;Structured Streaming 建立在 Spark SQL 执行引擎之上，把流数据尽量拉回到 DataFrame / Dataset 的统一模型里。它支持事件时间、水位线、窗口与状态计算，适合今天大多数需要批流一致性的日志、指标和业务事件处理场景。
 
 - 机器学习（主线为`spark.ml`）
 
-  Spark 当前机器学习主线应理解为 DataFrame / Dataset 之上的 `spark.ml` 管道式 API。它更适合把特征处理、模型训练、评估与调参组织成一条可重复的工程流程。历史上的 `spark.mllib` 仍值得了解，但更多是为了兼容旧工程和阅读存量代码。
+&emsp;&emsp;Spark 当前机器学习主线应理解为 DataFrame / Dataset 之上的 `spark.ml` 管道式 API。它更适合把特征处理、模型训练、评估与调参组织成一条可重复的工程流程。历史上的 `spark.mllib` 仍值得了解，但更多是为了兼容旧工程和阅读存量代码。
 
 - GraphX（专题能力）
 
-  GraphX 是 Spark 提供的分布式图计算组件，适合讲解顶点 - 边模型、Pregel 风格迭代和图分析的基本思路。在 Spark 4.x 时代，它更适合作为专题能力或已有系统的补充方案，而不是大多数通用数据项目的默认入口。
+&emsp;&emsp;GraphX 是 Spark 提供的分布式图计算组件，适合讲解顶点 - 边模型、Pregel 风格迭代和图分析的基本思路。在 Spark 4.x 时代，它更适合作为专题能力或已有系统的补充方案，而不是大多数通用数据项目的默认入口。
 
-  因此，Spark 的优势不应被简化成"把数据放进内存里就会更快"。更准确的理解是：Spark 通过统一的执行模型、清晰的数据抽象和共享的运行时，把批处理、SQL、流处理和部分机器学习任务放进了同一套工程框架里。这种统一性本身，才是它长期有价值的原因。
+&emsp;&emsp;因此，Spark 的优势不应被简化成"把数据放进内存里就会更快"。更准确的理解是：Spark 通过统一的执行模型、清晰的数据抽象和共享的运行时，把批处理、SQL、流处理和部分机器学习任务放进了同一套工程框架里。这种统一性本身，才是它长期有价值的原因。
 
-  从平台角色上说，Spark 更像统一计算框架，而不是完整替代整个 Hadoop 生态的"一站式平台"。它可以与 HDFS、Hive、对象存储等存储层协同工作，也可以运行在 YARN、Kubernetes 或 Standalone 之上。理解这一点后，再看图例 1‑4，就更容易把"存储层""资源层"和"计算层"区分开。
+&emsp;&emsp;从平台角色上说，Spark 更像统一计算框架，而不是完整替代整个 Hadoop 生态的"一站式平台"。它可以与 HDFS、Hive、对象存储等存储层协同工作，也可以运行在 YARN、Kubernetes 或 Standalone 之上。理解这一点后，再看图例 1‑4，就更容易把"存储层""资源层"和"计算层"区分开。
 
 <p align="center"><img src="../media/01_spark_ecosystem/media/image3.png" alt="" width="60%" /></p>
 <p align="center">图例 1‑4 Spark与Hadoop在数据中间数据处理区别</p>
 
-  从执行模型看，Spark 用通用 DAG 把多阶段计算串联起来，避免像传统 MapReduce 那样频繁把每一步中间结果落盘。RDD 及其上层的 DataFrame/Dataset 抽象，让用户可以组合 map、join、group、window、SQL 等多种操作，而不必把程序硬拆成固定的 Map/Reduce 两段。
+&emsp;&emsp;从执行模型看，Spark 用通用 DAG 把多阶段计算串联起来，避免像传统 MapReduce 那样频繁把每一步中间结果落盘。RDD 及其上层的 DataFrame/Dataset 抽象，让用户可以组合 map、join、group、window、SQL 等多种操作，而不必把程序硬拆成固定的 Map/Reduce 两段。
 
-  这也是 Spark 在迭代计算、交互分析和流处理上更有优势的原因：它既能利用内存缓存减少重复计算，又能通过统一 API 把批处理、SQL 和流处理放到同一套引擎下执行。今天真正需要优先掌握的，不是"Spark 比 Hadoop 快多少倍"的口号，而是 Spark 如何通过统一执行模型降低开发复杂度。
+&emsp;&emsp;这也是 Spark 在迭代计算、交互分析和流处理上更有优势的原因：它既能利用内存缓存减少重复计算，又能通过统一 API 把批处理、SQL 和流处理放到同一套引擎下执行。今天真正需要优先掌握的，不是"Spark 比 Hadoop 快多少倍"的口号，而是 Spark 如何通过统一执行模型降低开发复杂度。
 
-  Spark 也是一个典型的分布式系统：既可以在单机上本地运行，也可以扩展到由大量节点组成的集群。真正需要把握的不是"节点很多"这件事本身，而是它如何把一个应用拆成 Driver、Executor、存储访问和资源管理这几类角色，再通过统一接口在不同部署环境中运行。
+&emsp;&emsp;Spark 也是一个典型的分布式系统：既可以在单机上本地运行，也可以扩展到由大量节点组成的集群。真正需要把握的不是"节点很多"这件事本身，而是它如何把一个应用拆成 Driver、Executor、存储访问和资源管理这几类角色，再通过统一接口在不同部署环境中运行。
 
 <p align="center"><img src="../media/01_spark_ecosystem/media/image4.png" alt="Spark cluster components" width="60%" /></p>
 <p align="center">图例 1‑5 Spark 分布式系统</p>
 
-  Spark 应用作为独立进程运行，由 Driver 负责创建 `SparkSession` / `SparkContext`、生成执行计划并调度任务；Executor 负责真正执行计算、缓存数据和回传状态。集群管理器的职责则是为这些进程分配资源，例如 Standalone、Kubernetes 或 YARN。对应用开发者来说，这种分工最重要的含义有两点：一是每个应用通常拥有自己独立的一组 Executor，因此应用之间彼此隔离；二是如果结果要跨应用复用，仍然应该写入外部存储，而不是假设可以直接共享内存中的数据。
+&emsp;&emsp;Spark 应用作为独立进程运行，由 Driver 负责创建 `SparkSession` / `SparkContext`、生成执行计划并调度任务；Executor 负责真正执行计算、缓存数据和回传状态。集群管理器的职责则是为这些进程分配资源，例如 Standalone、Kubernetes 或 YARN。对应用开发者来说，这种分工最重要的含义有两点：一是每个应用通常拥有自己独立的一组 Executor，因此应用之间彼此隔离；二是如果结果要跨应用复用，仍然应该写入外部存储，而不是假设可以直接共享内存中的数据。
 
-  Spark 并不依赖特定的底层资源平台。只要集群管理器能够启动 Driver 与 Executor 进程，并保障它们之间的正常通信，Spark 即可在其上运行。更准确的理解是：Driver 负责规划计算任务，Executor 负责执行具体计算，而 Standalone、YARN 或 Kubernetes 则负责资源的分配与进程托管。本书主要介绍以下三类常见运行环境：①Standalone，即 Spark 自带的轻量级集群管理器，适用于教学实验与小规模部署；②Kubernetes，即容器化资源管理平台，适用于云原生场景下的统一资源调度；③Hadoop YARN，即 Hadoop 2 中的资源管理器，适用于已有 Hadoop 生态的平台。
+&emsp;&emsp;Spark 并不依赖特定的底层资源平台。只要集群管理器能够启动 Driver 与 Executor 进程，并保障它们之间的正常通信，Spark 即可在其上运行。更准确的理解是：Driver 负责规划计算任务，Executor 负责执行具体计算，而 Standalone、YARN 或 Kubernetes 则负责资源的分配与进程托管。本书主要介绍以下三类常见运行环境：①Standalone，即 Spark 自带的轻量级集群管理器，适用于教学实验与小规模部署；②Kubernetes，即容器化资源管理平台，适用于云原生场景下的统一资源调度；③Hadoop YARN，即 Hadoop 2 中的资源管理器，适用于已有 Hadoop 生态的平台。
 
-  对于教学和实验环境，最容易上手的是本地模式或轻量级的 Standalone；对于已经运行在 Hadoop 体系中的平台，YARN 往往更自然；对于云原生和容器化部署，Kubernetes 更符合 Spark 4.x 的主流工程实践。选择哪一种环境，本质上取决于团队现有基础设施，而不是 Spark 功能本身是否"完整"。
+&emsp;&emsp;对于教学和实验环境，最容易上手的是本地模式或轻量级的 Standalone；对于已经运行在 Hadoop 体系中的平台，YARN 往往更自然；对于云原生和容器化部署，Kubernetes 更符合 Spark 4.x 的主流工程实践。选择哪一种环境，本质上取决于团队现有基础设施，而不是 Spark 功能本身是否"完整"。
 
 ### 1.4.2 数据源与数据格式
 
-  在学习 Spark 之前，首先要理解一个核心概念：Spark 本身不存储数据，而是从各种外部系统读取和处理数据。Spark 支持的数据源非常广泛，包括本地文件、HDFS、云存储（如 Amazon S3）、数据库（如 Hive、HBase、JDBC）以及现代湖仓格式（如 Delta、Iceberg、Hudi）等。下面介绍几类最常见、最能帮助理解 Spark 定位的数据源：
+&emsp;&emsp;在学习 Spark 之前，首先要理解一个核心概念：Spark 本身不存储数据，而是从各种外部系统读取和处理数据。Spark 支持的数据源非常广泛，包括本地文件、HDFS、云存储（如 Amazon S3）、数据库（如 Hive、HBase、JDBC）以及现代湖仓格式（如 Delta、Iceberg、Hudi）等。下面介绍几类最常见、最能帮助理解 Spark 定位的数据源：
 
 - HDFS
 
-  HDFS 是 Hadoop 生态的分布式文件系统，适合存储大文件，擅长顺序读取和高吞吐场景。虽然现在云存储越来越流行，但在自建集群、本地实验环境和部分传统数仓中，HDFS 仍然很常见。理解 HDFS 有助于了解 Spark 早期如何与 Hadoop 生态协同工作。
+&emsp;&emsp;HDFS 是 Hadoop 生态的分布式文件系统，适合存储大文件，擅长顺序读取和高吞吐场景。虽然现在云存储越来越流行，但在自建集群、本地实验环境和部分传统数仓中，HDFS 仍然很常见。理解 HDFS 有助于了解 Spark 早期如何与 Hadoop 生态协同工作。
 
 - Amazon S3 / 对象存储
 
-  对象存储是云上 Spark 最常用的数据底座。相比传统文件系统，它具有更好的扩展性、统一的访问接口，并且能很好地配合湖仓表格式使用。Spark 通过 S3A 等连接器可以直接读写对象存储，因此很多现代云原生 Spark 集群都直接构建在对象存储之上。
+&emsp;&emsp;对象存储是云上 Spark 最常用的数据底座。相比传统文件系统，它具有更好的扩展性、统一的访问接口，并且能很好地配合湖仓表格式使用。Spark 通过 S3A 等连接器可以直接读写对象存储，因此很多现代云原生 Spark 集群都直接构建在对象存储之上。
 
 - Hive
 
-  Hive 有两层含义：一是离线数仓查询引擎，二是 Hive Metastore（元数据管理服务）。对 Spark 而言，最重要的是 Spark SQL 能够复用 Hive 的表结构和元数据，从而与现有数仓无缝对接。很多团队即使不再使用 Hive 进行查询，仍然会保留 Hive Metastore 来管理表结构。
+&emsp;&emsp;Hive 有两层含义：一是离线数仓查询引擎，二是 Hive Metastore（元数据管理服务）。对 Spark 而言，最重要的是 Spark SQL 能够复用 Hive 的表结构和元数据，从而与现有数仓无缝对接。很多团队即使不再使用 Hive 进行查询，仍然会保留 Hive Metastore 来管理表结构。
 
 - HBase
 
-  HBase 是分布式 NoSQL 数据库，擅长海量数据的低延迟随机读写，适合明细查询、时间序列数据或键值查询等场景。但它并不是 Spark 分析任务的默认数据源。本书保留 HBase 内容，主要是因为它在教学实验和部分企业的存量系统中仍然常见。
+&emsp;&emsp;HBase 是分布式 NoSQL 数据库，擅长海量数据的低延迟随机读写，适合明细查询、时间序列数据或键值查询等场景。但它并不是 Spark 分析任务的默认数据源。本书保留 HBase 内容，主要是因为它在教学实验和部分企业的存量系统中仍然常见。
 
-  了解数据源后，还需要理解 Spark 处理的数据格式。Spark 可以直接读取文本、JSON、CSV、Parquet 等常见格式，也能通过连接器访问 Kafka、数据库、对象存储等外部系统。但在实际工作中，不需要记住所有格式，而是要理解几类高频数据格式各自的作用：
+&emsp;&emsp;了解数据源后，还需要理解 Spark 处理的数据格式。Spark 可以直接读取文本、JSON、CSV、Parquet 等常见格式，也能通过连接器访问 Kafka、数据库、对象存储等外部系统。但在实际工作中，不需要记住所有格式，而是要理解几类高频数据格式各自的作用：
 
 - 行式交换格式：JSON、CSV
 
-  JSON 和 CSV 适合系统间数据交换、调试、样例数据或小规模数据存储。它们易于阅读和编辑，但对于大规模数据分析，效率不如列式格式。通常作为数据进入平台的初期格式。
+&emsp;&emsp;JSON 和 CSV 适合系统间数据交换、调试、样例数据或小规模数据存储。它们易于阅读和编辑，但对于大规模数据分析，效率不如列式格式。通常作为数据进入平台的初期格式。
 
 - 列式分析格式：Parquet
 
-  Parquet 是 Spark 平台最常用的分析型文件格式。它采用列式存储，支持压缩和统计信息，能够高效地进行批量扫描、列裁剪和聚合查询，广泛应用于离线数仓、湖仓格式和特征工程。值得注意的是，即使上层使用 Delta、Iceberg 或 Hudi 等湖仓格式，底层数据文件通常仍然是 Parquet。
+&emsp;&emsp;Parquet 是 Spark 平台最常用的分析型文件格式。它采用列式存储，支持压缩和统计信息，能够高效地进行批量扫描、列裁剪和聚合查询，广泛应用于离线数仓、湖仓格式和特征工程。值得注意的是，即使上层使用 Delta、Iceberg 或 Hudi 等湖仓格式，底层数据文件通常仍然是 Parquet。
 
 - 历史 Hadoop 格式：SequenceFile、ObjectFile
 
-  SequenceFile 和 ObjectFile 主要出现在早期的 Hadoop/Spark 项目和教材中。了解它们有助于维护历史代码，但在新项目中已经很少使用。
+&emsp;&emsp;SequenceFile 和 ObjectFile 主要出现在早期的 Hadoop/Spark 项目和教材中。了解它们有助于维护历史代码，但在新项目中已经很少使用。
 
 - 外部存储与序列化协议：Cassandra、Protocol Buffers
 
-  Cassandra 是外部数据库或在线存储服务，不应理解为"Spark 文件格式"；Protocol Buffers 是系统间数据传输的序列化协议。虽然 Spark 可以与它们交互，但在学习阶段，优先级低于 Parquet、JSON 等核心数据格式。
+&emsp;&emsp;Cassandra 是外部数据库或在线存储服务，不应理解为"Spark 文件格式"；Protocol Buffers 是系统间数据传输的序列化协议。虽然 Spark 可以与它们交互，但在学习阶段，优先级低于 Parquet、JSON 等核心数据格式。
 
 ### 1.4.3 编程语言
 
-  Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本地实验通常只需要准备好 Java 环境变量；进入集群部署时，再考虑 Python、R、Scala 版本与运行时依赖的一致性。对 Spark 4.x 而言，更稳妥的环境组合通常是 Java 17+（建议 21）、Python 3.10+、R 4.x；对于 Scala API，Spark 4.1.1 使用 Scala 2.13，工程里也应尽量保持 Scala 2.13.x 生态一致。
+&emsp;&emsp;Spark 可以运行在 Windows 和类 UNIX 系统（如 Linux、macOS）上。本地实验通常只需要准备好 Java 环境变量；进入集群部署时，再考虑 Python、R、Scala 版本与运行时依赖的一致性。对 Spark 4.x 而言，更稳妥的环境组合通常是 Java 17+（建议 21）、Python 3.10+、R 4.x；对于 Scala API，Spark 4.1.1 使用 Scala 2.13，工程里也应尽量保持 Scala 2.13.x 生态一致。
 
-  语言选择不必变成抽象争论。更实用的判断方式是：如果团队偏数据分析、Notebook 和快速实验，Python 往往是第一入口；如果要贴近 Spark 内部模型、类型系统和 JVM 工程，Scala 更有优势；如果平台侧已经是成熟的 Java 体系，Java 也完全可用；R 则更适合统计分析和交互式探索。表格 1‑1 给出了一组对 Spark 工程最有参考价值的比较维度：
+&emsp;&emsp;语言选择不必变成抽象争论。更实用的判断方式是：如果团队偏数据分析、Notebook 和快速实验，Python 往往是第一入口；如果要贴近 Spark 内部模型、类型系统和 JVM 工程，Scala 更有优势；如果平台侧已经是成熟的 Java 体系，Java 也完全可用；R 则更适合统计分析和交互式探索。表格 1‑1 给出了一组对 Spark 工程最有参考价值的比较维度：
 
 <div align="center">
 
@@ -112,13 +112,13 @@
 
 </div>
 
-  注意：Spark 4.x 已不再支持旧版 Java 7 与 Python 2 生态；生产环境建议统一使用 LTS JDK（17/21）与 Python 3.10+。
+&emsp;&emsp;注意：Spark 4.x 已不再支持旧版 Java 7 与 Python 2 生态；生产环境建议统一使用 LTS JDK（17/21）与 Python 3.10+。
 
 #### 1.4.3.1 Java
 
-  Java 适合那些已经深度依赖 JVM 生态的企业环境，例如现有平台侧服务、调度系统、权限体系或内部 SDK 都以 Java 为主时，直接使用 Java API 往往能减少语言切换成本。它的优势在于类型系统稳定、打包和部署路径成熟，并且容易和既有 Java 服务栈整合。
+&emsp;&emsp;Java 适合那些已经深度依赖 JVM 生态的企业环境，例如现有平台侧服务、调度系统、权限体系或内部 SDK 都以 Java 为主时，直接使用 Java API 往往能减少语言切换成本。它的优势在于类型系统稳定、打包和部署路径成熟，并且容易和既有 Java 服务栈整合。
 
-  在 Spark 4.x 中，Java API 可以直接使用 lambda 表达式和函数式接口来组织转换逻辑。虽然日常数据分析里更常见的是 Python 或 Scala，但对于需要长期维护、强调规范工程化的团队，Java 仍然是可行选择。下面保留一个最小的 Hello World，用来说明 Java 项目的基本入口形式：
+&emsp;&emsp;在 Spark 4.x 中，Java API 可以直接使用 lambda 表达式和函数式接口来组织转换逻辑。虽然日常数据分析里更常见的是 Python 或 Scala，但对于需要长期维护、强调规范工程化的团队，Java 仍然是可行选择。下面保留一个最小的 Hello World，用来说明 Java 项目的基本入口形式：
 
 ```java
 public class HelloWorld {
@@ -130,16 +130,16 @@ public class HelloWorld {
 
 #### 1.4.3.2 Scala
 
-  Scala 是 Spark 最贴近内核生态的语言。很多底层概念、Dataset 类型系统、函数签名和示例最早都来自 Scala 语境，因此当你需要理解 Spark 内部抽象、编写更复杂的 JVM 侧库，或者希望在类型安全与表达力之间取得平衡时，Scala 会更有优势。
+&emsp;&emsp;Scala 是 Spark 最贴近内核生态的语言。很多底层概念、Dataset 类型系统、函数签名和示例最早都来自 Scala 语境，因此当你需要理解 Spark 内部抽象、编写更复杂的 JVM 侧库，或者希望在类型安全与表达力之间取得平衡时，Scala 会更有优势。
 
-  从工程体验上看，Scala 的收益主要在三点：一是与 Spark 内部 API 更贴近；二是 `case class`、模式匹配和高阶函数很适合表达结构化与分布式逻辑；三是可以无缝复用 Java 生态。但它的学习曲线也更陡，尤其对只想快速完成分析任务的读者来说，Python 往往更容易上手。下面先用一个极小的 Scala 片段感受语法风格：
+&emsp;&emsp;从工程体验上看，Scala 的收益主要在三点：一是与 Spark 内部 API 更贴近；二是 `case class`、模式匹配和高阶函数很适合表达结构化与分布式逻辑；三是可以无缝复用 Java 生态。但它的学习曲线也更陡，尤其对只想快速完成分析任务的读者来说，Python 往往更容易上手。下面先用一个极小的 Scala 片段感受语法风格：
 
 ```scala
 val nums = Seq(1, 2, 3)
 nums.map(_ + 1)
 ```
 
-  更接近日常工程入口的，仍然是标准的 `object` / `main` 结构。下面保留两个最常见的 Hello World 写法：
+&emsp;&emsp;更接近日常工程入口的，仍然是标准的 `object` / `main` 结构。下面保留两个最常见的 Hello World 写法：
 
 ```scala
 object HelloWorld extends App {
@@ -157,7 +157,7 @@ object HelloWorld {
 }
 ```
 
-  和 Java 相比，Scala 的入口通常通过 `object` 定义，而不是显式写 `static main`。如果把程序保存为 `HelloWorld.scala`，可以像下面这样编译：
+&emsp;&emsp;和 Java 相比，Scala 的入口通常通过 `object` 定义，而不是显式写 `static main`。如果把程序保存为 `HelloWorld.scala`，可以像下面这样编译：
 
 ```bash
 > scalac HelloWorld.scala
@@ -169,7 +169,7 @@ object HelloWorld {
 > scala -classpath . HelloWorld
 ```
 
-  这说明 Scala 在编译和运行模型上与 Java 非常接近，也因此天然适合放进 JVM 工程体系。直接使用 Scala 解释器也可以快速运行该程序，例如：
+&emsp;&emsp;这说明 Scala 在编译和运行模型上与 Java 非常接近，也因此天然适合放进 JVM 工程体系。直接使用 Scala 解释器也可以快速运行该程序，例如：
 
 ```bash
 > scala -i HelloWorld.scala -e 'HelloWorld.main(null)'
@@ -177,9 +177,9 @@ object HelloWorld {
 
 #### 1.4.3.3 Python
 
-  Python 是今天最常见的 PySpark 入口语言。它的优势在于语法简单、Notebook 与数据分析生态成熟、实验反馈快，因此特别适合数据探索、特征工程和模型试验。很多团队的 Spark 主线开发语言，实际上就是 Python。
+&emsp;&emsp;Python 是今天最常见的 PySpark 入口语言。它的优势在于语法简单、Notebook 与数据分析生态成熟、实验反馈快，因此特别适合数据探索、特征工程和模型试验。很多团队的 Spark 主线开发语言，实际上就是 Python。
 
-  需要同时看到它的边界：Python 和 JVM 之间存在额外的序列化与运行时边界，因此在极致性能、类型系统或深度定制 Spark 内核行为方面，Scala 往往更有优势。对大多数业务开发而言，Python 的开发效率收益通常远大于这些额外开销。下面保留当前推荐的 Python 3 写法，以及历史上常见但已过时的 Python 2 写法，方便识别旧代码：
+&emsp;&emsp;需要同时看到它的边界：Python 和 JVM 之间存在额外的序列化与运行时边界，因此在极致性能、类型系统或深度定制 Spark 内核行为方面，Scala 往往更有优势。对大多数业务开发而言，Python 的开发效率收益通常远大于这些额外开销。下面保留当前推荐的 Python 3 写法，以及历史上常见但已过时的 Python 2 写法，方便识别旧代码：
 
 - Python 3.x（当前推荐）
 
@@ -193,7 +193,7 @@ print("Hello, world!")
 print "Hello, world!"
 ```
 
-  Python 也很适合交互式探索。启动解释器后，可以直接在提示符号 `>>>` 后输入语句并立即看到结果：
+&emsp;&emsp;Python 也很适合交互式探索。启动解释器后，可以直接在提示符号 `>>>` 后输入语句并立即看到结果：
 
 - Python 3.x（当前推荐）
 
@@ -211,8 +211,8 @@ Hello, world!
 Hello, world!
 ```
 
-  需要特别注意的是，Python 2 与 Python 3 的 `print` 语法不同。Spark 4.x 已经完全站在 Python 3 生态上，旧写法仅保留给历史兼容场景。
+&emsp;&emsp;需要特别注意的是，Python 2 与 Python 3 的 `print` 语法不同。Spark 4.x 已经完全站在 Python 3 生态上，旧写法仅保留给历史兼容场景。
 
 #### 1.4.3.4 R
 
-  R 更适合统计分析、可视化和交互式数据探索。在 Spark 生态里，对应的入口是 SparkR。它不是本书的主线开发语言，但对于已经熟悉 R 工作流、需要把大规模数据处理与统计分析结合的读者来说，仍然有现实价值。工程项目里，如果团队主要使用 Python 或 Scala，R 通常更适合作为分析补充而不是主实现语言。
+&emsp;&emsp;R 更适合统计分析、可视化和交互式数据探索。在 Spark 生态里，对应的入口是 SparkR。它不是本书的主线开发语言，但对于已经熟悉 R 工作流、需要把大规模数据处理与统计分析结合的读者来说，仍然有现实价值。工程项目里，如果团队主要使用 Python 或 Scala，R 通常更适合作为分析补充而不是主实现语言。
