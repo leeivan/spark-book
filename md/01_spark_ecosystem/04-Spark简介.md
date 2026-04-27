@@ -49,13 +49,7 @@ Spark 也是一个典型的分布式系统：既可以在单机上本地运行�
 
 Spark 应用作为独立进程运行，由 Driver 负责创建 `SparkSession` / `SparkContext`、生成执行计划并调度任务；Executor 负责真正执行计算、缓存数据和回传状态。集群管理器的职责则是为这些进程分配资源，例如 Standalone、Kubernetes 或 YARN。对应用开发者来说，这种分工最重要的含义有两点：一是每个应用通常拥有自己独立的一组 Executor，因此应用之间彼此隔离；二是如果结果要跨应用复用，仍然应该写入外部存储，而不是假设可以直接共享内存中的数据。
 
-Spark 并不强绑定某一种底层资源平台。只要集群管理器能够拉起 Driver / Executor 并保证它们之间正常通信，Spark 就可以在其上运行。今天更稳妥的理解方式是：Driver 决定“做什么”，Executor 负责“把任务跑完”，而 Standalone、YARN、Kubernetes 则决定“资源从哪里来、进程怎样被托管”。从学习路径看，本书主要涉及以下三类常见环境：
-
-（1）Standalone：Spark 自带的轻量级集群管理器，适合教学、实验和小规模独立部署。
-
-（2）Kubernetes：容器化资源管理平台，适合云原生场景下统一调度。
-
-（3）Hadoop YARN：Hadoop 2中的资源管理器。
+Spark 并不依赖特定的底层资源平台。只要集群管理器能够启动 Driver 与 Executor 进程，并保障它们之间的正常通信，Spark 即可在其上运行。更准确的理解是：Driver 负责规划计算任务，Executor 负责执行具体计算，而 Standalone、YARN 或 Kubernetes 则负责资源的分配与进程托管。本书主要介绍以下三类常见运行环境：①Standalone，即 Spark 自带的轻量级集群管理器，适用于教学实验与小规模部署；②Kubernetes，即容器化资源管理平台，适用于云原生场景下的统一资源调度；③Hadoop YARN，即 Hadoop 2 中的资源管理器，适用于已有 Hadoop 生态的平台。
 
 对于教学和实验环境，最容易上手的是本地模式或轻量级的 Standalone；对于已经运行在 Hadoop 体系中的平台，YARN 往往更自然；对于云原生和容器化部署，Kubernetes 更符合 Spark 4.x 的主流工程实践。选择哪一种环境，本质上取决于团队现有基础设施，而不是 Spark 功能本身是否“完整”。
 
