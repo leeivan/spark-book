@@ -16,7 +16,7 @@
 
 早期 Spark Streaming 会把连续到达的数据按固定时间间隔切成一批批小 RDD，这种抽象就叫 DStream。对开发者来说，它的编程体验很像“持续不断地处理一串按时间到达的 RDD”；每个批次里仍然使用熟悉的 Spark Core API，而微批调度负责把这些批次串起来持续执行。
 
-<p align="center">![https://www.mapr.com/sites/default/files/blogimages/sparkstream2-blog.png](../media/05_stream_processing/media/image14.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image14.jpeg" alt="https://www.mapr.com/sites/default/files/blogimages/sparkstream2-blog.png" /></p>
 <p align="center">图例 5‑14 将数据流划分为X秒的批次</p>
 
 
@@ -24,7 +24,7 @@ Spark Streaming 可以接入 HDFS 目录、TCP 套接字、Kafka、Flume 等输�
 
 下面这个历史案例继续沿用 DStream + HBase 的组合，目的是说明一个典型微批流式应用怎样从输入流一路走到外部存储。示例背景是油井监控：钻井平台传感器持续产生日志数据，Spark Streaming 负责实时处理，再把结果写入 HBase，供后续分析和报表使用。
 
-<p align="center">![](../media/05_stream_processing/media/image15.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image15.jpeg" alt="" /></p>
 <p align="center">图例 5‑15 流数据处理阶段</p>
 
 
@@ -193,7 +193,7 @@ only showing top 5 rows
 
 （2）stats列族：最小值、最大值和平均值的列。
 
-<p align="center">![https://www.mapr.com/sites/default/files/blogimages/sparkstream5-blog.png](../media/05_stream_processing/media/image16.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image16.jpeg" alt="https://www.mapr.com/sites/default/files/blogimages/sparkstream5-blog.png" /></p>
 <p align="center">图例 5‑16 数据格式</p>
 
 
@@ -292,7 +292,7 @@ val sensorDStream = linesDStream.map(Sensor.parseSensor)
 
 这段代码里，`linesDStream` 表示源数据流。`StreamingContext.textFileStream()` 会持续监视兼容 Hadoop 的文件系统目录，并在检测到新文件时把它们纳入后续批次处理。
 
-<p align="center">![](../media/05_stream_processing/media/image17.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image17.jpeg" alt="" /></p>
 <p align="center">图例 5‑17 创建输入流</p>
 
 
@@ -349,7 +349,7 @@ def convertToPut(sensor: Sensor): (ImmutableBytesWritable, Put) = {
 
 接下来使用PairRDDFunctions.saveAsHadoopDataset()方法写入传感器和警报数据。
 
-<p align="center">![处输入图片的描述](../media/05_stream_processing/media/image18.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image18.jpeg" alt="处输入图片的描述" /></p>
 <p align="center">图例 5‑18 使用 `saveAsHadoopDataset` 方法写入到 HBase 中</p>
 
 
@@ -590,7 +590,7 @@ only showing top 1 row
 
 窗口操作的意义，在于把多个连续微批合并成一个“按时间滚动观察”的结果视图。这样就可以回答“过去 6 秒内发生了什么”“每隔 2 秒重新统计一次最近窗口”这一类问题，而不必只盯着单个批次。
 
-<p align="center">![](../media/05_stream_processing/media/image19.jpeg)</p>
+<p align="center"><img src="../media/05_stream_processing/media/image19.jpeg" alt="" /></p>
 <p align="center">图例 5‑19 数据的滑动窗口</p>
 
 
@@ -744,6 +744,7 @@ only showing top 1 row
 
 
   - 在什么情况下，窗口操作会特别有用？
+
 
 
 

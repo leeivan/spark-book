@@ -4,7 +4,7 @@
 
 理解 RDD 时，可以先把它看成“带谱系信息的只读分布式记录集合”。它既是 Spark 早期执行模型中的核心数据抽象，也是后面理解分区、缓存、Shuffle 和容错的基础。RDD 中的数据会按逻辑分区分散到集群上执行计算；每次转换都产生新的 RDD，而不会原地修改旧数据。这种不可变设计让 Spark 更容易推导依赖关系、切分任务并在失败后重建缺失分区。
 
-<p align="center">![](../media/02_spark_execution_model/media/image6.png)</p>
+<p align="center"><img src="../media/02_spark_execution_model/media/image6.png" alt="" /></p>
 <p align="center">图例 2‑6 RDD 看作是一个只读分区的记录集合</p>
 
 
@@ -62,6 +62,7 @@ jun
 ```
 
 Spark可以从Hadoop生态支持的多种存储系统中创建RDD，包括本地文件系统、HDFS、Cassandra、HBase、Amazon S3等。Spark支持文本文件、SequenceFile，以及任何基于Hadoop InputFormat的数据源。最常见的读取方式之一是使用SparkContext.textFile()：传入本地路径、Hadoop集群路径或云存储路径后，Spark会把文件内容读取为“按行组织”的RDD。
+
 
 
 
