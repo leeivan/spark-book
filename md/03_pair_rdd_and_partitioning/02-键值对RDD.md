@@ -380,10 +380,9 @@ res3: Array[(String, Int)] = Array((a,6), (b,6))
 ```
 
 
-<div align="center">![https://camo.githubusercontent.com/516114b94193cddf7e59bdd5368d6756d30dc8b4/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f313836363838325f6f7269672e706e67](../media/03_pair_rdd_and_partitioning/media/image1.png)
+<p align="center">![https://camo.githubusercontent.com/516114b94193cddf7e59bdd5368d6756d30dc8b4/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f313836363838325f6f7269672e706e67](../media/03_pair_rdd_and_partitioning/media/image1.png)</p>
+<p align="center">图例 3‑1 ReduceByKey运行示意图</p>
 
-图例 3‑1 ReduceByKey运行示意图
-</div>
 
 在上图中，可以看到RDD具有多个键值对元素，如(a,1)和(b,1)，以及3个分区。在对整个分区之间的数据洗牌之前，先在每个本地分区中进行相同的聚合。可以使用reduceByKey与mapValues一起计算每个键的平均值，代码和图示如下：
 
@@ -398,10 +397,9 @@ res38: Array[(String, (Int, Int))] = Array((panda,(1,2)),
 (pink,(7,2)), (pirate,(3,1)))
 ```
 
-<div align="center">![nsp 0402](../media/03_pair_rdd_and_partitioning/media/image2.png)
+<p align="center">![nsp 0402](../media/03_pair_rdd_and_partitioning/media/image2.png)</p>
+<p align="center">图例 3‑2 每键平均值计算的数据流</p>
 
-图例 3‑2 每键平均值计算的数据流
-</div>
 
 实际上，reduceByKey是aggregateByKey的一个特列。aggregateByKey有两个函数参数：一个应用于每个分区的聚合，另一个应用于分区之间聚合。reduceByKey在上述两种情况下都使用相同的关联函数，在每个分区上执行一遍，然后在分区间执行一遍，将第一遍的结果合并为最终结果。
 
@@ -494,10 +492,9 @@ res4: Array[(String, Int)] = Array((a,6), (b,6))
 
 得到的结果与上面的代码一致，但是数据的计算过程不一样。另一方面，当调用groupByKey时所有的键值对都在Shuffle，在网络中传输的大量不必要的数据。当在一个执行器上有更多的数据在内存中进行Shuffle时，Spark将内存数据溢出到磁盘中。但是，一次只会将一个键数据刷新到磁盘上，因此如果单个键的值超过了内存容量，则会发生内存不足异常。这种情况在Spark的后续版本中可以更加优雅地处理，因此作业仍然可以继续，但仍然应该避免。当Spark需要溢出到磁盘时，性能会受到严重影响。
 
-<div align="center">![https://camo.githubusercontent.com/ed75baabdaee2198d3fc1390e04a5d20bcd2e484/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f333030393135315f6f7269672e706e67](../media/03_pair_rdd_and_partitioning/media/image3.png)
+<p align="center">![https://camo.githubusercontent.com/ed75baabdaee2198d3fc1390e04a5d20bcd2e484/687474703a2f2f7777772e727578697a68616e672e636f6d2f75706c6f6164732f342f342f302f322f34343032333436352f333030393135315f6f7269672e706e67](../media/03_pair_rdd_and_partitioning/media/image3.png)</p>
+<p align="center">图例 3‑3 GroupByKey运行示意图</p>
 
-图例 3‑3 GroupByKey运行示意图
-</div>
 
 可以尝试的一种优化方法是合并或组合值，因此最终只发送较少的键值对。另外，较少的键值对意味着Reduce不会有太多的工作要做，从而带来额外的性能提升。groupByKey()调用不会尝试进行合并或组合值，因此这是一项昂贵的操作。对于一个更大的数据集，洗牌数据量的差异在reduceByKey()和groupByKey()之间会变得更加夸张和不同。以下是比groupByKey更优化的方法：
 
@@ -675,6 +672,8 @@ res80: scala.collection.Map[Int,Int] = Map(1 -> 2, 3 -> 6)
 scala> rdd.lookup(3)
 res91: Seq[Int] = WrappedArray(4, 6)
 ```
+
+
 
 
 

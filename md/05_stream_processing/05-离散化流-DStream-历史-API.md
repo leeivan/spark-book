@@ -8,20 +8,18 @@ Spark Streaming 是 Spark 早期的流处理扩展，其核心抽象是 DStream�
 
 Spark Streaming总体架构通常由以下组件构成（图例 5‑5）。首先是要处理的数据必须来自某个外部动态数据源，例如传感器、移动应用程序、Web客户端、服务器日志等等，这个数据通过消息机制传送给数据采集系统，如Kafka、Flume等，递送或沉积在文件系统中。
 
-<div align="center">![](../media/05_stream_processing/media/image5.jpeg)
+<p align="center">![](../media/05_stream_processing/media/image5.jpeg)</p>
+<p align="center">图例 5‑5 Spark数据流总体框架</p>
 
-图例 5‑5 Spark数据流总体框架
-</div>
 
 然后是流处理过程，获得的数据由Spark
 Streaming系统进行处理，接下来是基于NoSql的数据存储，如HBase等用于存储处理的数据，该系统必须能够实现低延迟地、快速地读写操作，最后是通过终端应用程序显示或分析，终端应用程序可以包括仪表板、商业智能工具和其他使用已处理的流数据进行分析的应用程序，输出的数据也可以存储在数据库中，以便稍后进一步处理。
 
 Spark Streaming的内部工作原理如下（图例 5‑6）。Spark数据流接收实时输入数据流并将数据分成批，然后由Spark引擎进行处理，以批量生成最终的结果流。
 
-<div align="center">![火流](../media/05_stream_processing/media/image6.png)
+<p align="center">![火流](../media/05_stream_processing/media/image6.png)</p>
+<p align="center">图例 5‑6 Spark Streaming工作原理</p>
 
-图例 5‑6 Spark Streaming工作原理
-</div>
 
 Spark Streaming提供称为离散化数据流（Discretized
 Stream，DStream）的高级抽象，可以简称离散流，它代表连续产生的数据流。可以从诸如Kafka、Flume和Kinesis等来源的输入数据流中创建离散流，或者通过对其他离散流应用高级操作来创建。在内部，离散流可以表示为一个批次接着一个批次以RDD为底层结构的数据流。
@@ -390,6 +388,8 @@ Time: 1585059428000 ms
     Int):DStream\[Array\[Byte\]\]
 
 创建一个输入流，该输入流监视的文件系统中的新文件，并将它们读取为二进制文件，假定每条记录的长度固定，每条记录生成一个字节数组，必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。
+
+
 
 
 
