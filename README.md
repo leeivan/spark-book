@@ -1,7 +1,7 @@
 ﻿# Spark Book 学习导航
 
 <p align="center">
-  <img src="assets/cover.png" alt="Spark 大数据处理与分析" width="420" />
+  <img src="assets/cover.png" alt="Spark 大数据处理与分析" width="420" width="60%" />
 </p>
 
 本仓库以 Apache Spark 4.x 为主线，覆盖执行模型、结构化数据、流处理、机器学习、应用部署与性能优化，并保留部分历史主题用于存量系统维护与迁移理解�?
@@ -53,6 +53,7 @@
 - [md 目录](md/)
 - [媒体目录](md/media/)
 - [参考资料目录](references/)
+
 
 
 

@@ -8,7 +8,7 @@ Spark Streaming 是 Spark 早期的流处理扩展，其核心抽象是 DStream�
 
 Spark Streaming总体架构通常由以下组件构成（图例 5‑5）。首先是要处理的数据必须来自某个外部动态数据源，例如传感器、移动应用程序、Web客户端、服务器日志等等，这个数据通过消息机制传送给数据采集系统，如Kafka、Flume等，递送或沉积在文件系统中。
 
-<p align="center"><img src="../media/05_stream_processing/media/image5.jpeg" alt="" /></p>
+<p align="center"><img src="../media/05_stream_processing/media/image5.jpeg" alt="" width="60%" /></p>
 <p align="center">图例 5‑5 Spark数据流总体框架</p>
 
 
@@ -17,7 +17,7 @@ Streaming系统进行处理，接下来是基于NoSql的数据存储，如HBase�
 
 Spark Streaming的内部工作原理如下（图例 5‑6）。Spark数据流接收实时输入数据流并将数据分成批，然后由Spark引擎进行处理，以批量生成最终的结果流。
 
-<p align="center"><img src="../media/05_stream_processing/media/image6.png" alt="火流" /></p>
+<p align="center"><img src="../media/05_stream_processing/media/image6.png" alt="火流" width="60%" /></p>
 <p align="center">图例 5‑6 Spark Streaming工作原理</p>
 
 
@@ -388,6 +388,7 @@ Time: 1585059428000 ms
     Int):DStream\[Array\[Byte\]\]
 
 创建一个输入流，该输入流监视的文件系统中的新文件，并将它们读取为二进制文件，假定每条记录的长度固定，每条记录生成一个字节数组，必须通过将文件从同一文件系统中的一个位置移动到受监控目录中，以点“.”开头的隐含文件名将被忽略。
+
 
 
 

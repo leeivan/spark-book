@@ -1,4 +1,4 @@
-# 1.4 Spark简介
+﻿# 1.4 Spark简介
 
 Apache Spark 是一个开源的通用分布式计算框架，最初由加州大学伯克利分校 AMPLab 发起，并在长期演进中逐步形成了今天以结构化处理、流处理和机器学习流水线为核心的能力体系。与早期强依赖磁盘落盘的批处理框架相比，Spark 的优势不应简单理解为某个固定倍数的“速度宣传”，而应理解为：它提供了更统一的执行模型、更丰富的抽象层次，以及更适合交互分析、迭代计算和批流一体处理的工程接口。
 
@@ -6,7 +6,7 @@ Apache Spark 是一个开源的通用分布式计算框架，最初由加州大�
 
 Spark 提供 Java、Scala、Python 和 R 等多种语言接口，因此既适合教学入门，也适合工程环境中的多语言协作。对现代实践而言，其主线能力主要是 Spark SQL / DataFrame、Structured Streaming 以及基于 `spark.ml` 的机器学习流水线；GraphX 等组件更适合作为专题能力理解（图例 1‑3）。
 
-<p align="center"><img src="../media/01_spark_ecosystem/media/image2.png" alt="" /></p>
+<p align="center"><img src="../media/01_spark_ecosystem/media/image2.png" alt="" width="60%" /></p>
 <p align="center">图例 1‑3 Spark组件</p>
 
 ### 1.4.1 技术特性
@@ -35,7 +35,7 @@ GraphX 是 Spark 提供的分布式图计算组件，适合讲解顶点 - 边模
 
 从平台角色上说，Spark 更像统一计算框架，而不是完整替代整个 Hadoop 生态的“一站式平台”。它可以与 HDFS、Hive、对象存储等存储层协同工作，也可以运行在 YARN、Kubernetes 或 Standalone 之上。理解这一点后，再看图例 1‑4，就更容易把“存储层”“资源层”和“计算层”区分开。
 
-<p align="center"><img src="../media/01_spark_ecosystem/media/image3.png" alt="" /></p>
+<p align="center"><img src="../media/01_spark_ecosystem/media/image3.png" alt="" width="60%" /></p>
 <p align="center">图例 1‑4 Spark与Hadoop在数据中间数据处理区别</p>
 
 从执行模型看，Spark 用通用 DAG 把多阶段计算串联起来，避免像传统 MapReduce 那样频繁把每一步中间结果落盘。RDD 及其上层的 DataFrame/Dataset 抽象，让用户可以组合 map、join、group、window、SQL 等多种操作，而不必把程序硬拆成固定的 Map/Reduce 两段。
@@ -44,7 +44,7 @@ GraphX 是 Spark 提供的分布式图计算组件，适合讲解顶点 - 边模
 
 Spark 也是一个典型的分布式系统：既可以在单机上本地运行，也可以扩展到由大量节点组成的集群。真正需要把握的不是“节点很多”这件事本身，而是它如何把一个应用拆成 Driver、Executor、存储访问和资源管理这几类角色，再通过统一接口在不同部署环境中运行。
 
-<p align="center"><img src="../media/01_spark_ecosystem/media/image4.png" alt="Spark cluster components" /></p>
+<p align="center"><img src="../media/01_spark_ecosystem/media/image4.png" alt="Spark cluster components" width="60%" /></p>
 <p align="center">图例 1‑5 Spark 分布式系统</p>
 
 Spark 应用作为独立进程运行，由 Driver 负责创建 `SparkSession` / `SparkContext`、生成执行计划并调度任务；Executor 负责真正执行计算、缓存数据和回传状态。集群管理器的职责则是为这些进程分配资源，例如 Standalone、Kubernetes 或 YARN。对应用开发者来说，这种分工最重要的含义有两点：一是每个应用通常拥有自己独立的一组 Executor，因此应用之间彼此隔离；二是如果结果要跨应用复用，仍然应该写入外部存储，而不是假设可以直接共享内存中的数据。
@@ -206,3 +206,4 @@ Hello, world!
 #### 1.4.3.4 R
 
 R 更适合统计分析、可视化和交互式数据探索。在 Spark 生态里，对应的入口是 SparkR。它不是本书的主线开发语言，但对于已经熟悉 R 工作流、需要把大规模数据处理与统计分析结合的读者来说，仍然有现实价值。工程项目里，如果团队主要使用 Python 或 Scala，R 通常更适合作为分析补充而不是主实现语言。
+
