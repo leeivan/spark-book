@@ -167,7 +167,7 @@ object HelloWorld {
 }
 ```
 
-代码 1‑4
+
 
 和 Java 相比，Scala 的入口通常通过 `object` 定义，而不是显式写 `static main`。如果把程序保存为 `HelloWorld.scala`，可以像下面这样编译：
 
